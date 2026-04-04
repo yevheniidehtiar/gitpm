@@ -1,0 +1,8 @@
+type: roadmap
+id: rm_main
+title: GitPM Product Roadmap
+description: Main product roadmap for 2026
+milestones:
+  - id: ms_q2_launch
+  - id: ms_q3_scale
+updated_at: 2026-03-15T10:00:00Z
