@@ -11,7 +11,7 @@ Interactive demos showing each phase of GitPM's implementation with real termina
 | **2** | @gitpm/cli — Init & Validate | Pending | — | — |
 | **3** | @gitpm/sync-github — Import | Complete | 42 passed | [View Demo](./phase-3-demo.md) |
 | **4** | @gitpm/sync-github — Export & Sync | Complete | 32 passed | [View Demo](./phase-4-demo.md) |
-| **5** | @gitpm/cli — Sync Commands | Pending | — | — |
+| **5** | @gitpm/cli — Sync Commands | Complete | 129 passed | [View Demo](./phase-5-demo.md) |
 | **6** | @gitpm/ui — Web Interface | Pending | — | — |
 
 ## How to Generate Demos
