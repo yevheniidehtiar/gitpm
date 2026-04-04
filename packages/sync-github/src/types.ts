@@ -50,3 +50,73 @@ export const DEFAULT_STATUS_MAPPING: Record<string, Status> = {
 };
 
 export const DEFAULT_EPIC_LABELS = ['epic'];
+
+// Phase 4 types
+
+export interface ExportOptions {
+  token: string;
+  repo: string; // "owner/repo"
+  projectNumber?: number;
+  metaDir: string;
+  dryRun?: boolean;
+}
+
+export interface ExportResult {
+  created: { milestones: number; issues: number };
+  updated: { milestones: number; issues: number };
+  totalChanges: number;
+}
+
+export interface SyncOptions {
+  token: string;
+  repo: string;
+  projectNumber?: number;
+  metaDir: string;
+  strategy?: ConflictStrategy;
+  dryRun?: boolean;
+}
+
+export type ConflictStrategy = 'local-wins' | 'remote-wins' | 'ask';
+
+export interface SyncResult {
+  pushed: { milestones: number; issues: number };
+  pulled: { milestones: number; issues: number };
+  conflicts: FieldConflict[];
+  resolved: number;
+  skipped: number;
+}
+
+export interface FieldChange {
+  field: string;
+  oldValue: unknown;
+  newValue: unknown;
+}
+
+export interface FieldConflict {
+  entityId: string;
+  entityTitle: string;
+  entityType: string;
+  field: string;
+  baseValue: unknown;
+  localValue: unknown;
+  remoteValue: unknown;
+}
+
+export type DiffStatus =
+  | 'in_sync'
+  | 'local_changed'
+  | 'remote_changed'
+  | 'conflict';
+
+export interface DiffResult {
+  status: DiffStatus;
+  localChanges: FieldChange[];
+  remoteChanges: FieldChange[];
+  conflicts: FieldConflict[];
+}
+
+export interface Resolution {
+  entityId: string;
+  field: string;
+  pick: 'local' | 'remote';
+}
