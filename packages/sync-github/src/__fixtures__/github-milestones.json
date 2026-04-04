@@ -1,0 +1,20 @@
+[
+  {
+    "number": 1,
+    "title": "Q2 2026 Launch",
+    "description": "Launch the core platform features by end of Q2.",
+    "state": "open",
+    "due_on": "2026-06-30T00:00:00Z",
+    "created_at": "2026-01-15T10:00:00Z",
+    "updated_at": "2026-02-20T14:30:00Z"
+  },
+  {
+    "number": 2,
+    "title": "Q3 Scale",
+    "description": "Scale infrastructure and add enterprise features.",
+    "state": "closed",
+    "due_on": "2026-09-30T00:00:00Z",
+    "created_at": "2026-01-15T10:00:00Z",
+    "updated_at": "2026-03-01T09:00:00Z"
+  }
+]
