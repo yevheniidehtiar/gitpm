@@ -2,7 +2,11 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
+import { importCommand } from './commands/import.js';
 import { initCommand } from './commands/init.js';
+import { pullCommand } from './commands/pull.js';
+import { pushCommand } from './commands/push.js';
+import { syncCommand } from './commands/sync.js';
 import { validateCommand } from './commands/validate.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -16,9 +20,14 @@ program
   .name('gitpm')
   .description('Git-native project management')
   .version(pkg.version)
-  .option('--meta-dir <path>', 'Path to .meta directory', '.meta');
+  .option('--meta-dir <path>', 'Path to .meta directory', '.meta')
+  .option('--token <token>', 'GitHub personal access token');
 
 program.addCommand(initCommand);
 program.addCommand(validateCommand);
+program.addCommand(importCommand);
+program.addCommand(pushCommand);
+program.addCommand(pullCommand);
+program.addCommand(syncCommand);
 
 program.parse();
