@@ -1,12 +1,6 @@
 import { createRoot } from 'react-dom/client';
+import App from './App.js';
+import './styles.css';
 
-function App() {
-  return (
-    <div style={{ fontFamily: 'system-ui', padding: '2rem' }}>
-      <h1>GitPM</h1>
-      <p>Git-Native Project Management</p>
-    </div>
-  );
-}
-
+// biome-ignore lint/style/noNonNullAssertion: root element guaranteed in index.html
 createRoot(document.getElementById('root')!).render(<App />);
