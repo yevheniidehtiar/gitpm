@@ -152,16 +152,21 @@ export async function importFromGitHub(
 
     // 8. Write all entities to disk
     let totalFiles = 0;
+    // filePath values start with ".meta/", replace that prefix with the actual metaDir
+    const resolveEntityPath = (filePath: string) => {
+      const relative = filePath.replace(/^\.meta\//, '');
+      return join(metaDir, relative);
+    };
 
     // Write roadmap
-    const roadmapPath = join(metaDir, 'roadmap', 'roadmap.yaml');
+    const roadmapPath = resolveEntityPath(roadmap.filePath);
     const roadmapResult = await writeFile(roadmap, roadmapPath);
     if (!roadmapResult.ok) return roadmapResult;
     totalFiles++;
 
     // Write milestones
     for (const ms of milestones) {
-      const msPath = join(metaDir, '..', ms.filePath);
+      const msPath = resolveEntityPath(ms.filePath);
       const result = await writeFile(ms, msPath);
       if (!result.ok) return result;
       totalFiles++;
@@ -169,7 +174,7 @@ export async function importFromGitHub(
 
     // Write epics
     for (const epic of epics) {
-      const epicPath = join(metaDir, '..', epic.filePath);
+      const epicPath = resolveEntityPath(epic.filePath);
       const result = await writeFile(epic, epicPath);
       if (!result.ok) return result;
       totalFiles++;
@@ -177,7 +182,7 @@ export async function importFromGitHub(
 
     // Write stories
     for (const story of stories) {
-      const storyPath = join(metaDir, '..', story.filePath);
+      const storyPath = resolveEntityPath(story.filePath);
       const result = await writeFile(story, storyPath);
       if (!result.ok) return result;
       totalFiles++;

@@ -4,7 +4,11 @@ export class GitHubClient {
   private octokit: Octokit;
 
   constructor(token: string) {
-    this.octokit = new Octokit({ auth: token });
+    this.octokit = new Octokit({
+      auth: token,
+      request: { timeout: 30000 },
+      retry: { enabled: true, retries: 3 },
+    });
   }
 
   private async checkRateLimit(response: {
