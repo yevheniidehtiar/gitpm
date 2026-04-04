@@ -7,6 +7,7 @@
 ## Table of Contents
 
 - [Overview](#overview)
+- [Screenshots](#screenshots)
 - [Architecture](#architecture)
 - [API Server](#api-server)
 - [React Frontend Setup](#react-frontend-setup)
@@ -17,10 +18,47 @@
 - [Sync Dashboard View](#sync-dashboard-view)
 - [Shared Components](#shared-components)
 - [Dev Server](#dev-server)
+- [Capture Tool](#capture-tool)
 - [Build Output](#build-output)
 - [Full Test Results](#full-test-results)
 - [How to Use](#how-to-use)
 - [Summary](#summary)
+
+---
+
+## Screenshots
+
+> All screenshots captured automatically using Playwright (headless Chromium) against the fixture data in `packages/core/src/__fixtures__/valid-tree/.meta/`.
+
+### Tree Browser
+
+![Tree Browser](screenshots/01-tree-browser.png)
+
+*Hierarchical entity table with status/priority badges, filter bar, and entity sidebar navigation.*
+
+### Entity Editor — Milestone
+
+![Entity Editor](screenshots/02-entity-editor.png)
+
+*Two-panel editor: structured form fields (left) and markdown body with edit/preview toggle (right).*
+
+### Entity Editor — Story
+
+![Story Editor](screenshots/03-story-editor.png)
+
+*Story editor showing assignee, labels, epic reference dropdown, and all form fields.*
+
+### Roadmap Timeline
+
+![Roadmap Timeline](screenshots/04-roadmap.png)
+
+*SVG-based timeline with milestone diamonds, epic bars, month grid, and status color legend.*
+
+### Sync Dashboard
+
+![Sync Dashboard](screenshots/05-sync-dashboard.png)
+
+*Sync dashboard showing the empty state when no GitHub sync is configured.*
 
 ---
 
@@ -311,6 +349,8 @@ Shows breadcrumbs for current route, sync status indicator (green dot + "Synced 
 
 **Route**: `/` (index)
 
+![Tree Browser](screenshots/01-tree-browser.png)
+
 The tree browser is the main view, displaying all entities in a hierarchical table.
 
 ### Features
@@ -345,6 +385,10 @@ The tree browser is the main view, displaying all entities in a hierarchical tab
 
 **Route**: `/entity/$id`
 
+![Entity Editor](screenshots/02-entity-editor.png)
+
+![Story Editor](screenshots/03-story-editor.png)
+
 A two-panel editor for viewing and modifying any entity.
 
 ### Left Panel (1/3 width) — Structured Form
@@ -378,6 +422,8 @@ A two-panel editor for viewing and modifying any entity.
 
 **Route**: `/roadmap`
 
+![Roadmap Timeline](screenshots/04-roadmap.png)
+
 An SVG-based horizontal timeline showing milestones and their associated epics.
 
 ### Features
@@ -406,6 +452,8 @@ An SVG-based horizontal timeline showing milestones and their associated epics.
 ## Sync Dashboard View
 
 **Route**: `/sync`
+
+![Sync Dashboard](screenshots/05-sync-dashboard.png)
 
 Dashboard for managing GitHub synchronization.
 
@@ -471,6 +519,49 @@ const vite = spawn('npx', ['vite', '--host'], {  // Vite dev server
 ```bash
 bun run dev:ui -- --meta-dir /path/to/project/.meta
 ```
+
+---
+
+## Capture Tool
+
+A Playwright-based script at `packages/ui/scripts/capture.ts` automatically captures screenshots and a screencast of all UI views. It works in headless environments (CI, cloud) with no display needed.
+
+```bash
+# Install Chromium (one-time)
+npx playwright install chromium
+
+# Capture screenshots + screencast
+packages/ui/node_modules/.bin/tsx packages/ui/scripts/capture.ts \
+  --meta-dir packages/core/src/__fixtures__/valid-tree/.meta \
+  --out docs/demos/screenshots
+```
+
+```
+[capture] Starting API server...
+[capture] Starting Vite dev server...
+[capture] API server ready.
+[capture] Vite server ready.
+[capture] Launching Chromium...
+[capture] 1/5 Tree Browser...
+[capture]   ✓ 01-tree-browser.png
+[capture] 2/5 Entity Editor...
+[capture]   ✓ 02-entity-editor.png
+[capture] 3/5 Story Editor...
+[capture]   ✓ 03-story-editor.png
+[capture] 4/5 Roadmap Timeline...
+[capture]   ✓ 04-roadmap.png
+[capture] 5/5 Sync Dashboard...
+[capture]   ✓ 05-sync-dashboard.png
+[capture]   ✓ screencast.webm
+```
+
+The script:
+1. Starts the Hono API server pointing at the specified `.meta/` directory
+2. Starts the Vite dev server
+3. Launches headless Chromium via Playwright
+4. Navigates to each route, waits for rendering, captures PNG screenshots
+5. Records a `.webm` screencast of the entire session
+6. Cleans up all processes on exit
 
 ---
 
