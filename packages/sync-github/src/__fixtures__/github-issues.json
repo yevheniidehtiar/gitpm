@@ -1,0 +1,82 @@
+[
+  {
+    "number": 1,
+    "title": "Balancing Engine",
+    "body": "Epic for the balancing engine feature set.\n\n## Goals\n- Price feed ingestion\n- Optimization solver",
+    "state": "open",
+    "assignee": { "login": "alice" },
+    "labels": [{ "name": "epic" }, { "name": "backend" }],
+    "milestone": { "number": 1, "title": "Q2 2026 Launch" },
+    "created_at": "2026-01-20T08:00:00Z",
+    "updated_at": "2026-03-10T12:00:00Z"
+  },
+  {
+    "number": 2,
+    "title": "UI Redesign",
+    "body": "Epic for the frontend redesign.\n\n## Scope\n- New design system\n- Dashboard overhaul",
+    "state": "open",
+    "assignee": { "login": "bob" },
+    "labels": [{ "name": "epic" }, { "name": "frontend" }],
+    "milestone": null,
+    "created_at": "2026-02-01T09:00:00Z",
+    "updated_at": "2026-03-15T11:00:00Z"
+  },
+  {
+    "number": 3,
+    "title": "Price Feed Ingestion",
+    "body": "Implement real-time price feed ingestion.\n\nPart of #1",
+    "state": "open",
+    "assignee": { "login": "charlie" },
+    "labels": [{ "name": "backend" }, { "name": "priority:high" }],
+    "milestone": { "number": 1, "title": "Q2 2026 Launch" },
+    "created_at": "2026-02-05T10:00:00Z",
+    "updated_at": "2026-03-12T16:00:00Z"
+  },
+  {
+    "number": 4,
+    "title": "Optimization Solver",
+    "body": "Build the optimization solver component.\n\nRelated to #1",
+    "state": "closed",
+    "assignee": null,
+    "labels": [{ "name": "backend" }],
+    "milestone": { "number": 1, "title": "Q2 2026 Launch" },
+    "created_at": "2026-02-10T11:00:00Z",
+    "updated_at": "2026-03-20T09:00:00Z"
+  },
+  {
+    "number": 5,
+    "title": "Setup CI/CD",
+    "body": "Configure GitHub Actions for CI/CD pipeline.",
+    "state": "closed",
+    "assignee": { "login": "alice" },
+    "labels": [{ "name": "devops" }],
+    "milestone": null,
+    "created_at": "2026-01-18T07:00:00Z",
+    "updated_at": "2026-02-15T13:00:00Z"
+  },
+  {
+    "number": 6,
+    "title": "Issue with no body",
+    "body": null,
+    "state": "open",
+    "assignee": null,
+    "labels": [],
+    "milestone": null,
+    "created_at": "2026-03-01T08:00:00Z",
+    "updated_at": "2026-03-01T08:00:00Z"
+  },
+  {
+    "number": 100,
+    "title": "Some PR",
+    "body": "This is a pull request",
+    "state": "open",
+    "assignee": null,
+    "labels": [],
+    "milestone": null,
+    "pull_request": {
+      "url": "https://api.github.com/repos/test/test/pulls/100"
+    },
+    "created_at": "2026-03-05T10:00:00Z",
+    "updated_at": "2026-03-05T10:00:00Z"
+  }
+]
