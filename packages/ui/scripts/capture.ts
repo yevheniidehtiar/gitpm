@@ -9,13 +9,15 @@
  *
  * Requires: npx playwright install chromium
  */
-import { chromium } from 'playwright';
-import { serve } from '@hono/node-server';
-import { createApp } from '../src/server/index.js';
 import { spawn } from 'node:child_process';
-import { resolve, join } from 'node:path';
 import { mkdir } from 'node:fs/promises';
 import type { Server } from 'node:http';
+import { join, resolve } from 'node:path';
+
+import { serve } from '@hono/node-server';
+import { chromium } from 'playwright';
+
+import { createApp } from '../src/server/index.js';
 
 // --- Config ---
 
@@ -65,15 +67,23 @@ async function main() {
   // Start Vite dev server
   console.log('[capture] Starting Vite dev server...');
   const uiDir = resolve('packages/ui');
-  const vite = spawn('npx', ['vite', '--port', String(VITE_PORT), '--strictPort'], {
-    cwd: uiDir,
-    stdio: 'pipe',
-    env: { ...process.env },
-  });
+  const vite = spawn(
+    'npx',
+    ['vite', '--port', String(VITE_PORT), '--strictPort'],
+    {
+      cwd: uiDir,
+      stdio: 'pipe',
+      env: { ...process.env },
+    },
+  );
 
   let viteOutput = '';
-  vite.stdout?.on('data', (d) => { viteOutput += d.toString(); });
-  vite.stderr?.on('data', (d) => { viteOutput += d.toString(); });
+  vite.stdout?.on('data', (d) => {
+    viteOutput += d.toString();
+  });
+  vite.stderr?.on('data', (d) => {
+    viteOutput += d.toString();
+  });
 
   try {
     // Wait for both servers
@@ -99,7 +109,7 @@ async function main() {
 
     // --- Screenshot: Tree Browser ---
     console.log('[capture] 1/5 Tree Browser...');
-    await page.goto(baseUrl + '/#/', { waitUntil: 'networkidle' });
+    await page.goto(`${baseUrl}/#/`, { waitUntil: 'networkidle' });
     await wait(1500); // Let React render + queries settle
     await page.screenshot({
       path: join(OUT_DIR, '01-tree-browser.png'),
@@ -116,7 +126,9 @@ async function main() {
       await wait(1500);
     } else {
       // Fallback: navigate directly to a known entity
-      await page.goto(baseUrl + '/#/entity/ep_balancing', { waitUntil: 'networkidle' });
+      await page.goto(`${baseUrl}/#/entity/ep_balancing`, {
+        waitUntil: 'networkidle',
+      });
       await wait(1500);
     }
     await page.screenshot({
@@ -127,7 +139,9 @@ async function main() {
 
     // --- Screenshot: Entity Editor with story ---
     console.log('[capture] 3/5 Story Editor...');
-    await page.goto(baseUrl + '/#/entity/st_price_feed', { waitUntil: 'networkidle' });
+    await page.goto(`${baseUrl}/#/entity/st_price_feed`, {
+      waitUntil: 'networkidle',
+    });
     await wait(1500);
     await page.screenshot({
       path: join(OUT_DIR, '03-story-editor.png'),
@@ -137,7 +151,7 @@ async function main() {
 
     // --- Screenshot: Roadmap ---
     console.log('[capture] 4/5 Roadmap Timeline...');
-    await page.goto(baseUrl + '/#/roadmap', { waitUntil: 'networkidle' });
+    await page.goto(`${baseUrl}/#/roadmap`, { waitUntil: 'networkidle' });
     await wait(1500);
     await page.screenshot({
       path: join(OUT_DIR, '04-roadmap.png'),
@@ -147,7 +161,7 @@ async function main() {
 
     // --- Screenshot: Sync Dashboard ---
     console.log('[capture] 5/5 Sync Dashboard...');
-    await page.goto(baseUrl + '/#/sync', { waitUntil: 'networkidle' });
+    await page.goto(`${baseUrl}/#/sync`, { waitUntil: 'networkidle' });
     await wait(1500);
     await page.screenshot({
       path: join(OUT_DIR, '05-sync-dashboard.png'),
