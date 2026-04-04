@@ -8,7 +8,7 @@ export class GitHubClient {
   }
 
   private async checkRateLimit(response: {
-    headers: Record<string, string | undefined>;
+    headers: Record<string, string | number | undefined>;
   }): Promise<void> {
     const remaining = Number(
       response.headers['x-ratelimit-remaining'] ?? '100',
@@ -33,7 +33,7 @@ export class GitHubClient {
   async paginate<T>(
     method: (params: Record<string, unknown>) => Promise<{
       data: T[];
-      headers: Record<string, string | undefined>;
+      headers: Record<string, string | number | undefined>;
     }>,
     params: Record<string, unknown>,
   ): Promise<T[]> {

@@ -119,7 +119,7 @@ export function createInitialState(
     ) {
       entry.github_issue_number = entity.github.issue_number;
     }
-    if (entity.github?.project_item_id) {
+    if (entity.type !== 'prd' && entity.github?.project_item_id) {
       entry.github_project_item_id = entity.github.project_item_id;
     }
 
