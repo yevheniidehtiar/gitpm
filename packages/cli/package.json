@@ -1,0 +1,19 @@
+{
+  "name": "gitpm",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "gitpm": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup"
+  },
+  "dependencies": {
+    "@gitpm/core": "workspace:*",
+    "@gitpm/sync-github": "workspace:*",
+    "@inquirer/prompts": "^7.0.0",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "ora": "^8.1.0"
+  }
+}
