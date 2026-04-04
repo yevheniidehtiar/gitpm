@@ -99,6 +99,125 @@ export class GitHubClient {
     // GitHub Projects v2 requires GraphQL API — stub for now
     return [];
   }
+
+  async getIssue(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+  ): Promise<GhIssue | null> {
+    try {
+      const response = await this.octokit.issues.get({
+        owner,
+        repo,
+        issue_number: issueNumber,
+      });
+      await this.checkRateLimit(response);
+      return response.data as unknown as GhIssue;
+    } catch {
+      return null;
+    }
+  }
+
+  async getMilestone(
+    owner: string,
+    repo: string,
+    milestoneNumber: number,
+  ): Promise<GhMilestone | null> {
+    try {
+      const response = await this.octokit.issues.getMilestone({
+        owner,
+        repo,
+        milestone_number: milestoneNumber,
+      });
+      await this.checkRateLimit(response);
+      return response.data as unknown as GhMilestone;
+    } catch {
+      return null;
+    }
+  }
+
+  async createIssue(
+    owner: string,
+    repo: string,
+    params: {
+      title: string;
+      body?: string;
+      labels?: string[];
+      assignees?: string[];
+      milestone?: number;
+    },
+  ): Promise<GhIssue> {
+    const response = await this.octokit.issues.create({
+      owner,
+      repo,
+      ...params,
+    });
+    await this.checkRateLimit(response);
+    return response.data as unknown as GhIssue;
+  }
+
+  async updateIssue(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+    params: {
+      title?: string;
+      body?: string;
+      state?: 'open' | 'closed';
+      labels?: string[];
+      assignees?: string[];
+      milestone?: number | null;
+    },
+  ): Promise<GhIssue> {
+    const response = await this.octokit.issues.update({
+      owner,
+      repo,
+      issue_number: issueNumber,
+      ...params,
+    });
+    await this.checkRateLimit(response);
+    return response.data as unknown as GhIssue;
+  }
+
+  async createMilestone(
+    owner: string,
+    repo: string,
+    params: {
+      title: string;
+      description?: string;
+      due_on?: string;
+      state?: 'open' | 'closed';
+    },
+  ): Promise<GhMilestone> {
+    const response = await this.octokit.issues.createMilestone({
+      owner,
+      repo,
+      ...params,
+    });
+    await this.checkRateLimit(response);
+    return response.data as unknown as GhMilestone;
+  }
+
+  async updateMilestone(
+    owner: string,
+    repo: string,
+    milestoneNumber: number,
+    params: {
+      title?: string;
+      description?: string;
+      due_on?: string;
+      state?: 'open' | 'closed';
+    },
+  ): Promise<GhMilestone> {
+    const response = await this.octokit.issues.updateMilestone({
+      owner,
+      repo,
+      milestone_number: milestoneNumber,
+      ...params,
+    });
+    await this.checkRateLimit(response);
+    return response.data as unknown as GhMilestone;
+  }
 }
 
 // Lightweight types for GitHub API responses we use
