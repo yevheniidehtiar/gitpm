@@ -48,7 +48,7 @@ export async function importFromGitHub(
     const config: GitHubConfig = createDefaultConfig(
       repo,
       projectNumber,
-      statusMapping as Record<string, string> | undefined,
+      statusMapping,
     );
 
     // 5. Convert milestones — build number→id map

@@ -1,6 +1,6 @@
 import { writeFile as fsWriteFile, mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import type { Result } from '@gitpm/core';
+import type { Result, Status } from '@gitpm/core';
 import YAML from 'yaml';
 import type { GitHubConfig } from './types.js';
 import { DEFAULT_EPIC_LABELS, DEFAULT_STATUS_MAPPING } from './types.js';
@@ -42,7 +42,7 @@ export async function saveConfig(
 export function createDefaultConfig(
   repo: string,
   projectNumber?: number,
-  statusMapping?: Record<string, string>,
+  statusMapping?: Record<string, Status>,
 ): GitHubConfig {
   return {
     repo,
