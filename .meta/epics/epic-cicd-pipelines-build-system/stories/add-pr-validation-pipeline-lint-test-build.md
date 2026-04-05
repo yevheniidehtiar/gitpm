@@ -2,7 +2,7 @@
 type: story
 id: 9GXTQoJI7Ciz
 title: Add PR validation pipeline (lint + test + build)
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:

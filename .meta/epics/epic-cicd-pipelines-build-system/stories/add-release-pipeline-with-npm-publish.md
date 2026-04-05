@@ -2,7 +2,7 @@
 type: story
 id: O2OtKYVLZRXY
 title: Add release pipeline with npm publish
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:

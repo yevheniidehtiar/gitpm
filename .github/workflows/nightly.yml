@@ -1,0 +1,70 @@
+name: Nightly Integration Tests
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: End-to-End Integration
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITPM_E2E_TOKEN }}
+      GITPM_E2E_REPO_OWNER: ${{ github.repository_owner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      - name: Create temp GitHub repo
+        id: repo
+        run: |
+          REPO_NAME="gitpm-e2e-$(date +%s)"
+          gh repo create "$GITPM_E2E_REPO_OWNER/$REPO_NAME" --private --clone=false
+          echo "repo_name=$REPO_NAME" >> "$GITHUB_OUTPUT"
+          echo "repo_full=$GITPM_E2E_REPO_OWNER/$REPO_NAME" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITPM_E2E_TOKEN }}
+
+      - name: Initialize gitpm project
+        run: |
+          WORKDIR=$(mktemp -d)
+          cd "$WORKDIR"
+          git init
+          git remote add origin "https://github.com/${{ steps.repo.outputs.repo_full }}.git"
+          node "${{ github.workspace }}/packages/cli/dist/index.js" init
+          echo "workdir=$WORKDIR" >> "$GITHUB_ENV"
+
+      - name: Push to GitHub
+        run: |
+          cd "$workdir"
+          node "${{ github.workspace }}/packages/cli/dist/index.js" push --repo "${{ steps.repo.outputs.repo_full }}"
+
+      - name: Pull from GitHub (round-trip verification)
+        run: |
+          cd "$workdir"
+          node "${{ github.workspace }}/packages/cli/dist/index.js" pull --repo "${{ steps.repo.outputs.repo_full }}"
+
+      - name: Sync bidirectional
+        run: |
+          cd "$workdir"
+          node "${{ github.workspace }}/packages/cli/dist/index.js" sync --repo "${{ steps.repo.outputs.repo_full }}"
+
+      - name: Cleanup temp repo
+        if: always()
+        run: |
+          gh repo delete "${{ steps.repo.outputs.repo_full }}" --yes
+        env:
+          GH_TOKEN: ${{ secrets.GITPM_E2E_TOKEN }}
