@@ -1,9 +1,16 @@
-import type { Epic, GitHubSync, Milestone, Status, Story } from '@gitpm/core';
+import type {
+  Epic,
+  GitHubSync,
+  Milestone,
+  Priority,
+  Status,
+  Story,
+} from '@gitpm/core';
 import { toSlug } from '@gitpm/core';
 import { nanoid } from 'nanoid';
 import type { GhIssue, GhMilestone } from './client.js';
 import type { GitHubConfig } from './types.js';
-import { DEFAULT_EPIC_LABELS } from './types.js';
+import { DEFAULT_EPIC_LABELS, DEFAULT_PRIORITY_MAPPING } from './types.js';
 
 export function ghMilestoneToMilestone(
   gh: GhMilestone,
@@ -46,22 +53,49 @@ export function isEpicIssue(
   return issueLabels.some((label) => epicLabels.includes(label));
 }
 
+/**
+ * Extracts priority from GitHub issue labels using a mapping.
+ * Returns the extracted priority and the remaining labels (with priority labels removed).
+ */
+export function extractPriority(
+  issueLabels: string[],
+  priorityMapping?: Record<string, Priority>,
+): { priority: Priority; filteredLabels: string[] } {
+  const mapping = priorityMapping ?? DEFAULT_PRIORITY_MAPPING;
+  let priority: Priority = 'medium';
+  const matchedLabels = new Set<string>();
+
+  for (const label of issueLabels) {
+    const mapped = mapping[label];
+    if (mapped) {
+      priority = mapped;
+      matchedLabels.add(label);
+    }
+  }
+
+  const filteredLabels = issueLabels.filter((l) => !matchedLabels.has(l));
+  return { priority, filteredLabels };
+}
+
 export function ghIssueToEntity(
   gh: GhIssue,
-  config?: Pick<GitHubConfig, 'label_mapping'>,
+  config?: Pick<GitHubConfig, 'label_mapping' | 'priority_mapping'>,
   repoSlug?: string,
 ): Story | Epic {
   const repo = repoSlug ?? '';
   const isEpic = isEpicIssue(gh, config);
   const id = nanoid(12);
   const now = new Date().toISOString();
-  const labels = gh.labels
+
+  const epicLabels = config?.label_mapping?.epic_labels ?? DEFAULT_EPIC_LABELS;
+  const rawLabels = gh.labels
     .map((l) => (typeof l === 'string' ? l : l.name))
-    .filter((l) => {
-      const epicLabels =
-        config?.label_mapping?.epic_labels ?? DEFAULT_EPIC_LABELS;
-      return !epicLabels.includes(l);
-    });
+    .filter((l) => !epicLabels.includes(l));
+
+  const { priority, filteredLabels: labels } = extractPriority(
+    rawLabels,
+    config?.priority_mapping,
+  );
 
   const github: GitHubSync = {
     issue_number: gh.number,
@@ -79,7 +113,7 @@ export function ghIssueToEntity(
       id,
       title: gh.title,
       status,
-      priority: 'medium',
+      priority,
       owner: gh.assignee?.login ?? null,
       labels,
       milestone_ref: null,
@@ -96,7 +130,7 @@ export function ghIssueToEntity(
     id,
     title: gh.title,
     status,
-    priority: 'medium',
+    priority,
     assignee: gh.assignee?.login ?? null,
     labels,
     estimate: null,
@@ -161,10 +195,25 @@ export interface CreateIssueParams {
   state?: 'open' | 'closed';
 }
 
-export function entityToGhIssue(entity: Story | Epic): CreateIssueParams {
+export function entityToGhIssue(
+  entity: Story | Epic,
+  config?: Pick<GitHubConfig, 'priority_mapping'>,
+): CreateIssueParams {
   const labels = [...(entity.labels ?? [])];
   if (entity.type === 'epic') {
     labels.push('epic');
+  }
+
+  // Re-add priority label for round-trip fidelity
+  if (entity.priority && entity.priority !== 'medium') {
+    const mapping = config?.priority_mapping ?? DEFAULT_PRIORITY_MAPPING;
+    // Find the first label that maps to this priority
+    const priorityLabel = Object.entries(mapping).find(
+      ([, val]) => val === entity.priority,
+    )?.[0];
+    if (priorityLabel) {
+      labels.push(priorityLabel);
+    }
   }
 
   const assignee = entity.type === 'story' ? entity.assignee : entity.owner;

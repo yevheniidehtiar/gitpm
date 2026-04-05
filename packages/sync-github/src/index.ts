@@ -11,6 +11,7 @@ export {
   ghMilestoneToMilestone,
   ghIssueToEntity,
   isEpicIssue,
+  extractPriority,
   determineFilePath,
   milestoneToGhMilestone,
   entityToGhIssue,
@@ -64,4 +65,5 @@ export type {
 export {
   DEFAULT_STATUS_MAPPING,
   DEFAULT_EPIC_LABELS,
+  DEFAULT_PRIORITY_MAPPING,
 } from './types.js';

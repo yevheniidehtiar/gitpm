@@ -2,7 +2,7 @@
 type: story
 id: ByzFySLXPYcc
 title: "feat: map GitHub labels to priority field during import"
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:

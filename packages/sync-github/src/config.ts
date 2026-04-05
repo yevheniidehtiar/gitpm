@@ -3,7 +3,11 @@ import { dirname, join } from 'node:path';
 import type { Result, Status } from '@gitpm/core';
 import YAML from 'yaml';
 import type { GitHubConfig } from './types.js';
-import { DEFAULT_EPIC_LABELS, DEFAULT_STATUS_MAPPING } from './types.js';
+import {
+  DEFAULT_EPIC_LABELS,
+  DEFAULT_PRIORITY_MAPPING,
+  DEFAULT_STATUS_MAPPING,
+} from './types.js';
 
 export async function loadConfig(
   metaDir: string,
@@ -54,6 +58,7 @@ export function createDefaultConfig(
     label_mapping: {
       epic_labels: [...DEFAULT_EPIC_LABELS],
     },
+    priority_mapping: { ...DEFAULT_PRIORITY_MAPPING },
     auto_sync: false,
   };
 }
