@@ -153,3 +153,18 @@ bun run lint && bun run build && bun run test
 - **Tests fail with import errors for `@gitpm/core`**: `sync-github` tests import `@gitpm/core` which resolves to `dist/index.js`. You must build before testing: `bun run build && bun run test`.
 - **Biome formatting failures**: Run `bunx biome check --write .` to auto-fix. The project uses 2-space indentation (no tabs).
 - **`--frozen-lockfile` fails in CI**: The `bun.lock` format varies across Bun versions. CI uses `bun install` without `--frozen-lockfile` to avoid version mismatches.
+
+## Task Management
+
+**IMPORTANT: Always use `.meta/` as the source of truth for project tasks — never GitHub Issues directly.**
+
+- The `.meta/` directory is the canonical store for all project management data (roadmaps, epics, stories, milestones).
+- When looking for tasks, features, bugs, or any work items, read from `.meta/` files first.
+- Entity types live at:
+  - `.meta/roadmap/` — roadmap and milestones
+  - `.meta/epics/` — epics and their nested stories
+  - `.meta/stories/` — orphan stories (not linked to an epic)
+- Each entity is a Markdown file with YAML frontmatter containing fields like `type`, `id`, `title`, `status`, `priority`, `epic_ref`, `labels`, and `github` sync metadata.
+- To find tasks without an epic, look for stories in `.meta/stories/` (top-level) or stories where `epic_ref: null`.
+- To find tasks without a milestone, look for epics/stories where there is no `milestone_ref` or the entity is not nested under a milestone-linked epic.
+- GitHub Issues are a **sync target**, not the primary data source. The `.meta/` tree and GitHub stay in sync via `gitpm import`/`push`/`pull`/`sync` commands.
