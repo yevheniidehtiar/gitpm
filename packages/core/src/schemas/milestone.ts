@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { entityIdSchema, gitHubSyncSchema, statusSchema } from './common.js';
+import {
+  entityIdSchema,
+  gitHubSyncSchema,
+  jiraSyncSchema,
+  statusSchema,
+} from './common.js';
 
 export const milestoneFrontmatterSchema = z.object({
   type: z.literal('milestone'),
@@ -8,6 +13,7 @@ export const milestoneFrontmatterSchema = z.object({
   target_date: z.string().optional(),
   status: statusSchema,
   github: gitHubSyncSchema.nullable().optional(),
+  jira: jiraSyncSchema.nullable().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });

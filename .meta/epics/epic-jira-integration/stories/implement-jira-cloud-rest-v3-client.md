@@ -2,7 +2,7 @@
 type: story
 id: TV3XlZdBYm91
 title: Implement Jira Cloud REST v3 client
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:

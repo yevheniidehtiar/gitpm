@@ -3,6 +3,7 @@ import {
   entityIdSchema,
   entityRefSchema,
   gitHubSyncSchema,
+  jiraSyncSchema,
   prioritySchema,
   statusSchema,
 } from './common.js';
@@ -17,6 +18,7 @@ export const epicFrontmatterSchema = z.object({
   labels: z.array(z.string()).default([]),
   milestone_ref: entityRefSchema.nullable().optional(),
   github: gitHubSyncSchema.nullable().optional(),
+  jira: jiraSyncSchema.nullable().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });

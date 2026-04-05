@@ -2,7 +2,7 @@
 type: story
 id: VOIQcpzUMCJU
 title: Add Jira workflow → GitPM status mapping config
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:

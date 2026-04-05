@@ -2,7 +2,7 @@
 type: story
 id: 1eAGItyhM0gC
 title: Implement Jira → .meta/ import flow
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:

@@ -2,7 +2,7 @@
 type: epic
 id: Zd3_Edq4ltwq
 title: "[Epic] Jira Integration"
-status: todo
+status: in_progress
 priority: medium
 owner: null
 labels:

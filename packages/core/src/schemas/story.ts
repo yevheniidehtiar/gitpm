@@ -3,6 +3,7 @@ import {
   entityIdSchema,
   entityRefSchema,
   gitHubSyncSchema,
+  jiraSyncSchema,
   prioritySchema,
   statusSchema,
 } from './common.js';
@@ -18,6 +19,7 @@ export const storyFrontmatterSchema = z.object({
   estimate: z.number().nullable().optional(),
   epic_ref: entityRefSchema.nullable().optional(),
   github: gitHubSyncSchema.nullable().optional(),
+  jira: jiraSyncSchema.nullable().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });
