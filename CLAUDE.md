@@ -139,3 +139,17 @@ bun run test             # Run all tests
 bun run lint             # Lint with Biome
 bun run dev:ui           # Start UI dev server
 ```
+
+## CI/CD
+
+GitHub Actions workflows live in `.github/workflows/`. After pushing, verify all checks pass on the PR.
+
+**Pre-push checklist** — run locally before pushing:
+```bash
+bun run lint && bun run build && bun run test
+```
+
+**Known issues & fixes:**
+- **Tests fail with import errors for `@gitpm/core`**: `sync-github` tests import `@gitpm/core` which resolves to `dist/index.js`. You must build before testing: `bun run build && bun run test`.
+- **Biome formatting failures**: Run `bunx biome check --write .` to auto-fix. The project uses 2-space indentation (no tabs).
+- **`--frozen-lockfile` fails in CI**: The `bun.lock` format varies across Bun versions. CI uses `bun install` without `--frozen-lockfile` to avoid version mismatches.
