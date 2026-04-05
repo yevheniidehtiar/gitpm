@@ -11,6 +11,8 @@ import type {
 import { nanoid } from 'nanoid';
 import { GitHubClient } from './client.js';
 import { createDefaultConfig, saveConfig } from './config.js';
+import type { LinkContext } from './linker.js';
+import { resolveEpicLink } from './linker.js';
 import {
   determineFilePath,
   ghIssueToEntity,
@@ -18,7 +20,12 @@ import {
   isEpicIssue,
 } from './mapper.js';
 import { computeContentHash, createInitialState, saveState } from './state.js';
-import type { GitHubConfig, ImportOptions, ImportResult } from './types.js';
+import type {
+  GitHubConfig,
+  ImportOptions,
+  ImportResult,
+  LinkStrategy,
+} from './types.js';
 
 export async function importFromGitHub(
   options: ImportOptions,
@@ -98,24 +105,49 @@ export async function importFromGitHub(
       }
     }
 
-    // Second pass: stories — resolve epic refs via body references
+    // Fetch sub-issues for each epic (used by 'sub-issues' strategy)
+    const linkStrategy: LinkStrategy = options.linkStrategy ?? 'all';
+    const epicSubIssues = new Map<number, number[]>();
+    const needsSubIssues =
+      linkStrategy === 'sub-issues' || linkStrategy === 'all';
+    if (needsSubIssues) {
+      for (const epicNumber of epicIssueNumberToEpic.keys()) {
+        const subIssues = await client.listSubIssues(
+          owner,
+          repoName,
+          epicNumber,
+        );
+        epicSubIssues.set(
+          epicNumber,
+          subIssues.map((si) => si.number),
+        );
+      }
+    }
+
+    // Build link context for the linker
+    const linkCtx: LinkContext = {
+      ghIssues,
+      issueNumberToEntity,
+      epicIssueNumberToEpic,
+      epicSubIssues,
+    };
+
+    // Second pass: stories — resolve epic refs via configured link strategy
     for (const ghIssue of ghIssues) {
       const entity = issueNumberToEntity.get(ghIssue.number);
       if (!entity || entity.type !== 'story') continue;
 
-      // Try to find parent epic from milestone match or body refs
       let parentEpicSlug: string | undefined;
 
-      // Check if story belongs to an epic by looking for "#<number>" refs in body
-      if (ghIssue.body) {
-        for (const [epicNumber, epic] of epicIssueNumberToEpic) {
-          const refPattern = new RegExp(`#${epicNumber}\\b`);
-          if (refPattern.test(ghIssue.body)) {
-            entity.epic_ref = { id: epic.id };
-            parentEpicSlug = toSlug(epic.title);
-            break;
-          }
-        }
+      const linkResult = resolveEpicLink(
+        ghIssue,
+        entity,
+        linkCtx,
+        linkStrategy,
+      );
+      if (linkResult) {
+        entity.epic_ref = linkResult.epicRef;
+        parentEpicSlug = linkResult.parentEpicSlug;
       }
 
       // Set file path

@@ -68,6 +68,7 @@ vi.mock('../client.js', () => {
         .mockResolvedValue(
           (fixtureIssues as GhIssue[]).filter((i: GhIssue) => !i.pull_request),
         ),
+      listSubIssues: vi.fn().mockResolvedValue([]),
       getProject: vi.fn().mockResolvedValue(null),
       getProjectItems: vi.fn().mockResolvedValue([]),
       createIssue: mockCreateIssue,

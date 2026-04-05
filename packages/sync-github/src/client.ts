@@ -104,6 +104,37 @@ export class GitHubClient {
     return [];
   }
 
+  async listSubIssues(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+  ): Promise<GhSubIssue[]> {
+    try {
+      // GitHub Sub-Issues API (REST): GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues
+      const results = await this.paginate(
+        (params) =>
+          this.octokit.request(
+            'GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues',
+            params as {
+              owner: string;
+              repo: string;
+              issue_number: number;
+              per_page: number;
+              page: number;
+            },
+          ) as Promise<{
+            data: GhSubIssue[];
+            headers: Record<string, string | number | undefined>;
+          }>,
+        { owner, repo, issue_number: issueNumber },
+      );
+      return results;
+    } catch {
+      // Sub-Issues API may not be available on all plans/repos
+      return [];
+    }
+  }
+
   async getIssue(
     owner: string,
     repo: string,
@@ -246,6 +277,12 @@ export interface GhIssue {
   pull_request?: unknown;
   created_at: string;
   updated_at: string;
+}
+
+export interface GhSubIssue {
+  id: number;
+  number: number;
+  title: string;
 }
 
 export interface GhProject {
