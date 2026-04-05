@@ -3,6 +3,7 @@ import type { GhIssue, GhMilestone } from '../client.js';
 import {
   determineFilePath,
   entityToGhIssue,
+  extractPriority,
   ghIssueToEntity,
   ghMilestoneToMilestone,
   isEpicIssue,
@@ -68,6 +69,30 @@ const noBodyIssue: GhIssue = {
   milestone: null,
   created_at: '2026-03-01T08:00:00Z',
   updated_at: '2026-03-01T08:00:00Z',
+};
+
+const highPriorityIssue: GhIssue = {
+  number: 7,
+  title: 'Critical bug fix',
+  body: 'Needs immediate attention.',
+  state: 'open',
+  assignee: { login: 'dave' },
+  labels: [{ name: 'backend' }, { name: 'priority:high' }],
+  milestone: null,
+  created_at: '2026-03-05T08:00:00Z',
+  updated_at: '2026-03-05T08:00:00Z',
+};
+
+const p0Issue: GhIssue = {
+  number: 8,
+  title: 'Production down',
+  body: 'Everything is broken.',
+  state: 'open',
+  assignee: null,
+  labels: [{ name: 'P0' }, { name: 'bug' }],
+  milestone: null,
+  created_at: '2026-03-06T08:00:00Z',
+  updated_at: '2026-03-06T08:00:00Z',
 };
 
 describe('ghMilestoneToMilestone', () => {
@@ -237,5 +262,97 @@ describe('entityToGhIssue', () => {
     const entity = ghIssueToEntity(closedIssue, undefined, REPO);
     const params = entityToGhIssue(entity as never);
     expect(params.state).toBe('closed');
+  });
+
+  it('re-adds priority label for non-medium priorities on export', () => {
+    const entity = ghIssueToEntity(highPriorityIssue, undefined, REPO);
+    expect(entity.priority).toBe('high');
+    const params = entityToGhIssue(entity as never);
+    expect(params.labels).toContain('priority:high');
+  });
+
+  it('does not add priority label for medium priority on export', () => {
+    const entity = ghIssueToEntity(storyIssue, undefined, REPO);
+    expect(entity.priority).toBe('medium');
+    const params = entityToGhIssue(entity as never);
+    expect(params.labels).not.toContain('priority:medium');
+    expect(params.labels).not.toContain('P2');
+  });
+});
+
+describe('extractPriority', () => {
+  it('extracts high priority from priority:high label', () => {
+    const { priority, filteredLabels } = extractPriority([
+      'backend',
+      'priority:high',
+    ]);
+    expect(priority).toBe('high');
+    expect(filteredLabels).toEqual(['backend']);
+  });
+
+  it('extracts critical priority from P0 label', () => {
+    const { priority, filteredLabels } = extractPriority(['P0', 'bug']);
+    expect(priority).toBe('critical');
+    expect(filteredLabels).toEqual(['bug']);
+  });
+
+  it('defaults to medium when no priority label present', () => {
+    const { priority, filteredLabels } = extractPriority([
+      'backend',
+      'feature',
+    ]);
+    expect(priority).toBe('medium');
+    expect(filteredLabels).toEqual(['backend', 'feature']);
+  });
+
+  it('uses custom priority mapping', () => {
+    const customMapping = { severity1: 'critical' as const };
+    const { priority, filteredLabels } = extractPriority(
+      ['severity1', 'frontend'],
+      customMapping,
+    );
+    expect(priority).toBe('critical');
+    expect(filteredLabels).toEqual(['frontend']);
+  });
+
+  it('handles empty labels', () => {
+    const { priority, filteredLabels } = extractPriority([]);
+    expect(priority).toBe('medium');
+    expect(filteredLabels).toEqual([]);
+  });
+});
+
+describe('ghIssueToEntity priority mapping', () => {
+  it('maps priority:high label to high priority', () => {
+    const entity = ghIssueToEntity(highPriorityIssue, undefined, REPO);
+    expect(entity.priority).toBe('high');
+    expect(entity.labels).toEqual(['backend']);
+    expect(entity.labels).not.toContain('priority:high');
+  });
+
+  it('maps P0 label to critical priority', () => {
+    const entity = ghIssueToEntity(p0Issue, undefined, REPO);
+    expect(entity.priority).toBe('critical');
+    expect(entity.labels).toEqual(['bug']);
+    expect(entity.labels).not.toContain('P0');
+  });
+
+  it('defaults to medium when no priority label', () => {
+    const entity = ghIssueToEntity(storyIssue, undefined, REPO);
+    expect(entity.priority).toBe('medium');
+  });
+
+  it('uses custom priority mapping from config', () => {
+    const config: Pick<GitHubConfig, 'label_mapping' | 'priority_mapping'> = {
+      label_mapping: { epic_labels: ['epic'] },
+      priority_mapping: { urgent: 'critical' },
+    };
+    const urgentIssue: GhIssue = {
+      ...storyIssue,
+      labels: [{ name: 'urgent' }, { name: 'backend' }],
+    };
+    const entity = ghIssueToEntity(urgentIssue, config, REPO);
+    expect(entity.priority).toBe('critical');
+    expect(entity.labels).toEqual(['backend']);
   });
 });

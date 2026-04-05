@@ -1,4 +1,4 @@
-import type { EntityId, Status } from '@gitpm/core';
+import type { EntityId, Priority, Status } from '@gitpm/core';
 
 export type LinkStrategy =
   | 'body-refs'
@@ -30,6 +30,7 @@ export interface GitHubConfig {
   label_mapping: {
     epic_labels: string[];
   };
+  priority_mapping: Record<string, Priority>;
   auto_sync: boolean;
 }
 
@@ -58,6 +59,19 @@ export const DEFAULT_STATUS_MAPPING: Record<string, Status> = {
 };
 
 export const DEFAULT_EPIC_LABELS = ['epic'];
+
+export const DEFAULT_PRIORITY_MAPPING: Record<string, Priority> = {
+  'priority:critical': 'critical',
+  'priority:high': 'high',
+  'priority:medium': 'medium',
+  'priority:low': 'low',
+  P0: 'critical',
+  P1: 'high',
+  P2: 'medium',
+  P3: 'low',
+  critical: 'critical',
+  urgent: 'critical',
+};
 
 // Phase 4 types
 
