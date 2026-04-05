@@ -2,7 +2,7 @@
 type: story
 id: cd2qQUPpL8SD
 title: Implement .meta/ → GitLab export flow
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:
@@ -14,10 +14,10 @@ epic_ref:
 github:
   issue_number: 25
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:26c08993c6d9bc71f1cbe009cdfa15fa92777104b80e990cbfbd4b860b6c5503
-  synced_at: 2026-04-05T17:24:12.492Z
-created_at: 2026-04-04T20:08:09Z
-updated_at: 2026-04-04T20:08:09Z
+  last_sync_hash: sha256:37eebf9e75035e3b64d9ffec0c8b64cd3adf77311ecdacf7d82a8790f064106f
+  synced_at: 2026-04-05T23:44:25.167Z
+created_at: 2026-04-04T20:08:09.000Z
+updated_at: 2026-04-04T20:08:09.000Z
 ---
 
 Export `.meta/` entities to GitLab:
