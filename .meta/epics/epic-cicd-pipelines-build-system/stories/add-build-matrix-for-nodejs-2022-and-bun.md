@@ -2,7 +2,7 @@
 type: story
 id: cX_BmyEwnGdN
 title: Add build matrix for Node.js 20/22 and Bun
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:

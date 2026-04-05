@@ -2,7 +2,7 @@
 type: story
 id: iEXlQWMdV7l0
 title: Create Docker image for gitpm CLI
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:

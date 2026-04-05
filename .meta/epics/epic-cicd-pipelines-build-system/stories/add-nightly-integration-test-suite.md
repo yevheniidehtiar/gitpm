@@ -2,7 +2,7 @@
 type: story
 id: 0qT7YlfDd1VH
 title: Add nightly integration test suite
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:
