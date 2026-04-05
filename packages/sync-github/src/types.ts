@@ -40,6 +40,7 @@ export interface SyncStateEntry {
   github_project_item_id?: string;
   local_hash: string;
   remote_hash: string;
+  closed_on_remote?: boolean;
   synced_at: string;
 }
 

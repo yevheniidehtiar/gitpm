@@ -12,10 +12,10 @@ milestone_ref:
 github:
   issue_number: 10
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:25cf41c3276d787eff0c3557b946431bd7b7f0a7b03ae9ec134661fd2e6344c7
-  synced_at: 2026-04-05T17:24:12.492Z
-created_at: 2026-04-04T20:07:19Z
-updated_at: 2026-04-04T20:07:19Z
+  last_sync_hash: sha256:d600f70fd2e03fd0fff22084fa0e8f9137866103b515f29fd778831d46931370
+  synced_at: 2026-04-05T22:49:10.125Z
+created_at: 2026-04-04T20:07:19.000Z
+updated_at: 2026-04-04T20:07:19.000Z
 ---
 
 ## Overview
@@ -33,4 +33,3 @@ Implement GitHub Actions CI/CD pipelines for automated testing, linting, buildin
 - [ ] Nightly integration tests
 - [ ] Build matrix (Node 20/22, Bun latest)
 - [ ] Docker image for gitpm CLI
-

@@ -14,10 +14,10 @@ epic_ref:
 github:
   issue_number: 19
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:83da0b9a28dea8619bf959bf202789e69433a4086cfc7016f1abba992c7a836b
-  synced_at: 2026-04-05T17:24:12.492Z
-created_at: 2026-04-04T20:07:53Z
-updated_at: 2026-04-04T20:07:53Z
+  last_sync_hash: sha256:eae93f2527b52b06813d123491681ce136b76c1fb12d37498d87952e05161e12
+  synced_at: 2026-04-05T22:49:14.314Z
+created_at: 2026-04-04T20:07:53.000Z
+updated_at: 2026-04-04T20:07:53.000Z
 ---
 
 Create `@gitpm/sync-jira` package with a Jira Cloud API client:

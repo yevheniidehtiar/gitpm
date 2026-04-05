@@ -1,4 +1,3 @@
-import { join } from 'node:path';
 import type { Epic, Milestone, ParsedEntity, Result, Story } from '@gitpm/core';
 import { parseTree, writeFile } from '@gitpm/core';
 import { GitHubClient } from './client.js';
@@ -70,8 +69,7 @@ export async function exportToGitHub(
             last_sync_hash: computeContentHash(milestone),
             synced_at: new Date().toISOString(),
           };
-          const filePath = join(metaDir, '..', milestone.filePath);
-          await writeFile(milestone, filePath);
+          await writeFile(milestone, milestone.filePath);
 
           // Update sync state
           const hash = computeContentHash(milestone);
@@ -104,8 +102,7 @@ export async function exportToGitHub(
               last_sync_hash: currentHash,
               synced_at: new Date().toISOString(),
             };
-            const filePath = join(metaDir, '..', milestone.filePath);
-            await writeFile(milestone, filePath);
+            await writeFile(milestone, milestone.filePath);
 
             state.entities[milestone.id] = {
               ...entityState,
@@ -174,8 +171,7 @@ export async function exportToGitHub(
             last_sync_hash: computeContentHash(entity),
             synced_at: new Date().toISOString(),
           };
-          const filePath = join(metaDir, '..', entity.filePath);
-          await writeFile(entity, filePath);
+          await writeFile(entity, entity.filePath);
 
           // Update sync state
           const hash = computeContentHash(entity);
@@ -188,20 +184,30 @@ export async function exportToGitHub(
         }
         result.created.issues++;
       } else {
-        // Existing entity — check for local changes
+        // Existing entity — check for local changes or state mismatch
         const currentHash = computeContentHash(entity);
-        if (entityState && currentHash !== entityState.local_hash) {
+        const params = entityToGhIssue(entity);
+
+        // Resolve milestone for epics
+        if (entity.type === 'epic' && entity.milestone_ref?.id) {
+          const msNum = milestoneIdToNumber.get(entity.milestone_ref.id);
+          if (msNum) {
+            params.milestone = msNum;
+          }
+        }
+
+        // Also detect state mismatches: entity may be done/cancelled locally
+        // but GitHub issue is still open (e.g., imported as done, never pushed)
+        const expectedState = params.state ?? 'open';
+        const hashChanged =
+          entityState && currentHash !== entityState.local_hash;
+        const needsStateSync =
+          expectedState === 'closed' &&
+          entityState &&
+          !entityState.closed_on_remote;
+
+        if (hashChanged || needsStateSync) {
           if (!dryRun) {
-            const params = entityToGhIssue(entity);
-
-            // Resolve milestone for epics
-            if (entity.type === 'epic' && entity.milestone_ref?.id) {
-              const msNum = milestoneIdToNumber.get(entity.milestone_ref.id);
-              if (msNum) {
-                params.milestone = msNum;
-              }
-            }
-
             await client.updateIssue(owner, repoName, issueNumber, {
               title: params.title,
               body: params.body,
@@ -218,14 +224,14 @@ export async function exportToGitHub(
               last_sync_hash: currentHash,
               synced_at: new Date().toISOString(),
             };
-            const filePath = join(metaDir, '..', entity.filePath);
-            await writeFile(entity, filePath);
+            await writeFile(entity, entity.filePath);
 
             state.entities[entity.id] = {
               ...entityState,
               github_issue_number: issueNumber,
               local_hash: currentHash,
               remote_hash: currentHash,
+              closed_on_remote: expectedState === 'closed' ? true : undefined,
               synced_at: new Date().toISOString(),
             };
           }

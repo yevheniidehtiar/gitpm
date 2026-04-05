@@ -14,10 +14,10 @@ epic_ref:
 github:
   issue_number: 17
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:c9d520b3edf4448b644d7f9634057b60b57a19663e05fe1c9cb5731269a5624a
-  synced_at: 2026-04-05T17:24:12.492Z
-created_at: 2026-04-04T20:07:47Z
-updated_at: 2026-04-04T20:07:47Z
+  last_sync_hash: sha256:ebb457089ba2a5d1a6d9fb4619d6bb5aab6379a94cd8a6d3d9052d363955f622
+  synced_at: 2026-04-05T22:49:12.995Z
+created_at: 2026-04-04T20:07:47.000Z
+updated_at: 2026-04-04T20:07:47.000Z
 ---
 
 Publish a Docker image so users can run `docker run gitpm import --repo owner/repo` without installing Bun/Node locally.

@@ -14,10 +14,10 @@ epic_ref:
 github:
   issue_number: 18
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:474de402ac726948b9b631a0a00cac601a9dc6f489fad4e00647936595452195
-  synced_at: 2026-04-05T17:24:12.492Z
-created_at: 2026-04-04T20:07:50Z
-updated_at: 2026-04-04T20:07:50Z
+  last_sync_hash: sha256:f4226645ebfb5aed908d961e52b7d2274958f77eb91aa1a7d2f0c28a4fe50eb2
+  synced_at: 2026-04-05T22:49:11.295Z
+created_at: 2026-04-04T20:07:50.000Z
+updated_at: 2026-04-04T20:07:50.000Z
 ---
 
 Scheduled GitHub Actions workflow (cron: nightly) that:

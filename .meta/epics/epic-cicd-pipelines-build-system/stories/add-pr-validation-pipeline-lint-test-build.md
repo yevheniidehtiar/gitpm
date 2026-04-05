@@ -14,10 +14,10 @@ epic_ref:
 github:
   issue_number: 14
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:438dccfca7d567a75ab40a6690f98b0781e06961b908c39b0c38a25d7aa4e652
-  synced_at: 2026-04-05T17:24:12.492Z
-created_at: 2026-04-04T20:07:37Z
-updated_at: 2026-04-04T20:07:38Z
+  last_sync_hash: sha256:29751e7059942f4b7ac881098027513928716e5e5868073d626056a30d9dadf2
+  synced_at: 2026-04-05T22:49:12.119Z
+created_at: 2026-04-04T20:07:37.000Z
+updated_at: 2026-04-04T20:07:38.000Z
 ---
 
 GitHub Actions workflow that runs on every PR:
