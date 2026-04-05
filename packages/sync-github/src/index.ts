@@ -2,6 +2,7 @@ export { GitHubClient } from './client.js';
 export type {
   GhMilestone,
   GhIssue,
+  GhSubIssue,
   GhProject,
   GhProjectItem,
 } from './client.js';
@@ -19,6 +20,9 @@ export type { CreateMilestoneParams, CreateIssueParams } from './mapper.js';
 export { importFromGitHub } from './import.js';
 export { exportToGitHub } from './export.js';
 export { syncWithGitHub } from './sync.js';
+
+export { resolveEpicLink } from './linker.js';
+export type { LinkContext, LinkResult } from './linker.js';
 
 export {
   diffEntity,
@@ -54,6 +58,7 @@ export type {
   DiffResult,
   DiffStatus,
   Resolution,
+  LinkStrategy,
 } from './types.js';
 
 export {

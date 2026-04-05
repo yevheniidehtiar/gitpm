@@ -1,4 +1,5 @@
 import { importFromGitHub } from '@gitpm/sync-github';
+import type { LinkStrategy } from '@gitpm/sync-github';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import ora from 'ora';
@@ -6,11 +7,23 @@ import { resolveToken } from '../utils/auth.js';
 import { resolveMetaDir } from '../utils/config.js';
 import { printError, printSuccess } from '../utils/output.js';
 
+const VALID_LINK_STRATEGIES = [
+  'body-refs',
+  'sub-issues',
+  'milestone',
+  'labels',
+  'all',
+] as const;
+
 export const importCommand = new Command('import')
   .description('Import project data from GitHub into .meta/')
   .requiredOption('--repo <owner/repo>', 'GitHub repository (owner/repo)')
   .option('--project <number>', 'GitHub Project number', Number.parseInt)
   .option('--token <token>', 'GitHub personal access token')
+  .option(
+    '--link-strategy <strategy>',
+    'Epic-story linkage strategy: body-refs, sub-issues, milestone, labels, all (default: all)',
+  )
   .action(async (opts, cmd) => {
     const metaDir = resolveMetaDir(cmd.optsWithGlobals().metaDir);
 
@@ -31,6 +44,20 @@ export const importCommand = new Command('import')
       process.exit(1);
     }
 
+    // Validate link strategy
+    const linkStrategy: LinkStrategy | undefined = opts.linkStrategy;
+    if (
+      linkStrategy &&
+      !VALID_LINK_STRATEGIES.includes(
+        linkStrategy as (typeof VALID_LINK_STRATEGIES)[number],
+      )
+    ) {
+      printError(
+        `Invalid link strategy "${linkStrategy}". Must be one of: ${VALID_LINK_STRATEGIES.join(', ')}`,
+      );
+      process.exit(1);
+    }
+
     const spinner = ora('Importing from GitHub...').start();
 
     const result = await importFromGitHub({
@@ -38,6 +65,7 @@ export const importCommand = new Command('import')
       repo,
       projectNumber: opts.project,
       metaDir,
+      linkStrategy,
     });
 
     if (!result.ok) {

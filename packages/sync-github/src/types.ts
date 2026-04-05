@@ -1,11 +1,19 @@
 import type { EntityId, Status } from '@gitpm/core';
 
+export type LinkStrategy =
+  | 'body-refs'
+  | 'sub-issues'
+  | 'milestone'
+  | 'labels'
+  | 'all';
+
 export interface ImportOptions {
   token: string;
   repo: string; // "owner/repo"
   projectNumber?: number;
   metaDir: string; // target .meta/ directory
   statusMapping?: Record<string, Status>;
+  linkStrategy?: LinkStrategy;
 }
 
 export interface ImportResult {
