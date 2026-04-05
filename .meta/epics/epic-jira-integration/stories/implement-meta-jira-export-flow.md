@@ -14,10 +14,10 @@ epic_ref:
 github:
   issue_number: 21
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:774eace7f2cf01cb4cb97b126fe90a0c6dfab2652c87e4e84820c791198df5eb
-  synced_at: 2026-04-05T17:24:12.492Z
-created_at: 2026-04-04T20:07:59Z
-updated_at: 2026-04-04T20:07:59Z
+  last_sync_hash: sha256:a1117e3687df200ac9f304f2b11a320889960ef9446e48e0e8107910c1f974a0
+  synced_at: 2026-04-05T22:49:13.858Z
+created_at: 2026-04-04T20:07:59.000Z
+updated_at: 2026-04-04T20:07:59.000Z
 ---
 
 Export `.meta/` entities back to Jira:

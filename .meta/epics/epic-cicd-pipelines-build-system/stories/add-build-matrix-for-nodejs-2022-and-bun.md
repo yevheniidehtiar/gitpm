@@ -14,10 +14,10 @@ epic_ref:
 github:
   issue_number: 16
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:abf0e3dadca3c1091709cf05428cce24aa1d6a12848b2c33f28f68f7e9268555
-  synced_at: 2026-04-05T17:24:12.492Z
-created_at: 2026-04-04T20:07:44Z
-updated_at: 2026-04-04T20:07:44Z
+  last_sync_hash: sha256:4c103993d1b8b8187ad250e4f324ee58f50d9732bb61a99beade7e3ab5b845a8
+  synced_at: 2026-04-05T22:49:12.507Z
+created_at: 2026-04-04T20:07:44.000Z
+updated_at: 2026-04-04T20:07:44.000Z
 ---
 
 Extend CI to test across multiple runtimes:

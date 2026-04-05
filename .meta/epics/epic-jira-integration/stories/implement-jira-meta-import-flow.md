@@ -14,10 +14,10 @@ epic_ref:
 github:
   issue_number: 20
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:282f9a6ad17a13cf253ffe6b10f9bfdd9c96f1be381bb7717c11eb846e4001e8
-  synced_at: 2026-04-05T17:24:12.492Z
-created_at: 2026-04-04T20:07:56Z
-updated_at: 2026-04-04T20:07:56Z
+  last_sync_hash: sha256:4617a1dedcb5d795da1b2359755bc5805203125761fea85b545bd1f945172c08
+  synced_at: 2026-04-05T22:49:13.443Z
+created_at: 2026-04-04T20:07:56.000Z
+updated_at: 2026-04-04T20:07:56.000Z
 ---
 
 Import Jira project data into `.meta/` tree:
