@@ -2,7 +2,7 @@
 type: story
 id: JPp4fFVERKjs
 title: Implement .meta/ → Jira export flow
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:

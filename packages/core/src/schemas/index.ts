@@ -4,6 +4,7 @@ export {
   prioritySchema,
   entityRefSchema,
   gitHubSyncSchema,
+  jiraSyncSchema,
 } from './common.js';
 export type {
   EntityId,
@@ -11,6 +12,7 @@ export type {
   Priority,
   EntityRef,
   GitHubSync,
+  JiraSync,
   Result,
 } from './common.js';
 
