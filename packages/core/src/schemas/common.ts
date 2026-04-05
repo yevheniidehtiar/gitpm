@@ -42,6 +42,17 @@ export const jiraSyncSchema = z.object({
 });
 export type JiraSync = z.infer<typeof jiraSyncSchema>;
 
+export const gitLabSyncSchema = z.object({
+  issue_iid: z.number().int().optional(),
+  epic_iid: z.number().int().optional(),
+  milestone_id: z.number().int().optional(),
+  project_id: z.number().int(),
+  base_url: z.string(),
+  last_sync_hash: z.string(),
+  synced_at: z.string(),
+});
+export type GitLabSync = z.infer<typeof gitLabSyncSchema>;
+
 export type Result<T, E = Error> =
   | { ok: true; value: T }
   | { ok: false; error: E };

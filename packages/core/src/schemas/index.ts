@@ -5,6 +5,7 @@ export {
   entityRefSchema,
   gitHubSyncSchema,
   jiraSyncSchema,
+  gitLabSyncSchema,
 } from './common.js';
 export type {
   EntityId,
@@ -13,6 +14,7 @@ export type {
   EntityRef,
   GitHubSync,
   JiraSync,
+  GitLabSync,
   Result,
 } from './common.js';
 
