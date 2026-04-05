@@ -31,11 +31,11 @@ jobs:
       - name: Lint
         run: bun run lint
 
-      - name: Test
-        run: npx vitest run
-
       - name: Build
         run: bun run build
+
+      - name: Test
+        run: npx vitest run
 
   test-node:
     name: Node.js ${{ matrix.node-version }}
