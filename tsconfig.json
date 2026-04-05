@@ -17,7 +17,8 @@
     "paths": {
       "@gitpm/core": ["./packages/core/src"],
       "@gitpm/sync-github": ["./packages/sync-github/src"],
-      "@gitpm/sync-jira": ["./packages/sync-jira/src"]
+      "@gitpm/sync-jira": ["./packages/sync-jira/src"],
+      "@gitpm/sync-gitlab": ["./packages/sync-gitlab/src"]
     }
   },
   "exclude": ["node_modules", "dist"]

@@ -3,6 +3,7 @@ import {
   entityIdSchema,
   entityRefSchema,
   gitHubSyncSchema,
+  gitLabSyncSchema,
   jiraSyncSchema,
   prioritySchema,
   statusSchema,
@@ -20,6 +21,7 @@ export const storyFrontmatterSchema = z.object({
   epic_ref: entityRefSchema.nullable().optional(),
   github: gitHubSyncSchema.nullable().optional(),
   jira: jiraSyncSchema.nullable().optional(),
+  gitlab: gitLabSyncSchema.nullable().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });

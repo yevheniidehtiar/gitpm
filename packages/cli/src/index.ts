@@ -21,7 +21,7 @@ program
   .description('Git-native project management')
   .version(pkg.version)
   .option('--meta-dir <path>', 'Path to .meta directory', '.meta')
-  .option('--token <token>', 'GitHub personal access token');
+  .option('--token <token>', 'Personal access token (GitHub or GitLab)');
 
 program.addCommand(initCommand);
 program.addCommand(validateCommand);
