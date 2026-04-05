@@ -41,7 +41,9 @@ function makeStory(id: string, title: string): Story {
   };
 }
 
-function makeGhIssue(overrides: Partial<GhIssue> & { number: number }): GhIssue {
+function makeGhIssue(
+  overrides: Partial<GhIssue> & { number: number },
+): GhIssue {
   return {
     title: `Issue ${overrides.number}`,
     body: null,
@@ -78,7 +80,7 @@ describe('resolveEpicLink', () => {
 
       const result = resolveEpicLink(ghStory, story, ctx, 'body-refs');
       expect(result).not.toBeNull();
-      expect(result!.epicRef.id).toBe('epic1');
+      expect(result?.epicRef.id).toBe('epic1');
     });
 
     it('returns null when body has no epic references', () => {
@@ -138,7 +140,7 @@ describe('resolveEpicLink', () => {
 
       const result = resolveEpicLink(ghStory, story, ctx, 'sub-issues');
       expect(result).not.toBeNull();
-      expect(result!.epicRef.id).toBe('epic1');
+      expect(result?.epicRef.id).toBe('epic1');
     });
 
     it('returns null when story is not a sub-issue', () => {
@@ -187,7 +189,7 @@ describe('resolveEpicLink', () => {
 
       const result = resolveEpicLink(ghStory, story, ctx, 'milestone');
       expect(result).not.toBeNull();
-      expect(result!.epicRef.id).toBe('epic1');
+      expect(result?.epicRef.id).toBe('epic1');
     });
 
     it('returns null when multiple epics share the same milestone', () => {
@@ -276,7 +278,7 @@ describe('resolveEpicLink', () => {
 
       const result = resolveEpicLink(ghStory, story, ctx, 'labels');
       expect(result).not.toBeNull();
-      expect(result!.epicRef.id).toBe('epic1');
+      expect(result?.epicRef.id).toBe('epic1');
     });
 
     it('returns null when multiple epics share labels with story', () => {
@@ -362,7 +364,7 @@ describe('resolveEpicLink', () => {
 
       const result = resolveEpicLink(ghStory, story, ctx, 'all');
       expect(result).not.toBeNull();
-      expect(result!.epicRef.id).toBe('epic1');
+      expect(result?.epicRef.id).toBe('epic1');
     });
 
     it('falls back to sub-issues when body-refs fail', () => {
@@ -382,7 +384,7 @@ describe('resolveEpicLink', () => {
 
       const result = resolveEpicLink(ghStory, story, ctx, 'all');
       expect(result).not.toBeNull();
-      expect(result!.epicRef.id).toBe('epic1');
+      expect(result?.epicRef.id).toBe('epic1');
     });
 
     it('falls back to milestone when body-refs and sub-issues fail', () => {
@@ -410,7 +412,7 @@ describe('resolveEpicLink', () => {
 
       const result = resolveEpicLink(ghStory, story, ctx, 'all');
       expect(result).not.toBeNull();
-      expect(result!.epicRef.id).toBe('epic1');
+      expect(result?.epicRef.id).toBe('epic1');
     });
 
     it('falls back to labels as last resort', () => {
@@ -437,7 +439,7 @@ describe('resolveEpicLink', () => {
 
       const result = resolveEpicLink(ghStory, story, ctx, 'all');
       expect(result).not.toBeNull();
-      expect(result!.epicRef.id).toBe('epic1');
+      expect(result?.epicRef.id).toBe('epic1');
     });
 
     it('returns null when no strategy matches', () => {
