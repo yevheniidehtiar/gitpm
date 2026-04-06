@@ -1,5 +1,4 @@
 import { join } from 'node:path';
-import { toSlug, writeFile } from '@gitpm/core';
 import type {
   EntityRef,
   Epic,
@@ -8,6 +7,7 @@ import type {
   Roadmap,
   Story,
 } from '@gitpm/core';
+import { toSlug, writeFile } from '@gitpm/core';
 import { nanoid } from 'nanoid';
 import { GitLabClient } from './client.js';
 import { createDefaultConfig, saveConfig } from './config.js';

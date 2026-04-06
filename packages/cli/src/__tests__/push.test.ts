@@ -216,7 +216,6 @@ describe('gitpm push', () => {
 
   it('exits with code 1 when GitLab token is missing', async () => {
     const originalEnv = process.env.GITLAB_TOKEN;
-    // biome-ignore lint/performance/noDelete: must remove env var, not set to "undefined" string
     delete process.env.GITLAB_TOKEN;
 
     mockLoadGitHubConfig.mockResolvedValue({

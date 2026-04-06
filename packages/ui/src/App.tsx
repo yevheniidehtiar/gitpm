@@ -1,20 +1,24 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
-  Link,
-  Outlet,
-  RouterProvider,
   createHashHistory,
   createRootRoute,
   createRoute,
   createRouter,
+  Link,
+  Outlet,
+  RouterProvider,
   useRouterState,
 } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Spinner } from './components/Spinner.js';
 import { ToastProvider } from './components/Toast.js';
 import { TypeIcon } from './components/TypeIcon.js';
-import { type TreeResponse, useSyncStatus, useValidation } from './lib/api.js';
-import { useTree } from './lib/api.js';
+import {
+  type TreeResponse,
+  useSyncStatus,
+  useTree,
+  useValidation,
+} from './lib/api.js';
 import { EntityEditor } from './routes/entity-editor.js';
 import { RoadmapView } from './routes/roadmap.js';
 import { SyncDashboard } from './routes/sync-dashboard.js';

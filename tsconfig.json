@@ -14,12 +14,8 @@
     "rootDir": "src",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "paths": {
-      "@gitpm/core": ["./packages/core/src"],
-      "@gitpm/sync-github": ["./packages/sync-github/src"],
-      "@gitpm/sync-jira": ["./packages/sync-jira/src"],
-      "@gitpm/sync-gitlab": ["./packages/sync-gitlab/src"]
-    }
+    "ignoreDeprecations": "6.0",
+    "types": ["node"]
   },
   "exclude": ["node_modules", "dist"]
 }
