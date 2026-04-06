@@ -1,7 +1,7 @@
-import { importFromGitHub } from '@gitpm/sync-github';
 import type { LinkStrategy } from '@gitpm/sync-github';
-import { importFromGitLab } from '@gitpm/sync-gitlab';
+import { importFromGitHub } from '@gitpm/sync-github';
 import type { LinkStrategy as GitLabLinkStrategy } from '@gitpm/sync-gitlab';
+import { importFromGitLab } from '@gitpm/sync-gitlab';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import ora from 'ora';

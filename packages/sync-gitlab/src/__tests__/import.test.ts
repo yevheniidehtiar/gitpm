@@ -3,27 +3,28 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseTree, resolveRefs, validateTree } from '@gitpm/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { GlIssue, GlMilestone } from '../client.js';
-import { importFromGitLab } from '../import.js';
-
 import issueFixtures from '../__fixtures__/gitlab-issues.json';
 import milestoneFixtures from '../__fixtures__/gitlab-milestones.json';
+import type { GlIssue, GlMilestone } from '../client.js';
+import { importFromGitLab } from '../import.js';
 
 // Mock GitLabClient
 vi.mock('../client.js', () => {
   return {
-    GitLabClient: vi.fn().mockImplementation(() => ({
-      getProject: vi.fn().mockResolvedValue({
-        id: 42,
-        name: 'test-project',
-        path_with_namespace: 'test-ns/test-project',
-        namespace: { id: 10, kind: 'group', full_path: 'test-ns' },
-      }),
-      listMilestones: vi.fn().mockResolvedValue(milestoneFixtures),
-      listIssues: vi.fn().mockResolvedValue(issueFixtures),
-      listGroupEpics: vi.fn().mockResolvedValue([]),
-      listEpicIssues: vi.fn().mockResolvedValue([]),
-    })),
+    GitLabClient: vi.fn().mockImplementation(function () {
+      return {
+        getProject: vi.fn().mockResolvedValue({
+          id: 42,
+          name: 'test-project',
+          path_with_namespace: 'test-ns/test-project',
+          namespace: { id: 10, kind: 'group', full_path: 'test-ns' },
+        }),
+        listMilestones: vi.fn().mockResolvedValue(milestoneFixtures),
+        listIssues: vi.fn().mockResolvedValue(issueFixtures),
+        listGroupEpics: vi.fn().mockResolvedValue([]),
+        listEpicIssues: vi.fn().mockResolvedValue([]),
+      };
+    }),
   };
 });
 

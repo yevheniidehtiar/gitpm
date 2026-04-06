@@ -375,7 +375,10 @@ export function EntityEditor() {
 function Field({
   label,
   children,
-}: { label: string; children: React.ReactNode }) {
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <span className="block text-xs font-medium text-gray-500 mb-1">

@@ -1,8 +1,8 @@
+import type { ConflictStrategy } from '@gitpm/sync-github';
 import {
   loadConfig as loadGitHubConfig,
   syncWithGitHub,
 } from '@gitpm/sync-github';
-import type { ConflictStrategy } from '@gitpm/sync-github';
 import {
   loadConfig as loadGitLabConfig,
   syncWithGitLab,
