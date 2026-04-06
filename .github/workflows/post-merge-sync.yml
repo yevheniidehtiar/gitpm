@@ -1,0 +1,36 @@
+name: Post-Merge Sync
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '.meta/**'
+
+permissions:
+  contents: read
+
+jobs:
+  sync-to-github:
+    name: Sync .meta/ to GitHub Issues
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build
+        run: bun run build
+
+      - name: Sync .meta/ to GitHub
+        run: node packages/cli/dist/index.js push --token "$GITHUB_TOKEN" --yes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
