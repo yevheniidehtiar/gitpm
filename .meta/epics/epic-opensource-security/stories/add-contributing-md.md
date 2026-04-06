@@ -2,7 +2,7 @@
 type: story
 id: ZYoER0-aFfCi
 title: Add CONTRIBUTING.md with development setup guide
-status: todo
+status: done
 priority: high
 assignee: null
 labels:

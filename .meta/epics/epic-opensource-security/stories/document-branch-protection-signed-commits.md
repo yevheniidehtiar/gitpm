@@ -2,7 +2,7 @@
 type: story
 id: -mGodyYhUplq
 title: Document branch protection rules and signed-commit policy
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:

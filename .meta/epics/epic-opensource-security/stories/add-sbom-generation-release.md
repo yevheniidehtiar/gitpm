@@ -2,7 +2,7 @@
 type: story
 id: 86a2BVBmRChj
 title: Add SBOM generation to release workflow
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:

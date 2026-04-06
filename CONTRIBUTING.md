@@ -102,6 +102,35 @@ GitPM uses itself for project management. The `.meta/` directory is the source o
 - **Features**: Open a GitHub issue describing the use case
 - **Security**: See [SECURITY.md](SECURITY.md) — do NOT open public issues for vulnerabilities
 
+## Repository Security
+
+### Branch Protection Rules
+
+The `master` branch is protected with the following rules:
+
+- **Require pull request reviews**: At least 1 approving review before merge
+- **Require status checks to pass**: Lint, build, and test must all succeed
+- **No force pushes**: Force pushes to `master` are disabled
+- **No deletions**: The `master` branch cannot be deleted
+- **Require linear history**: Squash or rebase merges only (no merge commits)
+
+### Signed Commits
+
+- **Releases**: All release tags must be signed (GPG or SSH)
+- **Recommended**: Enable commit signing for all contributions (`git config commit.gpgsign true`)
+- GitHub's web UI automatically signs commits with GitHub's key
+
+### Maintainer Security Checklist
+
+Before each release, maintainers should verify:
+
+- [ ] All CI checks pass on the release branch
+- [ ] `npm audit` reports no high/critical vulnerabilities
+- [ ] SBOM is generated and attached to the release
+- [ ] No secrets or credentials are committed in the release
+- [ ] Branch protection rules are active on `master`
+- [ ] Release tag is signed
+
 ## Code of Conduct
 
 This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.

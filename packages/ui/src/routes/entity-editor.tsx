@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
+import DOMPurify from 'dompurify';
 import { useEffect, useState } from 'react';
 import { ConfirmDialog } from '../components/ConfirmDialog.js';
 import { Spinner } from '../components/Spinner.js';
@@ -385,9 +386,8 @@ function Field({
   );
 }
 
-function MarkdownPreview({ text }: { text: string }) {
-  // Simple markdown-to-HTML for preview
-  const html = text
+export function renderMarkdown(text: string): string {
+  return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -401,7 +401,11 @@ function MarkdownPreview({ text }: { text: string }) {
     .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
     .replace(/\n\n/g, '</p><p>')
     .replace(/^(?!<[hulo])(.+)$/gm, '<p>$1</p>');
+}
 
-  // biome-ignore lint/security/noDangerouslySetInnerHtml: markdown preview requires innerHTML
+function MarkdownPreview({ text }: { text: string }) {
+  const html = DOMPurify.sanitize(renderMarkdown(text));
+
+  // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized by DOMPurify
   return <div dangerouslySetInnerHTML={{ __html: html }} />;
 }

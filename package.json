@@ -1,6 +1,7 @@
 {
   "name": "gitpm-monorepo",
   "private": true,
+  "license": "MIT",
   "workspaces": ["packages/*"],
   "scripts": {
     "build": "bun run --filter '*' build",

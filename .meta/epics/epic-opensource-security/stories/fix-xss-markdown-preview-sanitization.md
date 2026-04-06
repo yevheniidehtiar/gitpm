@@ -2,7 +2,7 @@
 type: story
 id: rXZaoWj9VnLl
 title: "Fix XSS in MarkdownPreview: sanitize HTML in entity-editor.tsx"
-status: todo
+status: done
 priority: high
 assignee: null
 labels:

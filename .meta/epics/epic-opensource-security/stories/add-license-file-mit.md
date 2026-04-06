@@ -2,7 +2,7 @@
 type: story
 id: rEqawSv7vre0
 title: Add LICENSE file (MIT)
-status: todo
+status: done
 priority: high
 assignee: null
 labels:
