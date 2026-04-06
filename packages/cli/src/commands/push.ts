@@ -1,4 +1,3 @@
-import type { ConflictStrategy } from '@gitpm/core';
 import { runHooks } from '@gitpm/core';
 import { confirm } from '@inquirer/prompts';
 import chalk from 'chalk';

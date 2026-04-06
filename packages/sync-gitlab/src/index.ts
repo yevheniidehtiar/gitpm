@@ -1,70 +1,64 @@
 export { gitlabAdapter } from './adapter.js';
 
-export { GitLabClient } from './client.js';
 export type {
-  GlMilestone,
-  GlIssue,
   GlEpic,
-  GlProject,
+  GlIssue,
   GlLabel,
+  GlMilestone,
+  GlProject,
 } from './client.js';
-
+export { GitLabClient } from './client.js';
+export { createDefaultConfig, loadConfig, saveConfig } from './config.js';
+export { applyResolutions, resolveConflicts } from './conflict.js';
 export {
-  glMilestoneToMilestone,
-  glIssueToEntity,
-  glEpicToEpic,
-  isEpicIssue,
-  determineFilePath,
-  milestoneToGlMilestone,
-  entityToGlIssue,
-} from './mapper.js';
-export type { CreateMilestoneParams, CreateIssueParams } from './mapper.js';
-
-export { importFromGitLab } from './import.js';
-export { exportToGitLab } from './export.js';
-export { syncWithGitLab } from './sync.js';
-
-export { resolveEpicLink } from './linker.js';
-export type { LinkContext, LinkResult } from './linker.js';
-
-export {
-  diffEntity,
   diffByHash,
+  diffEntity,
   remoteIssueFields,
   remoteMilestoneFields,
 } from './diff.js';
-
-export { resolveConflicts, applyResolutions } from './conflict.js';
+export { exportToGitLab } from './export.js';
+export { importFromGitLab } from './import.js';
+export type { LinkContext, LinkResult } from './linker.js';
+export { resolveEpicLink } from './linker.js';
+export type { CreateIssueParams, CreateMilestoneParams } from './mapper.js';
+export {
+  determineFilePath,
+  entityToGlIssue,
+  glEpicToEpic,
+  glIssueToEntity,
+  glMilestoneToMilestone,
+  isEpicIssue,
+  milestoneToGlMilestone,
+} from './mapper.js';
 
 export {
-  loadState,
-  saveState,
   computeContentHash,
   createInitialState,
+  loadState,
+  saveState,
 } from './state.js';
-
-export { loadConfig, saveConfig, createDefaultConfig } from './config.js';
+export { syncWithGitLab } from './sync.js';
 
 export type {
-  ImportOptions,
-  ImportResult,
-  ExportOptions,
-  ExportResult,
-  SyncOptions,
-  SyncResult,
-  GitLabConfig,
-  SyncState,
-  SyncStateEntry,
   ConflictStrategy,
-  FieldChange,
-  FieldConflict,
   DiffResult,
   DiffStatus,
-  Resolution,
+  ExportOptions,
+  ExportResult,
+  FieldChange,
+  FieldConflict,
+  GitLabConfig,
+  ImportOptions,
+  ImportResult,
   LinkStrategy,
+  Resolution,
+  SyncOptions,
+  SyncResult,
+  SyncState,
+  SyncStateEntry,
 } from './types.js';
 
 export {
-  DEFAULT_STATUS_MAPPING,
   DEFAULT_EPIC_LABELS,
+  DEFAULT_STATUS_MAPPING,
 } from './types.js';

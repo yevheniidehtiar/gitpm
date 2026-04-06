@@ -1,4 +1,4 @@
-import type { Epic, Milestone, Story } from '@gitpm/core';
+import type { Milestone, Story } from '@gitpm/core';
 import { describe, expect, it } from 'vitest';
 import type { GhIssue, GhMilestone } from '../client.js';
 import {
@@ -38,7 +38,7 @@ const baseIssue: GhIssue = {
   updated_at: '2026-01-01T00:00:00Z',
 };
 
-const baseMilestone: Milestone = {
+const _baseMilestone: Milestone = {
   type: 'milestone',
   id: 'ms-001',
   title: 'Q1 Release',

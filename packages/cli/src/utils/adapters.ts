@@ -6,7 +6,7 @@ import {
   loadAdapters,
   loadGitpmConfig,
 } from '@gitpm/core';
-import { printError, printWarning } from './output.js';
+import { printError } from './output.js';
 
 export interface ResolvedAdapter {
   adapter: SyncAdapter;

@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: write
-  id-token: write
 
 jobs:
   release:
@@ -42,31 +41,31 @@ jobs:
         run: npx vitest run
 
       - name: Publish @gitpm/core
-        run: npm publish --provenance --access public
+        run: npm publish --access public
         working-directory: packages/core
         continue-on-error: true
 
       - name: Publish @gitpm/sync-github
-        run: npm publish --provenance --access public
+        run: npm publish --access public
         working-directory: packages/sync-github
         continue-on-error: true
 
       - name: Publish @gitpm/sync-gitlab
-        run: npm publish --provenance --access public
+        run: npm publish --access public
         working-directory: packages/sync-gitlab
         continue-on-error: true
 
       - name: Publish @gitpm/sync-jira
-        run: npm publish --provenance --access public
+        run: npm publish --access public
         working-directory: packages/sync-jira
         continue-on-error: true
 
       - name: Publish @gitpm/cli
-        run: npm publish --provenance --access public
+        run: npm publish --access public
         working-directory: packages/cli
         continue-on-error: true
 
       - name: Publish @gitpm/ui
-        run: npm publish --provenance --access public
+        run: npm publish --access public
         working-directory: packages/ui
         continue-on-error: true

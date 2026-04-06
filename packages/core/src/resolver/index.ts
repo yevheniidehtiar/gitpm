@@ -1,11 +1,11 @@
-export { resolveRefs } from './resolve.js';
 export { buildDependencyGraph } from './graph.js';
+export { resolveRefs } from './resolve.js';
 export type {
-  ResolvedTree,
-  ResolvedStory,
+  DependencyGraph,
   ResolvedEpic,
   ResolvedMilestone,
-  ResolvedRoadmap,
   ResolvedPrd,
-  DependencyGraph,
+  ResolvedRoadmap,
+  ResolvedStory,
+  ResolvedTree,
 } from './types.js';

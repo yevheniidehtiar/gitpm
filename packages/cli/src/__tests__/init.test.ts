@@ -17,7 +17,7 @@ vi.mock('@inquirer/prompts', () => ({
   input: (...args: unknown[]) => mockInput(...args),
 }));
 
-let logSpy: ReturnType<typeof vi.spyOn>;
+let _logSpy: ReturnType<typeof vi.spyOn>;
 let errorSpy: ReturnType<typeof vi.spyOn>;
 let exitSpy: ReturnType<typeof vi.spyOn>;
 
@@ -38,7 +38,7 @@ describe('gitpm init', () => {
     vi.resetModules();
     vi.resetAllMocks();
     tmpDir = await mkdtemp(join(tmpdir(), 'gitpm-cli-init-'));
-    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    _logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {
       throw new Error('process.exit');

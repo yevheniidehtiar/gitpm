@@ -13,12 +13,7 @@ import {
 } from './diff.js';
 import { entityToGlIssue, milestoneToGlMilestone } from './mapper.js';
 import { computeContentHash, loadState, saveState } from './state.js';
-import type {
-  FieldConflict,
-  SyncOptions,
-  SyncResult,
-  SyncState,
-} from './types.js';
+import type { FieldConflict, SyncOptions, SyncResult } from './types.js';
 
 function computeRemoteIssueHash(gl: GlIssue): string {
   const fields = remoteIssueFields(gl);

@@ -80,7 +80,7 @@ export function buildExtensionFields(
   entityType: string,
 ): z.ZodRawShape | null {
   const entityExt = extensions[entityType];
-  if (!entityExt || !entityExt.fields) {
+  if (!entityExt?.fields) {
     return null;
   }
 

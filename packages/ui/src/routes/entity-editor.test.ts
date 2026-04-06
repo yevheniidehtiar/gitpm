@@ -1,8 +1,8 @@
+import DOMPurify from 'dompurify';
 import { Window } from 'happy-dom';
 import { describe, expect, it } from 'vitest';
 import { renderMarkdown } from './entity-editor.js';
 
-import DOMPurify from 'dompurify';
 const window = new Window();
 const purify = DOMPurify(window as unknown as Window);
 

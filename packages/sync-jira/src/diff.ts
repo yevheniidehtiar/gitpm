@@ -1,11 +1,11 @@
 import type { ParsedEntity } from '@gitpm/core';
 import type { JiraIssue, JiraSprint } from './client.js';
 import { mapJiraPriority, mapJiraStatus } from './mapper.js';
-import type { JiraConfig } from './types.js';
 import type {
   DiffResult,
   FieldChange,
   FieldConflict,
+  JiraConfig,
   JiraSyncStateEntry,
 } from './types.js';
 

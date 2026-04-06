@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { isSyncAdapter } from './adapter.js';
 import type {
   AdapterExportOptions,
   AdapterImportOptions,
   AdapterSyncOptions,
   SyncAdapter,
 } from './adapter.js';
+import { isSyncAdapter } from './adapter.js';
 
 function createMockAdapter(overrides: Partial<SyncAdapter> = {}): SyncAdapter {
   return {

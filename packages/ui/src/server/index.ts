@@ -1,5 +1,6 @@
 import { unlink } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { ParsedEntity, Priority, ResolvedTree, Status } from '@gitpm/core';
 import {
   parseTree,
   resolveRefs,
@@ -7,18 +8,12 @@ import {
   validateTree,
   writeFile,
 } from '@gitpm/core';
-import type { ParsedEntity, Priority, ResolvedTree, Status } from '@gitpm/core';
+import type { Resolution, SyncState } from '@gitpm/sync-github';
 import {
   exportToGitHub,
   loadConfig,
   loadState,
   syncWithGitHub,
-} from '@gitpm/sync-github';
-import type {
-  FieldConflict,
-  GitHubConfig,
-  Resolution,
-  SyncState,
 } from '@gitpm/sync-github';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';

@@ -1,5 +1,4 @@
 import { dirname } from 'node:path';
-import type { GitpmConfig, SyncAdapter } from '@gitpm/core';
 import {
   findAdapterByName,
   loadAdapters,

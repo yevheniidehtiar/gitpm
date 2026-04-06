@@ -2,8 +2,9 @@ import { readFile } from 'node:fs/promises';
 import matter from 'gray-matter';
 import YAML from 'yaml';
 import type { Result } from '../schemas/common.js';
-import { extendEntitySchema } from '../schemas/extensions.js';
 import type { SchemaExtensions } from '../schemas/extensions.js';
+import { extendEntitySchema } from '../schemas/extensions.js';
+import type { ParsedEntity } from '../schemas/index.js';
 import {
   epicSchema,
   milestoneSchema,
@@ -11,7 +12,6 @@ import {
   roadmapSchema,
   storySchema,
 } from '../schemas/index.js';
-import type { ParsedEntity } from '../schemas/index.js';
 
 function coerceDates(obj: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {};

@@ -1,32 +1,34 @@
-import { readFile } from 'node:fs/promises';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { parseTree, validateTree } from '@gitpm/core';
+import { parseTree } from '@gitpm/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import fixtureIssues from '../__fixtures__/github-issues.json';
+import fixtureMilestones from '../__fixtures__/github-milestones.json';
 import type { GhIssue, GhMilestone } from '../client.js';
 import { importFromGitHub } from '../import.js';
 import type { ImportOptions } from '../types.js';
 
-import fixtureIssues from '../__fixtures__/github-issues.json';
-import fixtureMilestones from '../__fixtures__/github-milestones.json';
-
 // Mock the GitHubClient
 vi.mock('../client.js', () => {
   return {
-    GitHubClient: vi.fn().mockImplementation(() => ({
-      listMilestones: vi
-        .fn()
-        .mockResolvedValue(fixtureMilestones as GhMilestone[]),
-      listIssues: vi
-        .fn()
-        .mockResolvedValue(
-          (fixtureIssues as GhIssue[]).filter((i: GhIssue) => !i.pull_request),
-        ),
-      listSubIssues: vi.fn().mockResolvedValue([]),
-      getProject: vi.fn().mockResolvedValue(null),
-      getProjectItems: vi.fn().mockResolvedValue([]),
-    })),
+    GitHubClient: vi.fn().mockImplementation(function () {
+      return {
+        listMilestones: vi
+          .fn()
+          .mockResolvedValue(fixtureMilestones as GhMilestone[]),
+        listIssues: vi
+          .fn()
+          .mockResolvedValue(
+            (fixtureIssues as GhIssue[]).filter(
+              (i: GhIssue) => !i.pull_request,
+            ),
+          ),
+        listSubIssues: vi.fn().mockResolvedValue([]),
+        getProject: vi.fn().mockResolvedValue(null),
+        getProjectItems: vi.fn().mockResolvedValue([]),
+      };
+    }),
   };
 });
 
@@ -158,22 +160,21 @@ describe('importFromGitHub', () => {
   it('works with no milestones', async () => {
     // Re-mock to return empty milestones
     const { GitHubClient } = await import('../client.js');
-    vi.mocked(GitHubClient).mockImplementation(
-      () =>
-        ({
-          listMilestones: vi.fn().mockResolvedValue([]),
-          listIssues: vi
-            .fn()
-            .mockResolvedValue(
-              (fixtureIssues as GhIssue[]).filter(
-                (i: GhIssue) => !i.pull_request,
-              ),
+    vi.mocked(GitHubClient).mockImplementation(function () {
+      return {
+        listMilestones: vi.fn().mockResolvedValue([]),
+        listIssues: vi
+          .fn()
+          .mockResolvedValue(
+            (fixtureIssues as GhIssue[]).filter(
+              (i: GhIssue) => !i.pull_request,
             ),
-          listSubIssues: vi.fn().mockResolvedValue([]),
-          getProject: vi.fn().mockResolvedValue(null),
-          getProjectItems: vi.fn().mockResolvedValue([]),
-        }) as never,
-    );
+          ),
+        listSubIssues: vi.fn().mockResolvedValue([]),
+        getProject: vi.fn().mockResolvedValue(null),
+        getProjectItems: vi.fn().mockResolvedValue([]),
+      } as never;
+    });
 
     const options = { ...defaultOptions, metaDir };
     const result = await importFromGitHub(options);

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(bun run:*)",
+      "Bash(bunx biome:*)"
+    ]
+  }
+}

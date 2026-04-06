@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
-import type { Epic, Milestone, Result, Story } from '@gitpm/core';
+import type { Epic, Result, Story } from '@gitpm/core';
 import { parseTree, writeFile } from '@gitpm/core';
-import { JiraClient } from './client.js';
 import type { JiraIssue, JiraSprint } from './client.js';
+import { JiraClient } from './client.js';
 import { loadConfig } from './config.js';
 import { resolveConflicts } from './conflict.js';
 import { diffByHash, remoteIssueFields, remoteSprintFields } from './diff.js';
@@ -13,7 +13,6 @@ import type {
   FieldConflict,
   JiraConfig,
   JiraSyncOptions,
-  JiraSyncState,
   SyncResult,
 } from './types.js';
 
@@ -26,7 +25,7 @@ function computeRemoteIssueHash(
   return `sha256:${createHash('sha256').update(json).digest('hex')}`;
 }
 
-function computeRemoteSprintHash(sprint: JiraSprint): string {
+function _computeRemoteSprintHash(sprint: JiraSprint): string {
   const fields = remoteSprintFields(sprint);
   const json = JSON.stringify(fields);
   return `sha256:${createHash('sha256').update(json).digest('hex')}`;
