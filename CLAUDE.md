@@ -161,3 +161,9 @@ bun run lint && bun run build && bun run test
 - To find tasks without an epic, look for stories in `.meta/stories/` (top-level) or stories where `epic_ref: null`.
 - To find tasks without a milestone, look for epics/stories where there is no `milestone_ref` or the entity is not nested under a milestone-linked epic.
 - GitHub Issues are a **sync target**, not the primary data source. The `.meta/` tree and GitHub stay in sync via `gitpm import`/`push`/`pull`/`sync` commands.
+
+**IMPORTANT: After any ticketing or roadmap changes (creating/moving/updating stories, epics, or milestones in `.meta/`), you MUST run sync to push changes to GitHub:**
+```bash
+bun run build && node packages/cli/dist/index.js push --token "$GITHUB_TOKEN" --yes
+```
+This ensures `.meta/` and GitHub Issues stay in sync. Never skip this step after modifying `.meta/` files.
