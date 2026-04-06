@@ -14,10 +14,10 @@ epic_ref:
 github:
   issue_number: 38
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:6380d3839ba7a773d7830097597c84fed6ff9dbc05512c96875c693b1072c5cd
-  synced_at: 2026-04-05T17:24:12.493Z
-created_at: 2026-04-05T09:48:52Z
-updated_at: 2026-04-05T09:48:52Z
+  last_sync_hash: sha256:7c97ddabe9a953acdfe547e261d37446b2f12e88de3b32d1a525033eb2864e80
+  synced_at: 2026-04-06T13:34:04.908Z
+created_at: 2026-04-05T09:48:52.000Z
+updated_at: 2026-04-05T09:48:52.000Z
 ---
 
 ## Problem

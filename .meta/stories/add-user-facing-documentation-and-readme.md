@@ -13,10 +13,10 @@ epic_ref: null
 github:
   issue_number: 31
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:36323d06f3cecf3b5cfa2f72c93438e222da11178d8715872447c6a484c619fc
-  synced_at: 2026-04-05T17:24:12.493Z
-created_at: 2026-04-04T20:08:30Z
-updated_at: 2026-04-04T20:08:31Z
+  last_sync_hash: sha256:f6d860f093a3752eaf9ce3b414fffeb99f416dbaa505b1b259ced494b5400486
+  synced_at: 2026-04-06T13:34:06.886Z
+created_at: 2026-04-04T20:08:30.000Z
+updated_at: 2026-04-04T20:08:31.000Z
 ---
 
 Write comprehensive documentation:
@@ -26,4 +26,3 @@ Write comprehensive documentation:
 - Sync configuration guide
 - Architecture overview for contributors
 - Migration guide from GitHub Issues / Jira / GitLab
-
