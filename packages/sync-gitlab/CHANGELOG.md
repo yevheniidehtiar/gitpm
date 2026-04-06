@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/yevheniidehtiar/gitpm/compare/sync-gitlab-v0.1.3...sync-gitlab-v0.1.4) (2026-04-06)
+
+
+### Bug Fixes
+
+* adapt codebase for Biome 2.x, TypeScript 6.x, and Vitest 4.x ([ebb5d75](https://github.com/yevheniidehtiar/gitpm/commit/ebb5d75e6580efe1a1ebb6e52be5d9b842d914ab))
+
 ## [0.1.3](https://github.com/yevheniidehtiar/gitpm/compare/sync-gitlab-v0.1.2...sync-gitlab-v0.1.3) (2026-04-06)
 
 
