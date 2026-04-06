@@ -41,9 +41,6 @@ jobs:
       - name: Test
         run: npx vitest run
 
-      - name: Generate SBOM
-        run: npx @cyclonedx/cyclonedx-npm --output-file sbom.cdx.json
-
       - name: Publish @gitpm/core
         run: npm publish --provenance --access public
         working-directory: packages/core
