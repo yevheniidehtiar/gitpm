@@ -6,6 +6,20 @@ Git-native project management — store roadmaps, PRDs, epics, and issues as str
 
 GitPM turns your repository's `.meta/` directory into a full project management system. Roadmaps, epics, stories, and milestones are stored as Markdown files with YAML frontmatter — editable by humans, parseable by AI agents, and kept in bidirectional sync with GitHub, GitLab, or Jira.
 
+## Why GitPM?
+
+**AI-agentic development with full project context.** Your roadmap, epics, and tasks live as files in the repo — right next to the code. AI agents (Claude Code, Cursor, Copilot, custom agents) can read the entire project context from `.meta/` without any API calls. Works fully offline, in air-gapped environments, and on isolated networks with restricted access. The LLM sees what needs to be built, what's in progress, and what's done — all from the file tree.
+
+**Let AI handle project management overhead.** Use Claude (or any LLM) to create, enrich, and resolve issues directly by editing `.meta/` files. Draft stories from a one-line description, auto-generate acceptance criteria, break epics into stories, update statuses as work completes — then sync to GitHub/GitLab/Jira in one command. Saves hours of PM bureaucracy per sprint.
+
+**Single source of truth across tools.** Teams often split between GitHub Issues, Jira, spreadsheets, and Notion. GitPM unifies everything into version-controlled files that sync bidirectionally with your tracker. No more stale tickets or context scattered across tools.
+
+**Code and project context in one PR.** When a developer opens a pull request, the `.meta/` changes travel with the code. Reviewers see *what* changed and *why* (the story/epic update) in the same diff. Branch-based project management becomes natural.
+
+**Auditable project history via Git.** Every status change, priority update, and scope modification is a Git commit. You get full blame, diff, and log history on your project management data — something no SaaS tool provides natively.
+
+**Offline-first for field teams and contractors.** Teams in low-connectivity environments (field engineering, defense, on-prem deployments) can manage their project boards locally and sync when connectivity is available. No always-on SaaS dependency.
+
 ## Quick Start
 
 ```bash
