@@ -19,7 +19,7 @@
     "@tanstack/react-router": "^1.82.0",
     "dompurify": "^3.3.3",
     "hono": "^4.12.11",
-    "react": "^18.3.0",
+    "react": "^19.2.4",
     "react-dom": "^18.3.0"
   },
   "devDependencies": {
