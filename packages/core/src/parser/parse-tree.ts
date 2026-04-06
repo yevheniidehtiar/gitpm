@@ -1,6 +1,8 @@
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Result } from '../schemas/common.js';
+import { loadSchemaExtensions } from '../schemas/extensions.js';
+import type { SchemaExtensions } from '../schemas/extensions.js';
 import { parseFile } from './parse-file.js';
 import type { MetaTree } from './types.js';
 
@@ -36,6 +38,13 @@ async function globFiles(dir: string): Promise<string[]> {
 
 export async function parseTree(metaDir: string): Promise<Result<MetaTree>> {
   try {
+    // Load schema extensions if available
+    let extensions: SchemaExtensions | undefined;
+    const extResult = await loadSchemaExtensions(metaDir);
+    if (extResult.ok && Object.keys(extResult.value).length > 0) {
+      extensions = extResult.value;
+    }
+
     const files = await globFiles(metaDir);
     const tree: MetaTree = {
       stories: [],
@@ -47,7 +56,7 @@ export async function parseTree(metaDir: string): Promise<Result<MetaTree>> {
     };
 
     for (const filePath of files) {
-      const result = await parseFile(filePath);
+      const result = await parseFile(filePath, extensions);
       if (!result.ok) {
         tree.errors.push({
           filePath,
