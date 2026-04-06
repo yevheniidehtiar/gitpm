@@ -3,21 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // --- Mocks ---
 
-const mockLoadGitHubConfig = vi.fn();
-const mockSyncWithGitHub = vi.fn();
-const mockLoadGitLabConfig = vi.fn();
-const mockSyncWithGitLab = vi.fn();
+const mockAdapterSync = vi.fn();
+const mockResolveAdapter = vi.fn();
 const mockResolveToken = vi.fn();
 const mockPromptConflictResolution = vi.fn();
+const mockRunHooks = vi.fn();
 
-vi.mock('@gitpm/sync-github', () => ({
-  loadConfig: (...args: unknown[]) => mockLoadGitHubConfig(...args),
-  syncWithGitHub: (...args: unknown[]) => mockSyncWithGitHub(...args),
-}));
-
-vi.mock('@gitpm/sync-gitlab', () => ({
-  loadConfig: (...args: unknown[]) => mockLoadGitLabConfig(...args),
-  syncWithGitLab: (...args: unknown[]) => mockSyncWithGitLab(...args),
+vi.mock('../utils/adapters.js', () => ({
+  resolveAdapter: (...args: unknown[]) => mockResolveAdapter(...args),
 }));
 
 vi.mock('../utils/auth.js', () => ({
@@ -27,6 +20,10 @@ vi.mock('../utils/auth.js', () => ({
 vi.mock('../utils/conflict-ui.js', () => ({
   promptConflictResolution: (...args: unknown[]) =>
     mockPromptConflictResolution(...args),
+}));
+
+vi.mock('@gitpm/core', () => ({
+  runHooks: (...args: unknown[]) => mockRunHooks(...args),
 }));
 
 vi.mock('ora', () => ({
@@ -51,11 +48,28 @@ async function run(...args: string[]) {
 }
 
 const pullResult = {
+  pushed: { milestones: 0, issues: 0 },
   pulled: { milestones: 1, issues: 3 },
   conflicts: [],
   resolved: 0,
   skipped: 0,
 };
+
+function setupMockAdapter(name = 'github', displayName = 'GitHub') {
+  const adapter = {
+    name,
+    displayName,
+    detect: vi.fn().mockResolvedValue(true),
+    import: vi.fn(),
+    export: vi.fn(),
+    sync: mockAdapterSync,
+  };
+  mockResolveAdapter.mockResolvedValue({
+    adapter,
+    config: { adapters: [], hooks: {} },
+  });
+  return adapter;
+}
 
 // --- Tests ---
 
@@ -69,14 +83,8 @@ describe('gitpm pull', () => {
       throw new Error('process.exit');
     }) as never);
     mockResolveToken.mockResolvedValue('mock-token');
-    mockLoadGitHubConfig.mockResolvedValue({
-      ok: true,
-      value: { repo: 'owner/repo' },
-    });
-    mockLoadGitLabConfig.mockResolvedValue({
-      ok: false,
-      error: { message: 'not found' },
-    });
+    mockRunHooks.mockResolvedValue({ ok: true, value: undefined });
+    setupMockAdapter();
   });
 
   afterEach(() => {
@@ -84,11 +92,11 @@ describe('gitpm pull', () => {
   });
 
   it('pulls from GitHub successfully with remote-wins', async () => {
-    mockSyncWithGitHub.mockResolvedValue({ ok: true, value: pullResult });
+    mockAdapterSync.mockResolvedValue({ ok: true, value: pullResult });
 
     await run('--meta-dir', '/tmp/meta');
 
-    expect(mockSyncWithGitHub).toHaveBeenCalledWith(
+    expect(mockAdapterSync).toHaveBeenCalledWith(
       expect.objectContaining({ strategy: 'remote-wins' }),
     );
     expect(exitSpy).not.toHaveBeenCalled();
@@ -108,7 +116,7 @@ describe('gitpm pull', () => {
         remoteValue: 'Remote Title',
       },
     ];
-    mockSyncWithGitHub.mockResolvedValue({
+    mockAdapterSync.mockResolvedValue({
       ok: true,
       value: { ...pullResult, conflicts, resolved: 0 },
     });
@@ -123,18 +131,18 @@ describe('gitpm pull', () => {
   });
 
   it('does not prompt for conflicts with local-wins', async () => {
-    mockSyncWithGitHub.mockResolvedValue({ ok: true, value: pullResult });
+    mockAdapterSync.mockResolvedValue({ ok: true, value: pullResult });
 
     await run('--strategy', 'local-wins', '--meta-dir', '/tmp/meta');
 
     expect(mockPromptConflictResolution).not.toHaveBeenCalled();
-    expect(mockSyncWithGitHub).toHaveBeenCalledWith(
+    expect(mockAdapterSync).toHaveBeenCalledWith(
       expect.objectContaining({ strategy: 'local-wins' }),
     );
   });
 
   it('exits with code 1 when pull fails', async () => {
-    mockSyncWithGitHub.mockResolvedValue({
+    mockAdapterSync.mockResolvedValue({
       ok: false,
       error: { message: 'sync error' },
     });
@@ -148,25 +156,9 @@ describe('gitpm pull', () => {
   });
 
   it('exits with code 1 when no sync config found', async () => {
-    mockLoadGitHubConfig.mockResolvedValue({
-      ok: false,
-      error: { message: 'not found' },
+    mockResolveAdapter.mockImplementation(() => {
+      process.exit(1);
     });
-    mockLoadGitLabConfig.mockResolvedValue({
-      ok: false,
-      error: { message: 'not found' },
-    });
-
-    await expect(run('--meta-dir', '/tmp/meta')).rejects.toThrow(
-      'process.exit',
-    );
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
-    expect(errOutput).toContain('No sync config found');
-  });
-
-  it('exits with code 1 when token resolution fails', async () => {
-    mockResolveToken.mockRejectedValue(new Error('No GitHub token found'));
 
     await expect(run('--meta-dir', '/tmp/meta')).rejects.toThrow(
       'process.exit',
@@ -174,52 +166,30 @@ describe('gitpm pull', () => {
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
-  it('pulls from GitLab when GitLab config is found', async () => {
-    mockLoadGitHubConfig.mockResolvedValue({
-      ok: false,
-      error: { message: 'not found' },
-    });
-    mockLoadGitLabConfig.mockResolvedValue({
-      ok: true,
-      value: {
-        project: 'group/proj',
-        project_id: 42,
-        base_url: 'https://gitlab.com',
-      },
-    });
-    mockSyncWithGitLab.mockResolvedValue({ ok: true, value: pullResult });
+  it('pulls from GitLab when GitLab adapter detects', async () => {
+    setupMockAdapter('gitlab', 'GitLab');
+    mockAdapterSync.mockResolvedValue({ ok: true, value: pullResult });
 
     await run('--token', 'gl-tok', '--meta-dir', '/tmp/meta');
 
-    expect(mockSyncWithGitLab).toHaveBeenCalledWith(
-      expect.objectContaining({ token: 'gl-tok', project: 'group/proj' }),
-    );
+    expect(mockAdapterSync).toHaveBeenCalled();
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
-  it('exits with code 1 when GitLab token is missing', async () => {
-    const originalEnv = process.env.GITLAB_TOKEN;
-    // biome-ignore lint/performance/noDelete: must remove env var, not set to "undefined" string
-    delete process.env.GITLAB_TOKEN;
+  it('runs pre-sync and post-sync hooks', async () => {
+    mockAdapterSync.mockResolvedValue({ ok: true, value: pullResult });
 
-    mockLoadGitHubConfig.mockResolvedValue({
-      ok: false,
-      error: { message: 'not found' },
-    });
-    mockLoadGitLabConfig.mockResolvedValue({
-      ok: true,
-      value: {
-        project: 'group/proj',
-        project_id: 42,
-        base_url: 'https://gitlab.com',
-      },
-    });
+    await run('--meta-dir', '/tmp/meta');
 
-    await expect(run('--meta-dir', '/tmp/meta')).rejects.toThrow(
-      'process.exit',
+    expect(mockRunHooks).toHaveBeenCalledWith(
+      expect.anything(),
+      'pre-sync',
+      expect.objectContaining({ event: 'pre-sync' }),
     );
-    expect(exitSpy).toHaveBeenCalledWith(1);
-
-    process.env.GITLAB_TOKEN = originalEnv;
+    expect(mockRunHooks).toHaveBeenCalledWith(
+      expect.anything(),
+      'post-sync',
+      expect.objectContaining({ event: 'post-sync' }),
+    );
   });
 });

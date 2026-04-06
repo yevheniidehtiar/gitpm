@@ -36,6 +36,19 @@ export type { Roadmap } from './roadmap.js';
 export { prdFrontmatterSchema, prdSchema } from './prd.js';
 export type { Prd, PrdFrontmatter } from './prd.js';
 
+export {
+  fieldExtensionSchema,
+  entityExtensionSchema,
+  schemaExtensionsSchema,
+  loadSchemaExtensions,
+  buildExtensionFields,
+  extendEntitySchema,
+} from './extensions.js';
+export type {
+  FieldExtension,
+  SchemaExtensions,
+} from './extensions.js';
+
 import type { Epic } from './epic.js';
 import type { Milestone } from './milestone.js';
 import type { Prd } from './prd.js';

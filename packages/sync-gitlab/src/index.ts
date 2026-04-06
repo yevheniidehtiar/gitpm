@@ -1,3 +1,5 @@
+export { gitlabAdapter } from './adapter.js';
+
 export { GitLabClient } from './client.js';
 export type {
   GlMilestone,

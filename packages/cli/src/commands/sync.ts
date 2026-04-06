@@ -1,23 +1,17 @@
-import {
-  loadConfig as loadGitHubConfig,
-  syncWithGitHub,
-} from '@gitpm/sync-github';
-import type { ConflictStrategy } from '@gitpm/sync-github';
-import {
-  loadConfig as loadGitLabConfig,
-  syncWithGitLab,
-} from '@gitpm/sync-gitlab';
+import type { ConflictStrategy } from '@gitpm/core';
+import { runHooks } from '@gitpm/core';
 import { confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import ora from 'ora';
+import { resolveAdapter } from '../utils/adapters.js';
 import { resolveToken } from '../utils/auth.js';
 import { resolveMetaDir } from '../utils/config.js';
 import { promptConflictResolution } from '../utils/conflict-ui.js';
 import { printError, printSuccess } from '../utils/output.js';
 
 export const syncCommand = new Command('sync')
-  .description('Bidirectional sync between local .meta/ and GitHub/GitLab')
+  .description('Bidirectional sync between local .meta/ and remote platform')
   .option('--token <token>', 'Personal access token')
   .option(
     '--strategy <strategy>',
@@ -26,159 +20,85 @@ export const syncCommand = new Command('sync')
   )
   .option('--dry-run', 'Preview changes without syncing')
   .option('--yes', 'Skip confirmation prompt')
+  .option('--adapter <name>', 'Force a specific adapter (e.g. github, gitlab)')
   .action(async (opts, cmd) => {
     const metaDir = resolveMetaDir(cmd.optsWithGlobals().metaDir);
     const strategy = opts.strategy as ConflictStrategy;
+    const { adapter, config } = await resolveAdapter(metaDir, opts.adapter);
 
-    // Detect platform
-    const ghConfig = await loadGitHubConfig(metaDir);
-    const glConfig = await loadGitLabConfig(metaDir);
+    let token: string | undefined;
+    try {
+      token = await resolveToken(opts.token);
+    } catch {
+      // Token resolution failed — adapter may use other credentials
+    }
 
-    if (glConfig.ok) {
-      await syncGitLab(opts, metaDir, glConfig.value, strategy);
-    } else if (ghConfig.ok) {
-      await syncGitHub(opts, metaDir, ghConfig.value.repo, strategy);
-    } else {
-      printError(
-        'No sync config found. Run `gitpm import` first to set up sync.',
-      );
+    // Run pre-sync hook
+    const preHook = await runHooks(config, 'pre-sync', {
+      metaDir,
+      event: 'pre-sync',
+      adapterName: adapter.name,
+    });
+    if (!preHook.ok) {
+      printError(`Pre-sync hook failed: ${preHook.error.message}`);
       process.exit(1);
     }
-  });
 
-async function syncGitHub(
-  opts: Record<string, string | boolean | undefined>,
-  metaDir: string,
-  repo: string,
-  strategy: ConflictStrategy,
-): Promise<void> {
-  let token: string;
-  try {
-    token = await resolveToken(opts.token as string | undefined);
-  } catch (err) {
-    printError(err instanceof Error ? err.message : 'Failed to resolve token.');
-    process.exit(1);
-  }
+    if (opts.dryRun) {
+      const spinner = ora('Calculating sync changes...').start();
+      const result = await adapter.sync({
+        token,
+        metaDir,
+        strategy,
+        dryRun: true,
+      });
 
-  if (opts.dryRun) {
-    const spinner = ora('Calculating sync changes...').start();
-    const result = await syncWithGitHub({
+      if (!result.ok) {
+        spinner.fail('Dry run failed.');
+        printError(result.error.message);
+        process.exit(1);
+      }
+
+      spinner.succeed('Dry run complete.');
+      printSyncSummary(result.value, adapter.displayName);
+      return;
+    }
+
+    if (!opts.yes) {
+      const confirmed = await confirm({
+        message: `Run bidirectional sync with ${adapter.displayName}?`,
+        default: true,
+      });
+      if (!confirmed) {
+        console.log(chalk.dim('Sync cancelled.'));
+        return;
+      }
+    }
+
+    const spinner = ora(`Syncing with ${adapter.displayName}...`).start();
+    const result = await adapter.sync({
       token,
-      repo,
       metaDir,
-      strategy,
-      dryRun: true,
+      strategy: strategy === 'ask' ? 'ask' : strategy,
     });
 
     if (!result.ok) {
-      spinner.fail('Dry run failed.');
+      spinner.fail('Sync failed.');
       printError(result.error.message);
       process.exit(1);
     }
 
-    spinner.succeed('Dry run complete.');
-    printSyncSummary(result.value, 'GitHub');
-    return;
-  }
+    spinner.succeed('Sync complete.');
+    await handleConflicts(result.value, strategy);
+    printSyncSummary(result.value, adapter.displayName);
 
-  if (!opts.yes) {
-    const confirmed = await confirm({
-      message: 'Run bidirectional sync with GitHub?',
-      default: true,
-    });
-    if (!confirmed) {
-      console.log(chalk.dim('Sync cancelled.'));
-      return;
-    }
-  }
-
-  const spinner = ora('Syncing with GitHub...').start();
-  const result = await syncWithGitHub({
-    token,
-    repo,
-    metaDir,
-    strategy: strategy === 'ask' ? 'ask' : strategy,
-  });
-
-  if (!result.ok) {
-    spinner.fail('Sync failed.');
-    printError(result.error.message);
-    process.exit(1);
-  }
-
-  spinner.succeed('Sync complete.');
-  await handleConflicts(result.value, strategy);
-  printSyncSummary(result.value, 'GitHub');
-}
-
-async function syncGitLab(
-  opts: Record<string, string | boolean | undefined>,
-  metaDir: string,
-  config: { project: string; project_id: number; base_url: string },
-  strategy: ConflictStrategy,
-): Promise<void> {
-  const token = (opts.token as string | undefined) ?? process.env.GITLAB_TOKEN;
-  if (!token) {
-    printError(
-      'No GitLab token found. Provide via --token flag or GITLAB_TOKEN env var.',
-    );
-    process.exit(1);
-  }
-
-  if (opts.dryRun) {
-    const spinner = ora('Calculating sync changes...').start();
-    const result = await syncWithGitLab({
-      token,
-      project: config.project,
-      projectId: config.project_id,
-      baseUrl: config.base_url,
+    // Run post-sync hook
+    await runHooks(config, 'post-sync', {
       metaDir,
-      strategy,
-      dryRun: true,
+      event: 'post-sync',
+      adapterName: adapter.name,
     });
-
-    if (!result.ok) {
-      spinner.fail('Dry run failed.');
-      printError(result.error.message);
-      process.exit(1);
-    }
-
-    spinner.succeed('Dry run complete.');
-    printSyncSummary(result.value, 'GitLab');
-    return;
-  }
-
-  if (!opts.yes) {
-    const confirmed = await confirm({
-      message: 'Run bidirectional sync with GitLab?',
-      default: true,
-    });
-    if (!confirmed) {
-      console.log(chalk.dim('Sync cancelled.'));
-      return;
-    }
-  }
-
-  const spinner = ora('Syncing with GitLab...').start();
-  const result = await syncWithGitLab({
-    token,
-    project: config.project,
-    projectId: config.project_id,
-    baseUrl: config.base_url,
-    metaDir,
-    strategy: strategy === 'ask' ? 'ask' : strategy,
   });
-
-  if (!result.ok) {
-    spinner.fail('Sync failed.');
-    printError(result.error.message);
-    process.exit(1);
-  }
-
-  spinner.succeed('Sync complete.');
-  await handleConflicts(result.value, strategy);
-  printSyncSummary(result.value, 'GitLab');
-}
 
 async function handleConflicts(
   result: {

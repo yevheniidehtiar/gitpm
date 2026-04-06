@@ -1,3 +1,5 @@
+export { githubAdapter } from './adapter.js';
+
 export { GitHubClient } from './client.js';
 export type {
   GhMilestone,

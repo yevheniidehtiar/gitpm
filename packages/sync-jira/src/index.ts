@@ -1,3 +1,5 @@
+export { jiraAdapter } from './adapter.js';
+
 export { JiraClient } from './client.js';
 export type {
   JiraIssue,

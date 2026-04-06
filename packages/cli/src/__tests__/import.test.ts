@@ -3,16 +3,29 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // --- Mocks ---
 
-const mockImportFromGitHub = vi.fn();
-const mockImportFromGitLab = vi.fn();
+const mockAdapterImport = vi.fn();
+const mockLoadGitpmConfig = vi.fn();
+const mockLoadAdapters = vi.fn();
+const mockFindAdapterByName = vi.fn();
+const mockRunHooks = vi.fn();
 const mockResolveToken = vi.fn();
 
-vi.mock('@gitpm/sync-github', () => ({
-  importFromGitHub: (...args: unknown[]) => mockImportFromGitHub(...args),
-}));
+function createMockAdapter(name: string, displayName: string) {
+  return {
+    name,
+    displayName,
+    detect: vi.fn().mockResolvedValue(true),
+    import: mockAdapterImport,
+    export: vi.fn(),
+    sync: vi.fn(),
+  };
+}
 
-vi.mock('@gitpm/sync-gitlab', () => ({
-  importFromGitLab: (...args: unknown[]) => mockImportFromGitLab(...args),
+vi.mock('@gitpm/core', () => ({
+  loadGitpmConfig: (...args: unknown[]) => mockLoadGitpmConfig(...args),
+  loadAdapters: (...args: unknown[]) => mockLoadAdapters(...args),
+  findAdapterByName: (...args: unknown[]) => mockFindAdapterByName(...args),
+  runHooks: (...args: unknown[]) => mockRunHooks(...args),
 }));
 
 vi.mock('../utils/auth.js', () => ({
@@ -50,6 +63,9 @@ const importSummary = {
 // --- Tests ---
 
 describe('gitpm import', () => {
+  let githubAdapter: ReturnType<typeof createMockAdapter>;
+  let gitlabAdapter: ReturnType<typeof createMockAdapter>;
+
   beforeEach(() => {
     vi.resetModules();
     vi.resetAllMocks();
@@ -58,7 +74,30 @@ describe('gitpm import', () => {
     exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {
       throw new Error('process.exit');
     }) as never);
+
+    githubAdapter = createMockAdapter('github', 'GitHub');
+    gitlabAdapter = createMockAdapter('gitlab', 'GitLab');
+
     mockResolveToken.mockResolvedValue('mock-token');
+    mockLoadGitpmConfig.mockResolvedValue({
+      ok: true,
+      value: {
+        adapters: ['@gitpm/sync-github', '@gitpm/sync-gitlab'],
+        hooks: {},
+      },
+    });
+    mockLoadAdapters.mockResolvedValue({
+      ok: true,
+      value: [githubAdapter, gitlabAdapter],
+    });
+    mockFindAdapterByName.mockImplementation(
+      (_adapters: unknown[], name: string) => {
+        if (name === 'github') return githubAdapter;
+        if (name === 'gitlab') return gitlabAdapter;
+        return null;
+      },
+    );
+    mockRunHooks.mockResolvedValue({ ok: true, value: undefined });
   });
 
   afterEach(() => {
@@ -68,13 +107,12 @@ describe('gitpm import', () => {
   // --- GitHub ---
 
   it('imports from GitHub successfully', async () => {
-    mockImportFromGitHub.mockResolvedValue({ ok: true, value: importSummary });
+    mockAdapterImport.mockResolvedValue({ ok: true, value: importSummary });
 
     await run('--repo', 'owner/repo', '--meta-dir', '/tmp/meta');
 
-    expect(mockImportFromGitHub).toHaveBeenCalledWith(
+    expect(mockAdapterImport).toHaveBeenCalledWith(
       expect.objectContaining({
-        token: 'mock-token',
         repo: 'owner/repo',
         metaDir: '/tmp/meta',
       }),
@@ -86,24 +124,8 @@ describe('gitpm import', () => {
     expect(allOutput).toContain('Stories:    5');
   });
 
-  it('exits with code 1 when --repo is missing', async () => {
-    await expect(run('--meta-dir', '/tmp/meta')).rejects.toThrow(
-      'process.exit',
-    );
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
-    expect(errOutput).toContain('--repo is required');
-  });
-
-  it('exits with code 1 when --repo format is invalid', async () => {
-    await expect(
-      run('--repo', 'badformat', '--meta-dir', '/tmp/meta'),
-    ).rejects.toThrow('process.exit');
-    expect(exitSpy).toHaveBeenCalledWith(1);
-  });
-
-  it('passes --link-strategy to importFromGitHub', async () => {
-    mockImportFromGitHub.mockResolvedValue({ ok: true, value: importSummary });
+  it('passes --link-strategy to adapter', async () => {
+    mockAdapterImport.mockResolvedValue({ ok: true, value: importSummary });
 
     await run(
       '--repo',
@@ -114,7 +136,7 @@ describe('gitpm import', () => {
       '/tmp/meta',
     );
 
-    expect(mockImportFromGitHub).toHaveBeenCalledWith(
+    expect(mockAdapterImport).toHaveBeenCalledWith(
       expect.objectContaining({ linkStrategy: 'labels' }),
     );
   });
@@ -136,7 +158,7 @@ describe('gitpm import', () => {
   });
 
   it('exits with code 1 when import fails', async () => {
-    mockImportFromGitHub.mockResolvedValue({
+    mockAdapterImport.mockResolvedValue({
       ok: false,
       error: { message: 'API rate limit exceeded' },
     });
@@ -149,21 +171,10 @@ describe('gitpm import', () => {
     expect(errOutput).toContain('API rate limit exceeded');
   });
 
-  it('exits with code 1 when token resolution fails', async () => {
-    mockResolveToken.mockRejectedValue(new Error('No GitHub token found'));
-
-    await expect(
-      run('--repo', 'owner/repo', '--meta-dir', '/tmp/meta'),
-    ).rejects.toThrow('process.exit');
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
-    expect(errOutput).toContain('No GitHub token found');
-  });
-
   // --- GitLab ---
 
   it('imports from GitLab successfully', async () => {
-    mockImportFromGitLab.mockResolvedValue({ ok: true, value: importSummary });
+    mockAdapterImport.mockResolvedValue({ ok: true, value: importSummary });
 
     await run(
       '--source',
@@ -176,45 +187,39 @@ describe('gitpm import', () => {
       '/tmp/meta',
     );
 
-    expect(mockImportFromGitLab).toHaveBeenCalledWith(
-      expect.objectContaining({ token: 'gl-tok', project: 'group/proj' }),
+    expect(mockFindAdapterByName).toHaveBeenCalledWith(
+      expect.anything(),
+      'gitlab',
     );
+    expect(mockAdapterImport).toHaveBeenCalled();
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
-  it('exits with code 1 when GitLab project is missing', async () => {
-    await expect(
-      run('--source', 'gitlab', '--token', 'gl-tok', '--meta-dir', '/tmp/meta'),
-    ).rejects.toThrow('process.exit');
-    expect(exitSpy).toHaveBeenCalledWith(1);
-  });
-
-  it('exits with code 1 when GitLab token is missing', async () => {
-    const originalEnv = process.env.GITLAB_TOKEN;
-    // biome-ignore lint/performance/noDelete: must remove env var, not set to "undefined" string
-    delete process.env.GITLAB_TOKEN;
-
-    await expect(
-      run(
-        '--source',
-        'gitlab',
-        '--project',
-        'group/proj',
-        '--meta-dir',
-        '/tmp/meta',
-      ),
-    ).rejects.toThrow('process.exit');
-    expect(exitSpy).toHaveBeenCalledWith(1);
-
-    process.env.GITLAB_TOKEN = originalEnv;
-  });
-
   it('exits with code 1 for unknown source', async () => {
+    mockFindAdapterByName.mockReturnValue(null);
+
     await expect(
       run('--source', 'bitbucket', '--meta-dir', '/tmp/meta'),
     ).rejects.toThrow('process.exit');
     expect(exitSpy).toHaveBeenCalledWith(1);
     const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
-    expect(errOutput).toContain('Unknown source');
+    expect(errOutput).toContain('not found');
+  });
+
+  it('runs pre-import and post-import hooks', async () => {
+    mockAdapterImport.mockResolvedValue({ ok: true, value: importSummary });
+
+    await run('--repo', 'owner/repo', '--meta-dir', '/tmp/meta');
+
+    expect(mockRunHooks).toHaveBeenCalledWith(
+      expect.anything(),
+      'pre-import',
+      expect.objectContaining({ event: 'pre-import' }),
+    );
+    expect(mockRunHooks).toHaveBeenCalledWith(
+      expect.anything(),
+      'post-import',
+      expect.objectContaining({ event: 'post-import' }),
+    );
   });
 });

@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 import matter from 'gray-matter';
 import YAML from 'yaml';
 import type { Result } from '../schemas/common.js';
+import { extendEntitySchema } from '../schemas/extensions.js';
+import type { SchemaExtensions } from '../schemas/extensions.js';
 import {
   epicSchema,
   milestoneSchema,
@@ -35,10 +37,11 @@ function coerceDates(obj: Record<string, unknown>): Record<string, unknown> {
 
 export async function parseFile(
   filePath: string,
+  extensions?: SchemaExtensions,
 ): Promise<Result<ParsedEntity>> {
   try {
     const raw = await readFile(filePath, 'utf-8');
-    return parseFileContent(raw, filePath);
+    return parseFileContent(raw, filePath, extensions);
   } catch (err) {
     return {
       ok: false,
@@ -50,6 +53,7 @@ export async function parseFile(
 export function parseFileContent(
   raw: string,
   filePath: string,
+  extensions?: SchemaExtensions,
 ): Result<ParsedEntity> {
   try {
     const isYaml = filePath.endsWith('.yaml') || filePath.endsWith('.yml');
@@ -59,7 +63,7 @@ export function parseFileContent(
       if (!data || typeof data !== 'object') {
         return { ok: false, error: new Error(`Invalid YAML in ${filePath}`) };
       }
-      return parseEntityData(coerceDates(data), '', filePath);
+      return parseEntityData(coerceDates(data), '', filePath, extensions);
     }
 
     const { data, content } = matter(raw);
@@ -73,6 +77,7 @@ export function parseFileContent(
       coerceDates(data as Record<string, unknown>),
       content.trim(),
       filePath,
+      extensions,
     );
   } catch (err) {
     return {
@@ -82,80 +87,59 @@ export function parseFileContent(
   }
 }
 
+function getSchema(type: string, extensions?: SchemaExtensions) {
+  switch (type) {
+    case 'story':
+      return extensions
+        ? extendEntitySchema(storySchema, extensions, 'story')
+        : storySchema;
+    case 'epic':
+      return extensions
+        ? extendEntitySchema(epicSchema, extensions, 'epic')
+        : epicSchema;
+    case 'milestone':
+      return extensions
+        ? extendEntitySchema(milestoneSchema, extensions, 'milestone')
+        : milestoneSchema;
+    case 'roadmap':
+      return extensions
+        ? extendEntitySchema(roadmapSchema, extensions, 'roadmap')
+        : roadmapSchema;
+    case 'prd':
+      return extensions
+        ? extendEntitySchema(prdSchema, extensions, 'prd')
+        : prdSchema;
+    default:
+      return null;
+  }
+}
+
 function parseEntityData(
   data: Record<string, unknown>,
   body: string,
   filePath: string,
+  extensions?: SchemaExtensions,
 ): Result<ParsedEntity> {
-  const type = data.type;
-
+  const type = data.type as string;
   const input = { ...data, body, filePath };
 
-  switch (type) {
-    case 'story': {
-      const result = storySchema.safeParse(input);
-      if (!result.success) {
-        return {
-          ok: false,
-          error: new Error(
-            `Validation failed for story in ${filePath}: ${result.error.message}`,
-          ),
-        };
-      }
-      return { ok: true, value: result.data };
-    }
-    case 'epic': {
-      const result = epicSchema.safeParse(input);
-      if (!result.success) {
-        return {
-          ok: false,
-          error: new Error(
-            `Validation failed for epic in ${filePath}: ${result.error.message}`,
-          ),
-        };
-      }
-      return { ok: true, value: result.data };
-    }
-    case 'milestone': {
-      const result = milestoneSchema.safeParse(input);
-      if (!result.success) {
-        return {
-          ok: false,
-          error: new Error(
-            `Validation failed for milestone in ${filePath}: ${result.error.message}`,
-          ),
-        };
-      }
-      return { ok: true, value: result.data };
-    }
-    case 'roadmap': {
-      const result = roadmapSchema.safeParse(input);
-      if (!result.success) {
-        return {
-          ok: false,
-          error: new Error(
-            `Validation failed for roadmap in ${filePath}: ${result.error.message}`,
-          ),
-        };
-      }
-      return { ok: true, value: result.data };
-    }
-    case 'prd': {
-      const result = prdSchema.safeParse(input);
-      if (!result.success) {
-        return {
-          ok: false,
-          error: new Error(
-            `Validation failed for prd in ${filePath}: ${result.error.message}`,
-          ),
-        };
-      }
-      return { ok: true, value: result.data };
-    }
-    default:
-      return {
-        ok: false,
-        error: new Error(`Unknown entity type "${type}" in ${filePath}`),
-      };
+  const schema = getSchema(type, extensions);
+  if (!schema) {
+    return {
+      ok: false,
+      error: new Error(`Unknown entity type "${type}" in ${filePath}`),
+    };
   }
+
+  const result = schema.safeParse(input);
+  if (!result.success) {
+    return {
+      ok: false,
+      error: new Error(
+        `Validation failed for ${type} in ${filePath}: ${result.error.message}`,
+      ),
+    };
+  }
+
+  return { ok: true, value: result.data as ParsedEntity };
 }
