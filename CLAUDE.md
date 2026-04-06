@@ -107,28 +107,21 @@ gitpm/
 │           ├── hooks/
 │           └── lib/
 └── docs/
-    ├── IMPLEMENTATION_PLAN.md   # Full phased plan
+    ├── demo.md                  # Product demo & use cases
+    ├── architecture.md          # System design & conventions
+    ├── cli-reference.md         # CLI command reference
+    ├── schema-reference.md      # Entity type reference
+    ├── sync-guide.md            # Sync configuration guide
+    ├── migration-guide.md       # Migration from other tools
     └── schemas/                 # Schema reference docs
 ```
-
-## Implementation Phases
-
-Read `docs/IMPLEMENTATION_PLAN.md` for the full phased breakdown. Summary:
-
-1. **Phase 0**: Scaffold monorepo, configure tooling
-2. **Phase 1**: `@gitpm/core` — schemas, parser, writer, resolver, validator
-3. **Phase 2**: `@gitpm/cli` — `init`, `validate` commands
-4. **Phase 3**: `@gitpm/sync-github` — import from GitHub (Flow 1)
-5. **Phase 4**: `@gitpm/sync-github` — export to GitHub (Flow 2) + bidirectional sync
-6. **Phase 5**: `@gitpm/cli` — `import`, `push`, `pull`, `sync` commands
-7. **Phase 6**: `@gitpm/ui` — local web UI
 
 ## Testing Strategy
 
 - Unit tests for every public function in `core` and `sync-github`
 - Integration tests for sync-github using fixture files (no live API in CI)
 - E2E tests for CLI commands using a temp directory with a mock `.meta` tree
-- UI: no tests in MVP (manual QA is sufficient at this stage)
+- UI: manual QA (no automated UI tests yet)
 
 ## Commands Reference
 
