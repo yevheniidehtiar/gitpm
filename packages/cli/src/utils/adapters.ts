@@ -33,15 +33,24 @@ export async function resolveAdapter(
   // Load adapter modules
   const adaptersResult = await loadAdapters(config, rootDir);
   if (!adaptersResult.ok) {
-    printWarning(
-      `Could not load adapters from config: ${adaptersResult.error.message}`,
-    );
+    printError(adaptersResult.error.message);
     printError(
-      'No sync adapters available. Check your gitpm.config or install adapter packages.',
+      'No sync adapters installed. Install at least one adapter package, e.g.:\n' +
+        '  npm install @gitpm/sync-github\n' +
+        '  npm install @gitpm/sync-gitlab\n' +
+        '  npm install @gitpm/sync-jira',
     );
     process.exit(1);
   }
   const adapters = adaptersResult.value;
+
+  if (adapters.length === 0) {
+    printError(
+      'No sync adapters installed. Install at least one adapter package, e.g.:\n' +
+        '  npm install @gitpm/sync-github',
+    );
+    process.exit(1);
+  }
 
   // Resolve by name or auto-detect
   let adapter: SyncAdapter | null = null;

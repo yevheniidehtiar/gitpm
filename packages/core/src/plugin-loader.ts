@@ -71,6 +71,10 @@ export async function loadGitpmConfig(
  * Dynamically load adapter modules and extract SyncAdapter objects.
  * Supports npm package names (e.g. "@gitpm/sync-github") and
  * relative/absolute paths (e.g. "./custom-adapter.ts").
+ *
+ * Adapters that are npm packages and not installed are silently skipped
+ * (they are treated as optional). Relative/absolute path adapters that
+ * fail to load are reported as errors.
  */
 export async function loadAdapters(
   config: GitpmConfig,
@@ -90,9 +94,17 @@ export async function loadAdapters(
         );
       }
     } catch (err) {
-      errors.push(
-        `Failed to load adapter "${adapterPath}": ${err instanceof Error ? err.message : err}`,
-      );
+      // If this is an npm package (not a relative/absolute path) and
+      // the error is "module not found", skip silently — it's optional.
+      const isNpmPackage =
+        !adapterPath.startsWith('.') && !isAbsolute(adapterPath);
+      if (isNpmPackage && isModuleNotFoundError(err)) {
+        // Package not installed — skip silently
+      } else {
+        errors.push(
+          `Failed to load adapter "${adapterPath}": ${err instanceof Error ? err.message : err}`,
+        );
+      }
     }
   }
 
@@ -104,6 +116,19 @@ export async function loadAdapters(
   }
 
   return { ok: true, value: adapters };
+}
+
+function isModuleNotFoundError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message;
+  return (
+    msg.includes('Cannot find package') ||
+    msg.includes('Cannot find module') ||
+    msg.includes('MODULE_NOT_FOUND') ||
+    msg.includes('ERR_MODULE_NOT_FOUND') ||
+    msg.includes('Failed to load url') ||
+    msg.includes('is not installed')
+  );
 }
 
 async function loadSingleAdapter(
