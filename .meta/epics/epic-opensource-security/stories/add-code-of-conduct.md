@@ -2,7 +2,7 @@
 type: story
 id: S8P7ob3Qi_0N
 title: Add CODE_OF_CONDUCT.md (Contributor Covenant)
-status: todo
+status: done
 priority: high
 assignee: null
 labels:

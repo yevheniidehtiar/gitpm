@@ -2,7 +2,7 @@
 type: story
 id: rgUON3L0FVoD
 title: Add dependency scanning to CI (npm audit + Dependabot config)
-status: todo
+status: done
 priority: high
 assignee: null
 labels:

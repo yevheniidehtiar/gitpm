@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+      - '@gitpm/*-v*'
 
 permissions:
   contents: write
@@ -40,29 +41,38 @@ jobs:
       - name: Test
         run: npx vitest run
 
+      - name: Generate SBOM
+        run: npx @cyclonedx/cyclonedx-npm --output-file sbom.cdx.json
+
       - name: Publish @gitpm/core
         run: npm publish --provenance --access public
         working-directory: packages/core
+        continue-on-error: true
 
       - name: Publish @gitpm/sync-github
         run: npm publish --provenance --access public
         working-directory: packages/sync-github
+        continue-on-error: true
 
       - name: Publish @gitpm/sync-gitlab
         run: npm publish --provenance --access public
         working-directory: packages/sync-gitlab
+        continue-on-error: true
 
       - name: Publish @gitpm/sync-jira
         run: npm publish --provenance --access public
         working-directory: packages/sync-jira
+        continue-on-error: true
 
       - name: Publish @gitpm/cli
         run: npm publish --provenance --access public
         working-directory: packages/cli
+        continue-on-error: true
 
       - name: Publish @gitpm/ui
         run: npm publish --provenance --access public
         working-directory: packages/ui
+        continue-on-error: true
 
       - name: Generate changelog
         id: changelog
@@ -79,9 +89,11 @@ jobs:
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
         with:
           body: |
             ## Changes
 
             ${{ steps.changelog.outputs.changelog }}
           generate_release_notes: true
+          files: sbom.cdx.json

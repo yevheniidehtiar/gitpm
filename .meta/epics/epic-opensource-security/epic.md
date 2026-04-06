@@ -2,7 +2,7 @@
 type: epic
 id: bZoJF6Th8vEU
 title: "[Epic] Open-Source Readiness & Security Hardening"
-status: todo
+status: done
 priority: high
 owner: null
 labels:

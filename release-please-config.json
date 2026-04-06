@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    "packages/core": {
+      "package-name": "@gitpm/core",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "packages/sync-github": {
+      "package-name": "@gitpm/sync-github",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "packages/sync-gitlab": {
+      "package-name": "@gitpm/sync-gitlab",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "packages/sync-jira": {
+      "package-name": "@gitpm/sync-jira",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "packages/cli": {
+      "package-name": "@gitpm/cli",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "packages/ui": {
+      "package-name": "@gitpm/ui",
+      "changelog-path": "CHANGELOG.md"
+    }
+  },
+  "release-type": "node",
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": true,
+  "group-pull-request-title-pattern": "chore: release ${version}",
+  "pull-request-title-pattern": "chore: release${component} ${version}",
+  "include-component-in-tag": true,
+  "sequential-calls": true
+}
