@@ -4,7 +4,7 @@ on:
   push:
     tags:
       - 'v*'
-      - '@gitpm/*-v*'
+      - '*-v*'
 
 permissions:
   contents: write
@@ -73,27 +73,3 @@ jobs:
         run: npm publish --provenance --access public
         working-directory: packages/ui
         continue-on-error: true
-
-      - name: Generate changelog
-        id: changelog
-        run: |
-          PREV_TAG=$(git tag --sort=-creatordate | sed -n '2p')
-          if [ -z "$PREV_TAG" ]; then
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" ${{ github.ref_name }})
-          else
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" ${PREV_TAG}..${{ github.ref_name }})
-          fi
-          echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$CHANGELOG" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/v')
-        with:
-          body: |
-            ## Changes
-
-            ${{ steps.changelog.outputs.changelog }}
-          generate_release_notes: true
-          files: sbom.cdx.json
