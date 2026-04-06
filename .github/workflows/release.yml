@@ -48,7 +48,7 @@ jobs:
         run: npm publish --provenance --access public
         working-directory: packages/sync-github
 
-      - name: Publish gitpm (CLI)
+      - name: Publish @gitpm/cli
         run: npm publish --provenance --access public
         working-directory: packages/cli
 
