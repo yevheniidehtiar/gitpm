@@ -1,3 +1,5 @@
+export { gitlabAdapter } from './adapter.js';
+
 export type {
   GlEpic,
   GlIssue,

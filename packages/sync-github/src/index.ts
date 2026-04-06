@@ -1,3 +1,5 @@
+export { githubAdapter } from './adapter.js';
+
 export type {
   GhIssue,
   GhMilestone,
