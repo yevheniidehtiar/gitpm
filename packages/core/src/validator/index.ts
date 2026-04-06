@@ -1,6 +1,6 @@
-export { validateTree } from './validate.js';
 export type {
-  ValidationResult,
   ValidationError,
+  ValidationResult,
   ValidationWarning,
 } from './types.js';
+export { validateTree } from './validate.js';

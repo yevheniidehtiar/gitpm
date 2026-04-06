@@ -1,17 +1,16 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { writeFile as coreWriteFile, parseTree } from '@gitpm/core';
 import type { Story } from '@gitpm/core';
+import { writeFile as coreWriteFile, parseTree } from '@gitpm/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import fixtureIssues from '../__fixtures__/github-issues.json';
+import fixtureMilestones from '../__fixtures__/github-milestones.json';
 import type { GhIssue, GhMilestone } from '../client.js';
 import { importFromGitHub } from '../import.js';
 import { computeContentHash, loadState } from '../state.js';
 import { syncWithGitHub } from '../sync.js';
 import type { SyncOptions } from '../types.js';
-
-import fixtureIssues from '../__fixtures__/github-issues.json';
-import fixtureMilestones from '../__fixtures__/github-milestones.json';
 
 const mockUpdateIssue = vi.fn().mockImplementation(async () => ({
   number: 1,
@@ -59,25 +58,29 @@ const mockUpdateMilestone = vi.fn().mockImplementation(async () => ({
 
 vi.mock('../client.js', () => {
   return {
-    GitHubClient: vi.fn().mockImplementation(() => ({
-      listMilestones: vi
-        .fn()
-        .mockResolvedValue(fixtureMilestones as GhMilestone[]),
-      listIssues: vi
-        .fn()
-        .mockResolvedValue(
-          (fixtureIssues as GhIssue[]).filter((i: GhIssue) => !i.pull_request),
-        ),
-      listSubIssues: vi.fn().mockResolvedValue([]),
-      getProject: vi.fn().mockResolvedValue(null),
-      getProjectItems: vi.fn().mockResolvedValue([]),
-      createIssue: mockCreateIssue,
-      updateIssue: mockUpdateIssue,
-      createMilestone: mockCreateMilestone,
-      updateMilestone: mockUpdateMilestone,
-      getIssue: mockGetIssue,
-      getMilestone: mockGetMilestone,
-    })),
+    GitHubClient: vi.fn().mockImplementation(function () {
+      return {
+        listMilestones: vi
+          .fn()
+          .mockResolvedValue(fixtureMilestones as GhMilestone[]),
+        listIssues: vi
+          .fn()
+          .mockResolvedValue(
+            (fixtureIssues as GhIssue[]).filter(
+              (i: GhIssue) => !i.pull_request,
+            ),
+          ),
+        listSubIssues: vi.fn().mockResolvedValue([]),
+        getProject: vi.fn().mockResolvedValue(null),
+        getProjectItems: vi.fn().mockResolvedValue([]),
+        createIssue: mockCreateIssue,
+        updateIssue: mockUpdateIssue,
+        createMilestone: mockCreateMilestone,
+        updateMilestone: mockUpdateMilestone,
+        getIssue: mockGetIssue,
+        getMilestone: mockGetMilestone,
+      };
+    }),
   };
 });
 
