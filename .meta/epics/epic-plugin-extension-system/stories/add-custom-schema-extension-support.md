@@ -2,7 +2,7 @@
 type: story
 id: qOHmlWWEwsLd
 title: Add custom schema extension support
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:

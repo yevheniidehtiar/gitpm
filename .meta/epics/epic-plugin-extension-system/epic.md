@@ -2,7 +2,7 @@
 type: epic
 id: irf1l_XLbkDl
 title: "[Epic] Plugin & Extension System"
-status: todo
+status: done
 priority: medium
 owner: null
 labels:
