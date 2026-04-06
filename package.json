@@ -10,7 +10,7 @@
     "dev:ui": "bun run --filter @gitpm/ui dev"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.0",
+    "@biomejs/biome": "^2.4.10",
     "@types/node": "^25.5.2",
     "tsup": "^8.3.0",
     "typescript": "^5.6.0",
