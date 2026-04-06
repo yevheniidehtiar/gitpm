@@ -146,7 +146,12 @@ gitpm/
 │           ├── lib/api.ts       # React Query hooks
 │           └── server/          # Hono API server
 └── docs/
-    ├── IMPLEMENTATION_PLAN.md
+    ├── demo.md                  # Product demo & use cases
+    ├── architecture.md          # This file
+    ├── cli-reference.md
+    ├── schema-reference.md
+    ├── sync-guide.md
+    ├── migration-guide.md
     └── schemas/ENTITY_SCHEMAS.md
 ```
 
