@@ -3,13 +3,14 @@ type: story
 id: uSwxALv1JDgu
 title: "feat: reconstruct sync state from entity frontmatter on startup"
 status: todo
-priority: medium
+priority: high
 assignee: null
 labels:
   - enhancement
   - sync
 estimate: null
-epic_ref: null
+epic_ref:
+  id: 9_EjGg7jTN0Y
 github:
   issue_number: 36
   repo: yevheniidehtiar/gitpm

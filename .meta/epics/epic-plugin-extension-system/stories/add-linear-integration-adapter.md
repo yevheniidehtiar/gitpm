@@ -9,7 +9,8 @@ labels:
   - integration
   - story
 estimate: null
-epic_ref: null
+epic_ref:
+  id: irf1l_XLbkDl
 github:
   issue_number: 32
   repo: yevheniidehtiar/gitpm

@@ -3,13 +3,14 @@ type: story
 id: 3s7ljxxGGxnC
 title: "feat: improve epic-story linkage during import (sub-issues, milestones, labels)"
 status: todo
-priority: medium
+priority: high
 assignee: null
 labels:
   - enhancement
   - sync
 estimate: null
-epic_ref: null
+epic_ref:
+  id: 9_EjGg7jTN0Y
 github:
   issue_number: 35
   repo: yevheniidehtiar/gitpm

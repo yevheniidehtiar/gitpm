@@ -3,13 +3,14 @@ type: story
 id: e6Mnoo3iNwiv
 title: "feat: add assignee filter to Tree Browser"
 status: todo
-priority: medium
+priority: high
 assignee: null
 labels:
   - enhancement
   - ui
 estimate: null
-epic_ref: null
+epic_ref:
+  id: K-RoyLf07OKQ
 github:
   issue_number: 39
   repo: yevheniidehtiar/gitpm

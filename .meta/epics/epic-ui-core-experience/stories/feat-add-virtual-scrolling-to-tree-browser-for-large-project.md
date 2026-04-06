@@ -3,13 +3,14 @@ type: story
 id: DZS1X4xTJkZj
 title: "feat: add virtual scrolling to Tree Browser for large projects (1000+ entities)"
 status: todo
-priority: medium
+priority: high
 assignee: null
 labels:
   - enhancement
   - ui
 estimate: null
-epic_ref: null
+epic_ref:
+  id: K-RoyLf07OKQ
 github:
   issue_number: 37
   repo: yevheniidehtiar/gitpm

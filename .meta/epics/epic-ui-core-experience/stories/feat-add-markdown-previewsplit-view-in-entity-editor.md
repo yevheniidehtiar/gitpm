@@ -3,13 +3,14 @@ type: story
 id: eb-9Va_neAdh
 title: "feat: add markdown preview/split view in entity editor"
 status: todo
-priority: medium
+priority: high
 assignee: null
 labels:
   - enhancement
   - ui
 estimate: null
-epic_ref: null
+epic_ref:
+  id: K-RoyLf07OKQ
 github:
   issue_number: 40
   repo: yevheniidehtiar/gitpm
