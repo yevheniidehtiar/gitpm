@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@gitpm/core": "workspace:*",
-    "@octokit/rest": "^21.0.0",
+    "@octokit/rest": "^22.0.1",
     "nanoid": "^5.0.8",
     "yaml": "^2.6.0"
   }
