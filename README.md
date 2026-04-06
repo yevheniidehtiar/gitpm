@@ -24,7 +24,7 @@ GitPM turns your repository's `.meta/` directory into a full project management 
 
 ```bash
 # Install
-bun install -g gitpm
+bun install -g @gitpm/cli
 
 # Initialize a new .meta/ tree in your repo
 gitpm init my-project
