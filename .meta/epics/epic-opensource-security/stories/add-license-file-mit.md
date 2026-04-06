@@ -11,6 +11,10 @@ labels:
 estimate: null
 epic_ref:
   id: bZoJF6Th8vEU
+github:
+  issue_number: 69
+  repo: yevheniidehtiar/gitpm
+  synced_at: 2026-04-06T12:53:26.000Z
 created_at: 2026-04-06T00:00:00Z
 updated_at: 2026-04-06T00:00:00Z
 ---

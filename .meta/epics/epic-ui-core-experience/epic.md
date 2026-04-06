@@ -10,6 +10,10 @@ labels:
   - ui
 milestone_ref:
   id: lFNL-hn79Edx
+github:
+  issue_number: 66
+  repo: yevheniidehtiar/gitpm
+  synced_at: 2026-04-06T12:53:26.000Z
 created_at: 2026-04-06T00:00:00Z
 updated_at: 2026-04-06T00:00:00Z
 ---
