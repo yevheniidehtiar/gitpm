@@ -48,9 +48,21 @@ jobs:
         run: npm publish --provenance --access public
         working-directory: packages/sync-github
 
+      - name: Publish @gitpm/sync-gitlab
+        run: npm publish --provenance --access public
+        working-directory: packages/sync-gitlab
+
+      - name: Publish @gitpm/sync-jira
+        run: npm publish --provenance --access public
+        working-directory: packages/sync-jira
+
       - name: Publish @gitpm/cli
         run: npm publish --provenance --access public
         working-directory: packages/cli
+
+      - name: Publish @gitpm/ui
+        run: npm publish --provenance --access public
+        working-directory: packages/ui
 
       - name: Generate changelog
         id: changelog
