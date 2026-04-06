@@ -1,10 +1,11 @@
 {
-  "name": "gitpm",
+  "name": "@gitpm/cli",
   "version": "0.1.0",
   "type": "module",
   "bin": {
     "gitpm": "./dist/index.js"
   },
+  "files": ["dist"],
   "scripts": {
     "build": "tsup"
   },
