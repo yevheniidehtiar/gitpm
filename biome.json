@@ -29,5 +29,13 @@
   },
   "files": {
     "ignore": ["node_modules", "dist", "coverage"]
-  }
+  },
+  "overrides": [
+    {
+      "include": ["package.json"],
+      "formatter": {
+        "enabled": false
+      }
+    }
+  ]
 }
