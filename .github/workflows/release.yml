@@ -51,6 +51,18 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Publish @gitpm/sync-gitlab
+        run: npm publish --provenance --access public
+        working-directory: packages/sync-gitlab
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @gitpm/sync-jira
+        run: npm publish --provenance --access public
+        working-directory: packages/sync-jira
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Publish gitpm (CLI)
         run: npm publish --provenance --access public
         working-directory: packages/cli
