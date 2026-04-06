@@ -23,8 +23,8 @@ GitPM turns your repository's `.meta/` directory into a full project management 
 ## Quick Start
 
 ```bash
-# Install
-bun install -g @gitpm/cli
+# Install the CLI with the sync adapter(s) you need
+npm install -g @gitpm/cli @gitpm/sync-github
 
 # Initialize a new .meta/ tree in your repo
 gitpm init my-project
@@ -49,14 +49,37 @@ gitpm pull
 gitpm sync
 ```
 
+## Installation
+
+Install the CLI and only the sync adapters you need — each platform adapter is a separate optional package:
+
+```bash
+# GitHub only
+npm install -g @gitpm/cli @gitpm/sync-github
+
+# GitLab only
+npm install -g @gitpm/cli @gitpm/sync-gitlab
+
+# Jira only
+npm install -g @gitpm/cli @gitpm/sync-jira
+
+# Multiple platforms
+npm install -g @gitpm/cli @gitpm/sync-github @gitpm/sync-jira
+```
+
+Adapters are auto-detected at runtime — no extra configuration needed. The CLI discovers which adapters are installed and uses the one matching your `.meta/sync/` config.
+
 ## Key Features
 
 - **File-based project management** — roadmaps, epics, stories, milestones, and PRDs as Markdown + YAML frontmatter in `.meta/`
 - **Bidirectional sync** — keep `.meta/` in sync with GitHub Issues, GitLab Issues, or Jira
+- **Plugin architecture** — install only the sync adapters you need; write custom adapters for any platform
 - **CLI-first** — six commands cover the full workflow: `init`, `validate`, `import`, `push`, `pull`, `sync`
 - **Local web UI** — browse, edit, and visualize your project tree with a React-based interface
 - **AI-agent friendly** — structured files in your repo give AI agents full project context
 - **Schema-validated** — all entities are validated with Zod schemas; catch errors before they hit your tracker
+- **Custom schema extensions** — add project-specific fields (story points, team, etc.) via `.meta/.gitpm/schema-extensions.yaml`
+- **Lifecycle hooks** — run scripts before/after import, export, or sync operations
 - **Conflict resolution** — field-level diffing with `local-wins`, `remote-wins`, or interactive `ask` strategies
 
 ## CLI Commands
@@ -65,14 +88,78 @@ gitpm sync
 |---------|-------------|
 | `gitpm init [name]` | Scaffold a new `.meta/` directory |
 | `gitpm validate` | Validate the `.meta/` tree against schemas |
-| `gitpm import` | Import from GitHub or GitLab into `.meta/` |
+| `gitpm import --source <platform>` | Import from GitHub, GitLab, or Jira into `.meta/` |
 | `gitpm push` | Push local `.meta/` changes to the remote platform |
 | `gitpm pull` | Pull remote changes into local `.meta/` |
 | `gitpm sync` | Bidirectional sync between `.meta/` and the remote |
 
-Global options: `--meta-dir <path>` (default: `.meta`), `--token <token>`
+Global options: `--meta-dir <path>` (default: `.meta`), `--token <token>`, `--adapter <name>`
 
 See the full [CLI Reference](docs/cli-reference.md) for detailed usage and examples.
+
+## Plugin System
+
+GitPM uses a plugin architecture for sync adapters. Each platform (GitHub, GitLab, Jira) is a separate package that implements the `SyncAdapter` interface.
+
+### Configuration
+
+Optionally create a `gitpm.config.ts` (or `.js`/`.json`) in your project root to customize adapter loading and add lifecycle hooks:
+
+```typescript
+// gitpm.config.ts
+export default {
+  adapters: [
+    '@gitpm/sync-github',
+    '@gitpm/sync-jira',
+    './custom-adapter.ts',    // local custom adapter
+  ],
+  hooks: {
+    'pre-sync': './scripts/validate.ts',
+    'post-import': './scripts/notify.ts',
+  },
+};
+```
+
+If no config file exists, GitPM auto-discovers installed adapter packages.
+
+### Custom Adapters
+
+Write your own sync adapter by implementing the `SyncAdapter` interface from `@gitpm/core`:
+
+```typescript
+import type { SyncAdapter } from '@gitpm/core';
+
+export const myAdapter: SyncAdapter = {
+  name: 'my-platform',
+  displayName: 'My Platform',
+  async detect(metaDir) { /* check if configured */ },
+  async import(options) { /* import from remote */ },
+  async export(options) { /* export to remote */ },
+  async sync(options) { /* bidirectional sync */ },
+};
+```
+
+### Schema Extensions
+
+Extend entity schemas with project-specific custom fields by creating `.meta/.gitpm/schema-extensions.yaml`:
+
+```yaml
+story:
+  fields:
+    story_points:
+      type: number
+      required: false
+    team:
+      type: string
+      enum: [platform, frontend, backend, infra]
+epic:
+  fields:
+    department:
+      type: string
+      required: false
+```
+
+Custom fields are validated during parsing, preserved through sync, and appear in entity frontmatter.
 
 ## The `.meta/` Directory
 
