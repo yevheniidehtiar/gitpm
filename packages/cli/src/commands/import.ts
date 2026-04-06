@@ -63,9 +63,17 @@ export const importCommand = new Command('import')
 
     const adapter = findAdapterByName(adaptersResult.value, source);
     if (!adapter) {
-      printError(
-        `Adapter "${source}" not found. Available: ${adaptersResult.value.map((a) => a.name).join(', ')}`,
-      );
+      const available = adaptersResult.value.map((a) => a.name);
+      if (available.length === 0) {
+        printError(
+          `Adapter "${source}" is not installed. Install it with:\n  npm install @gitpm/sync-${source}`,
+        );
+      } else {
+        printError(
+          `Adapter "${source}" not found. Available: ${available.join(', ')}\n` +
+            `Install it with: npm install @gitpm/sync-${source}`,
+        );
+      }
       process.exit(1);
     }
 
