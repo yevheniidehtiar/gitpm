@@ -2,7 +2,7 @@
 type: story
 id: VzEPWT3qAfEu
 title: Add user-facing documentation and README
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:

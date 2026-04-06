@@ -13,6 +13,7 @@ jobs:
   release:
     name: Build, Test & Publish
     runs-on: ubuntu-latest
+    environment: npm
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,14 +43,10 @@ jobs:
       - name: Publish @gitpm/core
         run: npm publish --provenance --access public
         working-directory: packages/core
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @gitpm/sync-github
         run: npm publish --provenance --access public
         working-directory: packages/sync-github
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @gitpm/sync-gitlab
         run: npm publish --provenance --access public
@@ -66,8 +63,6 @@ jobs:
       - name: Publish gitpm (CLI)
         run: npm publish --provenance --access public
         working-directory: packages/cli
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Generate changelog
         id: changelog
