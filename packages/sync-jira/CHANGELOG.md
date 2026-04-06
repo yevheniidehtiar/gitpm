@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/yevheniidehtiar/gitpm/compare/sync-jira-v0.1.2...sync-jira-v0.1.3) (2026-04-06)
+
+
+### Bug Fixes
+
+* release workflow tag pattern, npm auth, and changelog cleanup ([23e4055](https://github.com/yevheniidehtiar/gitpm/commit/23e4055871eaedb91e68e9c776f24835f1e1019c))
+
 ## [0.1.2](https://github.com/yevheniidehtiar/gitpm/compare/sync-jira-v0.1.1...sync-jira-v0.1.2) (2026-04-06)
 
 
