@@ -2,7 +2,7 @@
 type: story
 id: nwlaRRndXuRM
 title: Design plugin adapter interface
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:
