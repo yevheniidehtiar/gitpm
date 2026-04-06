@@ -6,10 +6,7 @@
   "include-component-in-tag": true,
   "pull-request-title-pattern": "chore: release${component} ${version}",
   "group-pull-request-title-pattern": "chore: release ${branch}",
-  "exclude-paths": [
-    "CHANGELOG.md",
-    ".release-please-manifest.json"
-  ],
+  "exclude-paths": ["CHANGELOG.md", ".release-please-manifest.json"],
   "packages": {
     "packages/core": {
       "package-name": "@gitpm/core",
