@@ -9,7 +9,8 @@ labels:
   - story
   - testing
 estimate: null
-epic_ref: null
+epic_ref:
+  id: wgH3wHt20_Ap
 github:
   issue_number: 30
   repo: yevheniidehtiar/gitpm

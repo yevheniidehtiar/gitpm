@@ -9,7 +9,8 @@ labels:
   - enhancement
   - cli
 estimate: null
-epic_ref: null
+epic_ref:
+  id: Jm9BOEIh35z1
 github:
   issue_number: 41
   repo: yevheniidehtiar/gitpm

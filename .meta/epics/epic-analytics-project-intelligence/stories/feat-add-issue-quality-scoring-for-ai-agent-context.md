@@ -10,7 +10,8 @@ labels:
   - cli
   - core
 estimate: null
-epic_ref: null
+epic_ref:
+  id: Jm9BOEIh35z1
 github:
   issue_number: 43
   repo: yevheniidehtiar/gitpm

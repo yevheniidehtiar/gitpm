@@ -3,13 +3,14 @@ type: story
 id: HE_jzoks9ky_
 title: Add error recovery and resumable sync
 status: todo
-priority: medium
+priority: high
 assignee: null
 labels:
   - enhancement
   - story
 estimate: null
-epic_ref: null
+epic_ref:
+  id: 9_EjGg7jTN0Y
 github:
   issue_number: 29
   repo: yevheniidehtiar/gitpm
