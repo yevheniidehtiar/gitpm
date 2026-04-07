@@ -14,6 +14,7 @@ const VALID_LINK_STRATEGIES = [
   'sub-issues',
   'milestone',
   'labels',
+  'score',
   'all',
 ] as const;
 
