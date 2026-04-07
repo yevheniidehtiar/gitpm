@@ -1,8 +1,8 @@
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Result } from '../schemas/common.js';
-import { loadSchemaExtensions } from '../schemas/extensions.js';
 import type { SchemaExtensions } from '../schemas/extensions.js';
+import { loadSchemaExtensions } from '../schemas/extensions.js';
 import { parseFile } from './parse-file.js';
 import type { MetaTree } from './types.js';
 

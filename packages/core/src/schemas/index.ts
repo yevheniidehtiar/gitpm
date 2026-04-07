@@ -19,6 +19,18 @@ export {
 } from './common.js';
 export type { Epic, EpicFrontmatter } from './epic.js';
 export { epicFrontmatterSchema, epicSchema } from './epic.js';
+export type {
+  FieldExtension,
+  SchemaExtensions,
+} from './extensions.js';
+export {
+  buildExtensionFields,
+  entityExtensionSchema,
+  extendEntitySchema,
+  fieldExtensionSchema,
+  loadSchemaExtensions,
+  schemaExtensionsSchema,
+} from './extensions.js';
 export type { Milestone, MilestoneFrontmatter } from './milestone.js';
 export {
   milestoneFrontmatterSchema,
@@ -30,19 +42,6 @@ export type { Roadmap } from './roadmap.js';
 export { roadmapSchema } from './roadmap.js';
 export type { Story, StoryFrontmatter } from './story.js';
 export { storyFrontmatterSchema, storySchema } from './story.js';
-
-export {
-  fieldExtensionSchema,
-  entityExtensionSchema,
-  schemaExtensionsSchema,
-  loadSchemaExtensions,
-  buildExtensionFields,
-  extendEntitySchema,
-} from './extensions.js';
-export type {
-  FieldExtension,
-  SchemaExtensions,
-} from './extensions.js';
 
 import type { Epic } from './epic.js';
 import type { Milestone } from './milestone.js';

@@ -1,40 +1,38 @@
-export type { MetaTree, ParsedEntity, ParseError } from './parser/index.js';
-
-export { isSyncAdapter } from './adapter.js';
 export type {
-  SyncAdapter,
-  AdapterImportOptions,
   AdapterExportOptions,
+  AdapterImportOptions,
   AdapterSyncOptions,
-  ImportResult,
-  ExportResult,
-  SyncResult,
   ConflictStrategy,
+  DiffResult,
+  DiffStatus,
+  ExportResult,
   FieldChange,
   FieldConflict,
-  DiffStatus,
-  DiffResult,
+  ImportResult,
   Resolution,
+  SyncAdapter,
+  SyncResult,
 } from './adapter.js';
 
-export {
-  gitpmConfigSchema,
-  hookEventSchema,
-  createDefaultGitpmConfig,
-  HOOK_EVENTS,
-} from './config.js';
+export { isSyncAdapter } from './adapter.js';
 export type { GitpmConfig, HookEvent } from './config.js';
 
 export {
-  loadGitpmConfig,
-  loadAdapters,
+  createDefaultGitpmConfig,
+  gitpmConfigSchema,
+  HOOK_EVENTS,
+  hookEventSchema,
+} from './config.js';
+export type { MetaTree, ParsedEntity, ParseError } from './parser/index.js';
+export { parseFile, parseFileContent, parseTree } from './parser/index.js';
+export type { HookContext } from './plugin-loader.js';
+export {
   detectAdapter,
   findAdapterByName,
+  loadAdapters,
+  loadGitpmConfig,
   runHooks,
 } from './plugin-loader.js';
-export type { HookContext } from './plugin-loader.js';
-
-export { parseFile, parseFileContent, parseTree } from './parser/index.js';
 export type {
   DependencyGraph,
   ResolvedEpic,
