@@ -186,8 +186,7 @@ export async function syncWithGitHub(
             continue;
           }
 
-          const currentRemoteHash =
-            computeRemoteMilestoneHash(remoteMilestone);
+          const currentRemoteHash = computeRemoteMilestoneHash(remoteMilestone);
           const direction = diffByHash(
             currentLocalHash,
             currentRemoteHash,

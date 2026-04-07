@@ -1,4 +1,9 @@
-import { writeFile as fsWriteFile, mkdir, readFile, rm } from 'node:fs/promises';
+import {
+  writeFile as fsWriteFile,
+  mkdir,
+  readFile,
+  rm,
+} from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { Result } from '@gitpm/core';
 import type { SyncCheckpoint } from './types.js';
@@ -63,9 +68,7 @@ export async function saveCheckpoint(
   }
 }
 
-export async function clearCheckpoint(
-  metaDir: string,
-): Promise<Result<void>> {
+export async function clearCheckpoint(metaDir: string): Promise<Result<void>> {
   try {
     const filePath = checkpointFilePath(metaDir);
     await rm(filePath, { force: true });
