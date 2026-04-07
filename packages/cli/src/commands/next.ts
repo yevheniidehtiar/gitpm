@@ -1,6 +1,6 @@
 import { relative } from 'node:path';
-import { parseTree } from '@gitpm/core';
 import type { Story } from '@gitpm/core';
+import { parseTree } from '@gitpm/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { resolveMetaDir } from '../utils/config.js';
