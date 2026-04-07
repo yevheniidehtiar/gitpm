@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { SyncAdapter } from './adapter.js';
-import { createDefaultGitpmConfig, gitpmConfigSchema } from './config.js';
 import type { GitpmConfig } from './config.js';
+import { createDefaultGitpmConfig, gitpmConfigSchema } from './config.js';
 import {
   detectAdapter,
   findAdapterByName,
