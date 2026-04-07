@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
+import { archiveCommand } from './commands/archive.js';
 import { importCommand } from './commands/import.js';
 import { initCommand } from './commands/init.js';
 import { pullCommand } from './commands/pull.js';
@@ -31,5 +32,6 @@ program.addCommand(importCommand);
 program.addCommand(pushCommand);
 program.addCommand(pullCommand);
 program.addCommand(syncCommand);
+program.addCommand(archiveCommand);
 
 program.parse();
