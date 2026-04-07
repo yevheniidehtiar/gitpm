@@ -1,16 +1,13 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { Story } from '@gitpm/core';
 import { writeFile as coreWriteFile, parseTree } from '@gitpm/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fixtureIssues from '../__fixtures__/github-issues.json';
 import fixtureMilestones from '../__fixtures__/github-milestones.json';
 import type { GhIssue, GhMilestone } from '../client.js';
 import { importFromGitHub } from '../import.js';
-import { computeContentHash, loadState } from '../state.js';
 import { syncWithGitHub } from '../sync.js';
-import type { SyncOptions } from '../types.js';
 
 const mockUpdateIssue = vi.fn().mockImplementation(async () => ({
   number: 1,

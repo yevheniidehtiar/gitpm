@@ -38,7 +38,7 @@ export function applyResolutions(
   const merged = { ...localFields };
 
   // Apply non-conflicting remote changes (remote-only fields)
-  for (const [key, value] of Object.entries(remoteFields)) {
+  for (const [key, _value] of Object.entries(remoteFields)) {
     if (!conflicts.some((c) => c.field === key)) {
       // Only apply if field was changed remotely (handled by caller)
     }

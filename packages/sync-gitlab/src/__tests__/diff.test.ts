@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import type { GlIssue, GlMilestone } from '../client.js';
 import {
   diffByHash,
-  diffEntity,
   remoteIssueFields,
   remoteMilestoneFields,
 } from '../diff.js';

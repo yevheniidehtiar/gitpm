@@ -10,7 +10,7 @@ export class JiraClient {
   private agileBaseUrl: string;
   private authHeader: string;
 
-  constructor(private options: JiraClientOptions) {
+  constructor(options: JiraClientOptions) {
     const version = options.apiVersion ?? 'v3';
     this.baseUrl = `https://${options.site}/rest/api/${version === 'v3' ? '3' : '2'}`;
     this.agileBaseUrl = `https://${options.site}/rest/agile/1.0`;

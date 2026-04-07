@@ -14,7 +14,7 @@ async function globFiles(dir: string): Promise<string[]> {
     for (const entry of entries) {
       const fullPath = join(currentDir, entry.name);
       if (entry.isDirectory()) {
-        // Skip sync and .gitpm directories
+        // Skip sync and config directories
         if (entry.name === 'sync' || entry.name === '.gitpm') continue;
         await walk(fullPath);
       } else if (

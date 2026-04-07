@@ -6,6 +6,7 @@ import { importCommand } from './commands/import.js';
 import { initCommand } from './commands/init.js';
 import { pullCommand } from './commands/pull.js';
 import { pushCommand } from './commands/push.js';
+import { qualityCommand } from './commands/quality.js';
 import { syncCommand } from './commands/sync.js';
 import { validateCommand } from './commands/validate.js';
 
@@ -25,6 +26,7 @@ program
 
 program.addCommand(initCommand);
 program.addCommand(validateCommand);
+program.addCommand(qualityCommand);
 program.addCommand(importCommand);
 program.addCommand(pushCommand);
 program.addCommand(pullCommand);

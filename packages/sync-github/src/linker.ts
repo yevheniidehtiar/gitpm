@@ -1,6 +1,6 @@
 import type { Epic, Story } from '@gitpm/core';
 import { toSlug } from '@gitpm/core';
-import type { GhIssue, GhSubIssue } from './client.js';
+import type { GhIssue } from './client.js';
 import type { LinkStrategy } from './types.js';
 
 export interface LinkContext {

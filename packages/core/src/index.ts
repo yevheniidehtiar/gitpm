@@ -34,6 +34,17 @@ export {
   runHooks,
 } from './plugin-loader.js';
 export type {
+  EntityScore,
+  GradeSummary,
+  QualityConfig,
+  QualityReport,
+  ScoreBreakdown,
+} from './quality/index.js';
+export {
+  loadQualityConfig,
+  scoreEntities,
+} from './quality/index.js';
+export type {
   DependencyGraph,
   ResolvedEpic,
   ResolvedMilestone,
@@ -42,7 +53,6 @@ export type {
   ResolvedStory,
   ResolvedTree,
 } from './resolver/index.js';
-
 export { buildDependencyGraph, resolveRefs } from './resolver/index.js';
 export * from './schemas/index.js';
 export type {

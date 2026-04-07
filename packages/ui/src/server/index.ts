@@ -8,12 +8,7 @@ import {
   validateTree,
   writeFile,
 } from '@gitpm/core';
-import type {
-  FieldConflict,
-  GitHubConfig,
-  Resolution,
-  SyncState,
-} from '@gitpm/sync-github';
+import type { Resolution, SyncState } from '@gitpm/sync-github';
 import {
   exportToGitHub,
   loadConfig,
