@@ -2,7 +2,7 @@
 type: story
 id: HE_jzoks9ky_
 title: Add error recovery and resumable sync
-status: todo
+status: in_progress
 priority: high
 assignee: null
 labels:
