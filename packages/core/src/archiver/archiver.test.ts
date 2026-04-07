@@ -87,6 +87,7 @@ describe('archiveOldEntities', () => {
     if (!result.ok) return;
 
     expect(result.value.archivedFiles).toEqual(['stories/old-done.md']);
+    expect(result.value.archivedEntityIds).toEqual(['s1']);
 
     // Verify file moved to archive
     const archived = await readFile(
@@ -118,6 +119,7 @@ describe('archiveOldEntities', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.archivedFiles).toEqual(['stories/cancelled.md']);
+    expect(result.value.archivedEntityIds).toEqual(['s1']);
   });
 
   it('dry run does not move files', async () => {
@@ -162,6 +164,8 @@ describe('archiveOldEntities', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.archivedFiles).toHaveLength(2);
+    expect(result.value.archivedEntityIds).toContain('e1');
+    expect(result.value.archivedEntityIds).toContain('s1');
     expect(result.value.archivedFiles).toContain('epics/epic-test/epic.md');
     expect(result.value.archivedFiles).toContain(
       'epics/epic-test/stories/story1.md',
@@ -191,5 +195,6 @@ describe('archiveOldEntities', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.archivedFiles).toEqual([]);
+    expect(result.value.archivedEntityIds).toEqual([]);
   });
 });
