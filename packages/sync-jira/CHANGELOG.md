@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/yevheniidehtiar/gitpm/compare/sync-jira-v0.1.4...sync-jira-v0.1.5) (2026-04-07)
+
+
+### Bug Fixes
+
+* resolve Biome lint warnings across codebase ([8737c22](https://github.com/yevheniidehtiar/gitpm/commit/8737c227e261548344fccbee1926b8784d8ea74d))
+
 ## [0.1.4](https://github.com/yevheniidehtiar/gitpm/compare/sync-jira-v0.1.3...sync-jira-v0.1.4) (2026-04-06)
 
 
