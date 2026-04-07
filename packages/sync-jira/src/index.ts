@@ -1,3 +1,5 @@
+export { jiraAdapter } from './adapter.js';
+
 export type {
   CreateJiraIssueParams,
   JiraBoard,

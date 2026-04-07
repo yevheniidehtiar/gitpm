@@ -19,6 +19,18 @@ export {
 } from './common.js';
 export type { Epic, EpicFrontmatter } from './epic.js';
 export { epicFrontmatterSchema, epicSchema } from './epic.js';
+export type {
+  FieldExtension,
+  SchemaExtensions,
+} from './extensions.js';
+export {
+  buildExtensionFields,
+  entityExtensionSchema,
+  extendEntitySchema,
+  fieldExtensionSchema,
+  loadSchemaExtensions,
+  schemaExtensionsSchema,
+} from './extensions.js';
 export type { Milestone, MilestoneFrontmatter } from './milestone.js';
 export {
   milestoneFrontmatterSchema,
