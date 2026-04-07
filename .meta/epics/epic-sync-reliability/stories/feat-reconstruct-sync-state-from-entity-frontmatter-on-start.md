@@ -2,7 +2,7 @@
 type: story
 id: uSwxALv1JDgu
 title: "feat: reconstruct sync state from entity frontmatter on startup"
-status: todo
+status: in_progress
 priority: high
 assignee: null
 labels:
