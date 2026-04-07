@@ -102,12 +102,21 @@ export interface SyncOptions {
 
 export type ConflictStrategy = 'local-wins' | 'remote-wins' | 'ask';
 
+export interface SyncCheckpoint {
+  startedAt: string;
+  repo: string;
+  processedEntityIds: string[];
+  lastError?: { entityId: string; message: string };
+}
+
 export interface SyncResult {
   pushed: { milestones: number; issues: number };
   pulled: { milestones: number; issues: number };
   conflicts: FieldConflict[];
   resolved: number;
   skipped: number;
+  resumedFromCheckpoint: boolean;
+  failedEntities: { entityId: string; error: string }[];
 }
 
 export interface FieldChange {
