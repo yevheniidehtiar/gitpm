@@ -1,4 +1,4 @@
-import type { Epic, Milestone, ParsedEntity, Story } from '@gitpm/core';
+import type { ParsedEntity } from '@gitpm/core';
 import type { GlIssue, GlMilestone } from './client.js';
 import type {
   DiffResult,

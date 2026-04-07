@@ -7,7 +7,7 @@ import type {
   Roadmap,
   Story,
 } from '@gitpm/core';
-import { toSlug, writeFile } from '@gitpm/core';
+import { writeFile } from '@gitpm/core';
 import { nanoid } from 'nanoid';
 import { GitLabClient } from './client.js';
 import { createDefaultConfig, saveConfig } from './config.js';

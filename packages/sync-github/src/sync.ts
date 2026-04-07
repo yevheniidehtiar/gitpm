@@ -1,29 +1,17 @@
 import { join } from 'node:path';
-import type { Epic, Milestone, ParsedEntity, Result, Story } from '@gitpm/core';
+import type { Epic, Milestone, Result, Story } from '@gitpm/core';
 import { parseTree, writeFile } from '@gitpm/core';
 import type { GhIssue, GhMilestone } from './client.js';
 import { GitHubClient } from './client.js';
-import { loadConfig } from './config.js';
 import { resolveConflicts } from './conflict.js';
 import {
   diffByHash,
   remoteIssueFields,
   remoteMilestoneFields,
 } from './diff.js';
-import {
-  entityToGhIssue,
-  ghIssueToEntity,
-  ghMilestoneToMilestone,
-  milestoneToGhMilestone,
-} from './mapper.js';
+import { entityToGhIssue, milestoneToGhMilestone } from './mapper.js';
 import { computeContentHash, loadState, saveState } from './state.js';
-import type {
-  FieldConflict,
-  SyncOptions,
-  SyncResult,
-  SyncState,
-  SyncStateEntry,
-} from './types.js';
+import type { FieldConflict, SyncOptions, SyncResult } from './types.js';
 
 /**
  * Compute a hash of a remote GitHub issue for comparison with sync state.
