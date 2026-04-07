@@ -14,14 +14,16 @@ export function checkTemplateCoverage(
     return { matched: [], missing: [], coverage: 1, passes: true };
   }
 
-  const headingPattern = /^#{1,6}\s+(.+)$/gm;
   const headings: string[] = [];
-  for (
-    let match = headingPattern.exec(body);
-    match !== null;
-    match = headingPattern.exec(body)
-  ) {
-    headings.push(match[1].trim().toLowerCase());
+  for (const line of body.split('\n')) {
+    const trimmed = line.trimStart();
+    if (!trimmed.startsWith('#')) continue;
+    const hashMatch = /^#{1,6}$/.exec(trimmed.split(/\s/)[0]);
+    if (!hashMatch) continue;
+    const text = trimmed.slice(hashMatch[0].length).trim();
+    if (text.length > 0) {
+      headings.push(text.toLowerCase());
+    }
   }
 
   const matched: string[] = [];
