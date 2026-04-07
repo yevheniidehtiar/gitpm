@@ -5,6 +5,7 @@ import { Command } from 'commander';
 import { archiveCommand } from './commands/archive.js';
 import { importCommand } from './commands/import.js';
 import { initCommand } from './commands/init.js';
+import { nextCommand } from './commands/next.js';
 import { pullCommand } from './commands/pull.js';
 import { pushCommand } from './commands/push.js';
 import { qualityCommand } from './commands/quality.js';
@@ -28,6 +29,7 @@ program
 program.addCommand(initCommand);
 program.addCommand(validateCommand);
 program.addCommand(qualityCommand);
+program.addCommand(nextCommand);
 program.addCommand(importCommand);
 program.addCommand(pushCommand);
 program.addCommand(pullCommand);
