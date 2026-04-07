@@ -12,6 +12,7 @@ export interface ArchiveOptions {
 
 export interface ArchiveResult {
   archivedFiles: string[];
+  archivedEntityIds: string[];
   skippedFiles: string[];
 }
 
@@ -53,6 +54,7 @@ export async function archiveOldEntities(
     const files = await collectMarkdownFiles(metaDir);
     const archiveDir = join(metaDir, 'archive');
     const archivedFiles: string[] = [];
+    const archivedEntityIds: string[] = [];
     const skippedFiles: string[] = [];
 
     for (const filePath of files) {
@@ -118,9 +120,13 @@ export async function archiveOldEntities(
       }
 
       archivedFiles.push(rel);
+      archivedEntityIds.push(entity.id);
     }
 
-    return { ok: true, value: { archivedFiles, skippedFiles } };
+    return {
+      ok: true,
+      value: { archivedFiles, archivedEntityIds, skippedFiles },
+    };
   } catch (err) {
     return {
       ok: false,

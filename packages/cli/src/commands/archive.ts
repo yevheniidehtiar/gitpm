@@ -1,8 +1,41 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { archiveOldEntities } from '@gitpm/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { resolveMetaDir } from '../utils/config.js';
 import { printError, printSuccess, printWarning } from '../utils/output.js';
+
+/**
+ * Remove archived entity IDs from the GitHub sync state file
+ * so that sync/push don't treat them as "locally deleted".
+ */
+async function cleanupSyncState(
+  metaDir: string,
+  entityIds: string[],
+): Promise<number> {
+  const statePath = join(metaDir, 'sync', 'github-state.json');
+  let raw: string;
+  try {
+    raw = await readFile(statePath, 'utf-8');
+  } catch {
+    return 0; // No state file — nothing to clean up
+  }
+
+  const state = JSON.parse(raw);
+  let removed = 0;
+  for (const id of entityIds) {
+    if (state.entities?.[id]) {
+      delete state.entities[id];
+      removed++;
+    }
+  }
+
+  if (removed > 0) {
+    await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf-8');
+  }
+  return removed;
+}
 
 export const archiveCommand = new Command('archive')
   .description(
@@ -35,7 +68,7 @@ export const archiveCommand = new Command('archive')
       process.exit(1);
     }
 
-    const { archivedFiles } = result.value;
+    const { archivedFiles, archivedEntityIds } = result.value;
 
     if (archivedFiles.length === 0) {
       console.log(
@@ -49,6 +82,14 @@ export const archiveCommand = new Command('archive')
     for (const file of archivedFiles) {
       const label = dryRun ? 'would archive' : 'archived';
       console.log(chalk.dim(`  ${label}: ${file}`));
+    }
+
+    // Clean up sync state so push/pull/sync don't treat archived items as deleted
+    if (!dryRun && archivedEntityIds.length > 0) {
+      const removed = await cleanupSyncState(metaDir, archivedEntityIds);
+      if (removed > 0) {
+        console.log(chalk.dim(`  removed ${removed} entries from sync state`));
+      }
     }
 
     console.log();
