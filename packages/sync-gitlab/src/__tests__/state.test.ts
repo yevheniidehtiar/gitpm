@@ -1,14 +1,9 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Milestone, Story } from '@gitpm/core';
 import { describe, expect, it } from 'vitest';
-import {
-  computeContentHash,
-  createInitialState,
-  loadState,
-  saveState,
-} from '../state.js';
+import { createInitialState, loadState, saveState } from '../state.js';
 
 describe('saveState / loadState', () => {
   it('round-trips sync state through JSON file', async () => {

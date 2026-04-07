@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import type { Epic, Milestone, ParsedEntity, Result, Story } from '@gitpm/core';
+import type { Epic, Result, Story } from '@gitpm/core';
 import { parseTree, writeFile } from '@gitpm/core';
 import { JiraClient } from './client.js';
 import { loadConfig } from './config.js';
@@ -9,7 +9,6 @@ import type {
   ExportResult,
   JiraExportOptions,
   JiraSyncState,
-  JiraSyncStateEntry,
 } from './types.js';
 
 export async function exportToJira(

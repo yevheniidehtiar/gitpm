@@ -77,12 +77,12 @@ async function main() {
     },
   );
 
-  let viteOutput = '';
+  let _viteOutput = '';
   vite.stdout?.on('data', (d) => {
-    viteOutput += d.toString();
+    _viteOutput += d.toString();
   });
   vite.stderr?.on('data', (d) => {
-    viteOutput += d.toString();
+    _viteOutput += d.toString();
   });
 
   try {

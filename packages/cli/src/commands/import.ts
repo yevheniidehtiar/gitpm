@@ -62,7 +62,7 @@ async function importGitHub(
   metaDir: string,
 ): Promise<void> {
   const repo = opts.repo;
-  if (!repo || !repo.includes('/') || repo.split('/').length !== 2) {
+  if (!repo?.includes('/') || repo.split('/').length !== 2) {
     printError('--repo is required for GitHub import. Expected "owner/repo".');
     process.exit(1);
   }

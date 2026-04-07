@@ -9,7 +9,6 @@ import type {
 } from '@gitpm/core';
 import { toSlug, writeFile } from '@gitpm/core';
 import { nanoid } from 'nanoid';
-import type { JiraIssue } from './client.js';
 import { JiraClient } from './client.js';
 import { createDefaultConfig, saveConfig } from './config.js';
 import {

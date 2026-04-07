@@ -1,7 +1,6 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { parseTree } from '@gitpm/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fixtureIssues from '../__fixtures__/github-issues.json';
 import fixtureMilestones from '../__fixtures__/github-milestones.json';
@@ -9,7 +8,6 @@ import type { GhIssue, GhMilestone } from '../client.js';
 import { exportToGitHub } from '../export.js';
 import { importFromGitHub } from '../import.js';
 import { loadState } from '../state.js';
-import type { ExportOptions, ImportOptions } from '../types.js';
 
 // Track mock calls
 const mockCreateIssue = vi.fn().mockImplementation(async () => ({
