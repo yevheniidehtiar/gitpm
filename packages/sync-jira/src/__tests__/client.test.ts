@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { JiraIssue, JiraProject, JiraSprint } from '../client.js';
+import type { JiraIssue, JiraProject } from '../client.js';
 import { JiraClient } from '../client.js';
 
 const mockFetch = vi.fn();

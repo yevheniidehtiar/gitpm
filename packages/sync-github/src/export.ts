@@ -1,15 +1,9 @@
-import type { Epic, Milestone, ParsedEntity, Result, Story } from '@gitpm/core';
+import type { Epic, Result, Story } from '@gitpm/core';
 import { parseTree, writeFile } from '@gitpm/core';
 import { GitHubClient } from './client.js';
-import { loadConfig } from './config.js';
 import { entityToGhIssue, milestoneToGhMilestone } from './mapper.js';
 import { computeContentHash, loadState, saveState } from './state.js';
-import type {
-  ExportOptions,
-  ExportResult,
-  SyncState,
-  SyncStateEntry,
-} from './types.js';
+import type { ExportOptions, ExportResult, SyncState } from './types.js';
 
 export async function exportToGitHub(
   options: ExportOptions,

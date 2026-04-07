@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { parseTree, validateTree } from '@gitpm/core';
+import { parseTree } from '@gitpm/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fixtureIssues from '../__fixtures__/github-issues.json';
 import fixtureMilestones from '../__fixtures__/github-milestones.json';

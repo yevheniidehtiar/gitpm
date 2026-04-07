@@ -16,7 +16,7 @@ export async function scaffoldMeta(
     const epId = nanoid(12);
     const stId = nanoid(12);
 
-    const slug = toSlug(projectName);
+    const _slug = toSlug(projectName);
 
     await mkdir(metaDir, { recursive: true });
 

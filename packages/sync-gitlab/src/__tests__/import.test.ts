@@ -5,7 +5,6 @@ import { parseTree, resolveRefs, validateTree } from '@gitpm/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import issueFixtures from '../__fixtures__/gitlab-issues.json';
 import milestoneFixtures from '../__fixtures__/gitlab-milestones.json';
-import type { GlIssue, GlMilestone } from '../client.js';
 import { importFromGitLab } from '../import.js';
 
 // Mock GitLabClient

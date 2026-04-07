@@ -1,17 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   entityRefSchema,
-  epicFrontmatterSchema,
   epicSchema,
   gitHubSyncSchema,
-  milestoneFrontmatterSchema,
   milestoneSchema,
-  prdFrontmatterSchema,
   prdSchema,
   prioritySchema,
   roadmapSchema,
   statusSchema,
-  storyFrontmatterSchema,
   storySchema,
 } from '../index.js';
 
