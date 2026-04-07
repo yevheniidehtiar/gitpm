@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.5](https://github.com/yevheniidehtiar/gitpm/compare/cli-v0.1.4...cli-v0.1.5) (2026-04-07)
+
+
+### Features
+
+* add `gitpm quality` command with template-based scoring ([ca4929d](https://github.com/yevheniidehtiar/gitpm/commit/ca4929dba1d54649d1c882be9f10176b82e6840c))
+
+
+### Bug Fixes
+
+* resolve Biome lint warnings across codebase ([8737c22](https://github.com/yevheniidehtiar/gitpm/commit/8737c227e261548344fccbee1926b8784d8ea74d))
+
 ## [0.1.4](https://github.com/yevheniidehtiar/gitpm/compare/cli-v0.1.3...cli-v0.1.4) (2026-04-06)
 
 
