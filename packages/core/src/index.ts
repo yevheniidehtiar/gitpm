@@ -1,3 +1,8 @@
+export type {
+  ArchiveOptions,
+  ArchiveResult,
+} from './archiver/index.js';
+export { archiveOldEntities } from './archiver/index.js';
 export type { MetaTree, ParsedEntity, ParseError } from './parser/index.js';
 export { parseFile, parseFileContent, parseTree } from './parser/index.js';
 export type {
