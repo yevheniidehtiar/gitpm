@@ -1,8 +1,8 @@
 import { readdir } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { join } from 'node:path';
 import type { Result } from '../schemas/common.js';
 import { parseFile } from './parse-file.js';
-import type { MetaTree, ParseError } from './types.js';
+import type { MetaTree } from './types.js';
 
 async function globFiles(dir: string): Promise<string[]> {
   const files: string[] = [];
@@ -12,8 +12,8 @@ async function globFiles(dir: string): Promise<string[]> {
     for (const entry of entries) {
       const fullPath = join(currentDir, entry.name);
       if (entry.isDirectory()) {
-        // Skip sync directory
-        if (entry.name === 'sync') continue;
+        // Skip sync and config directories
+        if (entry.name === 'sync' || entry.name === '.gitpm') continue;
         await walk(fullPath);
       } else if (
         entry.name.endsWith('.md') ||
