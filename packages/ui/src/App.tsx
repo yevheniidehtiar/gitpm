@@ -19,6 +19,7 @@ import {
   useTree,
   useValidation,
 } from './lib/api.js';
+import { BoardView } from './routes/board.js';
 import { EntityEditor } from './routes/entity-editor.js';
 import { RoadmapView } from './routes/roadmap.js';
 import { SyncDashboard } from './routes/sync-dashboard.js';
@@ -37,6 +38,7 @@ function Sidebar() {
 
   const navItems = [
     { to: '/', label: 'Tree Browser', icon: '🌳' },
+    { to: '/board', label: 'Board', icon: '📋' },
     { to: '/roadmap', label: 'Roadmap', icon: '🗺️' },
     { to: '/sync', label: 'Sync Dashboard', icon: '🔄' },
   ];
@@ -136,9 +138,11 @@ function TopBar() {
       ? [{ label: 'Entity', to: path }]
       : path === '/roadmap'
         ? [{ label: 'Roadmap', to: '/roadmap' }]
-        : path === '/sync'
-          ? [{ label: 'Sync', to: '/sync' }]
-          : [{ label: 'Tree', to: '/' }]),
+        : path === '/board'
+          ? [{ label: 'Board', to: '/board' }]
+          : path === '/sync'
+            ? [{ label: 'Sync', to: '/sync' }]
+            : [{ label: 'Tree', to: '/' }]),
   ];
 
   const lastSync = syncStatus?.lastSync;
@@ -224,6 +228,12 @@ const roadmapRoute = createRoute({
   component: RoadmapView,
 });
 
+const boardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/board',
+  component: BoardView,
+});
+
 const syncRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sync',
@@ -234,6 +244,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   entityRoute,
   roadmapRoute,
+  boardRoute,
   syncRoute,
 ]);
 
