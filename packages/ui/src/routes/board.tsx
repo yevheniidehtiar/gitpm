@@ -1,5 +1,5 @@
-import { type DragEvent, useCallback, useMemo, useState } from 'react';
 import { Link } from '@tanstack/react-router';
+import { type DragEvent, useCallback, useMemo, useState } from 'react';
 import { EmptyState } from '../components/EmptyState.js';
 import { Spinner } from '../components/Spinner.js';
 import { TypeIcon } from '../components/TypeIcon.js';
@@ -238,9 +238,9 @@ export function BoardView() {
         {COLUMNS.map((status) => {
           const items = columns[status] ?? [];
           const isDragOver = dragOverColumn === status;
+          // biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop drop zone
+          // biome-ignore lint/a11y/useSemanticElements: semantic elements break drag-and-drop layout
           return (
-            {/* biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop drop zone */}
-            {/* biome-ignore lint/a11y/useSemanticElements: semantic elements break drag-and-drop layout */}
             <div
               key={status}
               className={`flex-shrink-0 w-72 flex flex-col rounded-lg border-2 ${
