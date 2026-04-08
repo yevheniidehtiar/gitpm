@@ -73,8 +73,6 @@ function coerceValue(value: string): unknown {
   if (value === 'null') return null;
   if (value === 'true') return true;
   if (value === 'false') return false;
-  const num = Number(value);
-  if (!Number.isNaN(num) && value.trim() !== '') return num;
   return value;
 }
 
