@@ -8,6 +8,12 @@ import {
   storySchema,
 } from '../schemas/index.js';
 
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function isDangerousKey(key: string): boolean {
+  return DANGEROUS_KEYS.has(key);
+}
+
 export interface FieldAssignment {
   field: string;
   operator: '=' | '+=' | '-=';
@@ -52,8 +58,18 @@ function setNestedField(
   obj: Record<string, unknown>,
   path: string,
   value: unknown,
-): void {
+): Result<void> {
   const parts = path.split('.');
+  for (const part of parts) {
+    if (isDangerousKey(part)) {
+      return {
+        ok: false,
+        error: new Error(
+          `Dangerous field name "${part}" in path "${path}" — this could cause prototype pollution`,
+        ),
+      };
+    }
+  }
   let current = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
@@ -67,6 +83,7 @@ function setNestedField(
     current = current[part] as Record<string, unknown>;
   }
   current[parts[parts.length - 1]] = value;
+  return { ok: true, value: undefined };
 }
 
 function coerceValue(value: string): unknown {
@@ -84,6 +101,19 @@ export function applyAssignments(
 
   for (const assignment of assignments) {
     const { field, operator, value } = assignment;
+
+    // Guard against prototype pollution for all operators
+    const fieldParts = field.split('.');
+    for (const part of fieldParts) {
+      if (isDangerousKey(part)) {
+        return {
+          ok: false,
+          error: new Error(
+            `Dangerous field name "${part}" in "${field}" — this could cause prototype pollution`,
+          ),
+        };
+      }
+    }
 
     if (operator === '+=') {
       const current = data[field];
@@ -114,7 +144,10 @@ export function applyAssignments(
     // operator === '='
     const coerced = coerceValue(value);
     if (field.includes('.')) {
-      setNestedField(data, field, coerced);
+      const nestedResult = setNestedField(data, field, coerced);
+      if (!nestedResult.ok) {
+        return nestedResult;
+      }
     } else {
       data[field] = coerced;
     }

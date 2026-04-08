@@ -2,6 +2,83 @@ import { describe, expect, it } from 'vitest';
 import type { ParsedEntity } from '../schemas/index.js';
 import { applyAssignments, parseAssignment } from './set-fields.js';
 
+describe('prototype pollution guard', () => {
+  it('parseAssignment accepts __proto__ as syntactically valid', () => {
+    const result = parseAssignment('__proto__.polluted=true');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value).toEqual({
+      field: '__proto__.polluted',
+      operator: '=',
+      value: 'true',
+    });
+  });
+
+  it('applyAssignments rejects __proto__ in nested path', () => {
+    const entity: ParsedEntity = {
+      type: 'story',
+      id: 'test_id',
+      title: 'Test story',
+      status: 'backlog',
+      priority: 'medium',
+      labels: [],
+      body: '',
+      filePath: '/tmp/test.md',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+    const result = applyAssignments(entity, [
+      { field: '__proto__.polluted', operator: '=', value: 'true' },
+    ]);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Dangerous field name');
+    expect(result.error.message).toContain('prototype pollution');
+  });
+
+  it('applyAssignments rejects constructor as field name', () => {
+    const entity: ParsedEntity = {
+      type: 'story',
+      id: 'test_id',
+      title: 'Test story',
+      status: 'backlog',
+      priority: 'medium',
+      labels: [],
+      body: '',
+      filePath: '/tmp/test.md',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+    const result = applyAssignments(entity, [
+      { field: 'constructor', operator: '=', value: 'evil' },
+    ]);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Dangerous field name');
+  });
+
+  it('applyAssignments rejects prototype as field name', () => {
+    const entity: ParsedEntity = {
+      type: 'story',
+      id: 'test_id',
+      title: 'Test story',
+      status: 'backlog',
+      priority: 'medium',
+      labels: [],
+      body: '',
+      filePath: '/tmp/test.md',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+    const result = applyAssignments(entity, [
+      { field: 'prototype.polluted', operator: '=', value: 'true' },
+    ]);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Dangerous field name');
+  });
+});
+
 describe('parseAssignment', () => {
   it('parses simple set assignment', () => {
     const result = parseAssignment('priority=high');
