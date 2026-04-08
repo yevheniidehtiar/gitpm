@@ -4,7 +4,6 @@ import type { ParsedEntity } from '../parser/types.js';
 export interface FormatOptions {
   fields: string[];
   format: 'table' | 'json' | 'csv';
-  cwd?: string;
 }
 
 function getField(entity: ParsedEntity, field: string): string {
