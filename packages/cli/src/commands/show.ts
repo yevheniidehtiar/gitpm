@@ -1,5 +1,10 @@
 import { relative, resolve } from 'node:path';
-import type { ParsedEntity } from '@gitpm/core';
+import type {
+  ParsedEntity,
+  ResolvedEpic,
+  ResolvedMilestone,
+  ResolvedTree,
+} from '@gitpm/core';
 import { parseTree, resolveRefs } from '@gitpm/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
@@ -113,6 +118,27 @@ export const showCommand = new Command('show')
     }
 
     const tree = parseResult.value;
+
+    // Simple entity lookup — no need to resolve references
+    if (!opts.epic && !opts.milestone) {
+      if (!target) {
+        printError('Specify a target, --epic, or --milestone');
+        process.exit(1);
+      }
+      const entity = findEntity(tree, target);
+      if (!entity) {
+        printError(`Entity not found: ${target}`);
+        process.exit(1);
+      }
+      if (opts.format === 'json') {
+        console.log(JSON.stringify(entity, null, 2));
+      } else {
+        displayEntity(entity, opts.full);
+      }
+      return;
+    }
+
+    // Epic/milestone modes require resolved references
     const resolveResult = resolveRefs(tree);
     if (!resolveResult.ok) {
       printError(resolveResult.error.message);
@@ -120,98 +146,68 @@ export const showCommand = new Command('show')
     }
     const resolved = resolveResult.value;
 
-    if (opts.format === 'json') {
-      if (opts.epic) {
-        const epic = resolved.epics.find(
-          (e) =>
-            e.id === opts.epic || e.filePath.includes(`/epics/${opts.epic}/`),
-        );
-        if (!epic) {
-          printError(`Epic not found: ${opts.epic}`);
-          process.exit(1);
-        }
-        console.log(
-          JSON.stringify({ epic, stories: epic.resolvedStories }, null, 2),
-        );
-        return;
-      }
-      if (opts.milestone) {
-        const ms = resolved.milestones.find((m) => m.id === opts.milestone);
-        if (!ms) {
-          printError(`Milestone not found: ${opts.milestone}`);
-          process.exit(1);
-        }
-        console.log(
-          JSON.stringify({ milestone: ms, epics: ms.resolvedEpics }, null, 2),
-        );
-        return;
-      }
-      if (target) {
-        const entity = findEntity(tree, target);
-        if (!entity) {
-          printError(`Entity not found: ${target}`);
-          process.exit(1);
-        }
-        console.log(JSON.stringify(entity, null, 2));
-        return;
-      }
-      printError('Specify a target, --epic, or --milestone');
-      process.exit(1);
-    }
-
-    // Pretty format
     if (opts.epic) {
-      const epic = resolved.epics.find(
-        (e) =>
-          e.id === opts.epic || e.filePath.includes(`/epics/${opts.epic}/`),
-      );
+      const epic = findEpic(resolved, opts.epic);
       if (!epic) {
         printError(`Epic not found: ${opts.epic}`);
         process.exit(1);
       }
-      displayEntity(epic, opts.full);
-
-      if (epic.resolvedStories.length > 0) {
-        console.log(chalk.bold(`Stories (${epic.resolvedStories.length}):`));
-        for (const story of epic.resolvedStories) {
-          displayStoryRow(story as unknown as Record<string, unknown>);
+      if (opts.format === 'json') {
+        console.log(
+          JSON.stringify({ epic, stories: epic.resolvedStories }, null, 2),
+        );
+      } else {
+        displayEntity(epic, opts.full);
+        if (epic.resolvedStories.length > 0) {
+          console.log(chalk.bold(`Stories (${epic.resolvedStories.length}):`));
+          for (const story of epic.resolvedStories) {
+            displayStoryRow(story as unknown as Record<string, unknown>);
+          }
+          console.log();
         }
-        console.log();
       }
       return;
     }
 
     if (opts.milestone) {
-      const ms = resolved.milestones.find((m) => m.id === opts.milestone);
+      const ms = findMilestone(resolved, opts.milestone);
       if (!ms) {
         printError(`Milestone not found: ${opts.milestone}`);
         process.exit(1);
       }
-      displayEntity(ms, opts.full);
-
-      if (ms.resolvedEpics.length > 0) {
-        console.log(chalk.bold(`Epics (${ms.resolvedEpics.length}):`));
-        for (const epic of ms.resolvedEpics) {
-          displayStoryRow(epic as unknown as Record<string, unknown>);
+      if (opts.format === 'json') {
+        console.log(
+          JSON.stringify({ milestone: ms, epics: ms.resolvedEpics }, null, 2),
+        );
+      } else {
+        displayEntity(ms, opts.full);
+        if (ms.resolvedEpics.length > 0) {
+          console.log(chalk.bold(`Epics (${ms.resolvedEpics.length}):`));
+          for (const epic of ms.resolvedEpics) {
+            displayStoryRow(epic as unknown as Record<string, unknown>);
+          }
+          console.log();
         }
-        console.log();
       }
       return;
     }
-
-    if (target) {
-      const entity = findEntity(tree, target);
-      if (!entity) {
-        printError(`Entity not found: ${target}`);
-        process.exit(1);
-      }
-      displayEntity(entity, opts.full);
-      return;
-    }
-
-    printError('Specify a target, --epic, or --milestone');
-    process.exit(1);
   });
+
+function findEpic(
+  resolved: ResolvedTree,
+  epicRef: string,
+): ResolvedEpic | undefined {
+  return resolved.epics.find(
+    (e) => e.id === epicRef || e.filePath.includes(`/epics/${epicRef}/`),
+  );
+}
+
+function findMilestone(
+  resolved: ResolvedTree,
+  milestoneRef: string,
+): ResolvedMilestone | undefined {
+  return resolved.milestones.find((m) => m.id === milestoneRef);
+}
 
 function findEntity(
   tree: {
