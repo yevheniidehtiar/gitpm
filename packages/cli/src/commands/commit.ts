@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { Command } from 'commander';
 import { resolveMetaDir } from '../utils/config.js';
 import { printError, printSuccess } from '../utils/output.js';
@@ -12,7 +12,7 @@ export const commitCommand = new Command('commit')
 
     try {
       // Stage all .meta/ changes
-      execSync(`git add "${metaDir}"`, { stdio: 'pipe' });
+      execFileSync('git', ['add', metaDir], { stdio: 'pipe' });
 
       // Check if there are staged changes
       try {
@@ -24,8 +24,8 @@ export const commitCommand = new Command('commit')
         // Good — there are staged changes
       }
 
-      // Build commit command
-      const args = ['git', 'commit', '-m', opts.message];
+      // Build commit args (no shell interpolation — safe from injection)
+      const args = ['commit', '-m', opts.message];
       if (opts.author) {
         args.push('--author', opts.author);
       }
@@ -33,7 +33,7 @@ export const commitCommand = new Command('commit')
       // Execute commit, bypassing commitizen hook which causes issues for agents
       const env = { ...process.env, SKIP: 'commitizen' };
 
-      const result = execSync(args.join(' '), {
+      const result = execFileSync('git', args, {
         stdio: 'pipe',
         env,
         encoding: 'utf-8',
