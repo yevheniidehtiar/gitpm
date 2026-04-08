@@ -99,6 +99,19 @@ describe('createStory', () => {
     expect(r1.value.id).not.toBe(r2.value.id);
   });
 
+  it('appends numeric suffix for duplicate titles', async () => {
+    const r1 = await createStory(metaDir, { title: 'Duplicate' });
+    const r2 = await createStory(metaDir, { title: 'Duplicate' });
+
+    expect(r1.ok).toBe(true);
+    expect(r2.ok).toBe(true);
+    if (!r1.ok || !r2.ok) return;
+
+    expect(r1.value.filePath).toContain('duplicate.md');
+    expect(r2.value.filePath).toContain('duplicate-2.md');
+    expect(r1.value.filePath).not.toBe(r2.value.filePath);
+  });
+
   it('includes body content when provided', async () => {
     const result = await createStory(metaDir, {
       title: 'Story with body',

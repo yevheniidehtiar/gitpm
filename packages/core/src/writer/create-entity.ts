@@ -1,3 +1,4 @@
+import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { nanoid } from 'nanoid';
 import type { ParsedEntity } from '../parser/types.js';
@@ -7,6 +8,30 @@ import type { Milestone } from '../schemas/milestone.js';
 import type { Story } from '../schemas/story.js';
 import { toSlug } from './slug.js';
 import { writeFile } from './write-file.js';
+
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function uniquePath(
+  dir: string,
+  slug: string,
+  ext: string,
+): Promise<string> {
+  const candidate = join(dir, `${slug}${ext}`);
+  if (!(await fileExists(candidate))) return candidate;
+
+  let suffix = 2;
+  while (await fileExists(join(dir, `${slug}-${suffix}${ext}`))) {
+    suffix++;
+  }
+  return join(dir, `${slug}-${suffix}${ext}`);
+}
 
 export interface CreateStoryOptions {
   title: string;
@@ -58,7 +83,7 @@ export async function createStory(
     } else {
       dir = join(metaDir, 'stories');
     }
-    const filePath = join(dir, `${slug}.md`);
+    const filePath = await uniquePath(dir, slug, '.md');
 
     const story: Story = {
       type: 'story',
@@ -97,7 +122,19 @@ export async function createEpic(
     const slug = toSlug(options.title);
     const now = new Date().toISOString();
 
-    const filePath = join(metaDir, 'epics', slug, 'epic.md');
+    let epicSlug = slug;
+    let epicDir = join(metaDir, 'epics', epicSlug);
+    if (await fileExists(join(epicDir, 'epic.md'))) {
+      let suffix = 2;
+      while (
+        await fileExists(join(metaDir, 'epics', `${slug}-${suffix}`, 'epic.md'))
+      ) {
+        suffix++;
+      }
+      epicSlug = `${slug}-${suffix}`;
+      epicDir = join(metaDir, 'epics', epicSlug);
+    }
+    const filePath = join(epicDir, 'epic.md');
 
     const epic: Epic = {
       type: 'epic',
@@ -135,7 +172,8 @@ export async function createMilestone(
     const slug = toSlug(options.title);
     const now = new Date().toISOString();
 
-    const filePath = join(metaDir, 'roadmap', 'milestones', `${slug}.md`);
+    const msDir = join(metaDir, 'roadmap', 'milestones');
+    const filePath = await uniquePath(msDir, slug, '.md');
 
     const milestone: Milestone = {
       type: 'milestone',
