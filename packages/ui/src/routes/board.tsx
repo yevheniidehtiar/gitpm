@@ -60,8 +60,7 @@ function KanbanCard({
   onDragStart: (e: DragEvent<HTMLDivElement>, entity: Entity) => void;
 }) {
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop requires div handlers
-    // biome-ignore lint/a11y/useSemanticElements: semantic elements break drag-and-drop layout
+    // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useSemanticElements: drag-and-drop requires div handlers
     <div
       draggable
       onDragStart={(e) => onDragStart(e, entity)}
@@ -238,9 +237,8 @@ export function BoardView() {
         {COLUMNS.map((status) => {
           const items = columns[status] ?? [];
           const isDragOver = dragOverColumn === status;
-          // biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop drop zone
-          // biome-ignore lint/a11y/useSemanticElements: semantic elements break drag-and-drop layout
           return (
+            // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useSemanticElements: drag-and-drop drop zone
             <div
               key={status}
               className={`flex-shrink-0 w-72 flex flex-col rounded-lg border-2 ${
