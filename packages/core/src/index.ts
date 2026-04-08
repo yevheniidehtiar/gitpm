@@ -16,6 +16,8 @@ export {
   loadQualityConfig,
   scoreEntities,
 } from './quality/index.js';
+export type { FormatOptions, QueryFilter } from './query/index.js';
+export { filterEntities, formatEntities } from './query/index.js';
 export type {
   DependencyGraph,
   ResolvedEpic,
@@ -33,4 +35,24 @@ export type {
   ValidationWarning,
 } from './validator/index.js';
 export { validateTree } from './validator/index.js';
-export { scaffoldMeta, toSlug, writeFile, writeTree } from './writer/index.js';
+export type {
+  CreateEpicOptions,
+  CreateMilestoneOptions,
+  CreateResult,
+  CreateStoryOptions,
+  FieldAssignment,
+  MoveOptions,
+  MoveResult,
+} from './writer/index.js';
+export {
+  applyAssignments,
+  createEpic,
+  createMilestone,
+  createStory,
+  moveStory,
+  parseAssignment,
+  scaffoldMeta,
+  toSlug,
+  writeFile,
+  writeTree,
+} from './writer/index.js';
