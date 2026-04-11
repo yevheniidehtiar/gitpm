@@ -141,7 +141,42 @@ jobs:
           EOF
 
           prompt=$(cat /tmp/review-prompt.md)
-          claude -p "$prompt" --max-turns 20
+
+          # --verbose prints every turn / tool call to stdout so the CI log
+          # shows what Claude is actually doing. --output-format stream-json
+          # gives us a parseable transcript, which we also save to disk for
+          # upload as an artifact. tee mirrors the stream into the live CI
+          # log so it's visible while the job is running.
+          mkdir -p /tmp/claude-review
+          set +e
+          claude -p "$prompt" \
+            --max-turns 20 \
+            --verbose \
+            --output-format stream-json \
+            2>/tmp/claude-review/stderr.log \
+            | tee /tmp/claude-review/stream.jsonl
+          CLAUDE_EXIT=$?
+          set -e
+
+          echo "::group::Claude stderr"
+          cat /tmp/claude-review/stderr.log || true
+          echo "::endgroup::"
+
+          echo "claude exited with code $CLAUDE_EXIT"
+          # Don't propagate claude's exit code — the gate step decides pass/fail
+          # based on the JSON output. Artifact upload below runs `if: always()`.
+
+      - name: Upload review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-review-pr-${{ github.event.pull_request.number }}
+          path: |
+            /tmp/claude-review/
+            /tmp/review-prompt.md
+            /tmp/review-result.json
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Gate on severity
         id: gate
