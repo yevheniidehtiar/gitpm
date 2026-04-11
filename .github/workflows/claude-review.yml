@@ -35,25 +35,83 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
 
+      # Skip the (expensive) full review pass when the PR's effective diff
+      # relative to master is byte-identical to a previously-reviewed-green
+      # state on this same PR. This handles the common agent-driven case
+      # where a branch is rebased onto a newer master or re-pushed with the
+      # same content — no new user code was introduced, so re-running the
+      # review is wasted work. The check is content-hash-based: any real
+      # byte-level change naturally invalidates the cache.
+      - name: Check review cache
+        id: cache
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          git fetch origin master --no-tags --depth=50 || {
+            echo "::warning::Could not fetch master — failing open (cache miss)."
+            echo "hit=false" >> "$GITHUB_OUTPUT"
+            echo "new_hash=unknown" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          # Three-dot diff gives the PR's contribution relative to the merge
+          # base with master — invariant under rebase onto newer master.
+          # Exclude lock files and built `dist/` output because they can
+          # shift without representing review-worthy code changes.
+          NEW_HASH=$(git diff origin/master...HEAD -- \
+              . ':(exclude)*.lock' ':(exclude)**/dist/**' \
+            | sha256sum | cut -c1-16)
+          echo "new_hash=$NEW_HASH" >> "$GITHUB_OUTPUT"
+          echo "Current PR diff hash: $NEW_HASH"
+
+          # Look for any prior PR comment carrying a matching cache sentinel.
+          # Using grep for exact-match (not "latest and compare") correctly
+          # handles the revert scenario where the current hash matches a
+          # sentinel from two runs ago. Pipeline is wrapped in `|| true`
+          # so network/API errors fail open to a cache miss.
+          if gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+              --jq '.[].body' 2>/dev/null \
+              | grep -Fq "claude-review-cache: $NEW_HASH"; then
+            echo "hit=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Cache hit — PR diff unchanged since last green review ($NEW_HASH). Short-circuiting."
+            mkdir -p /tmp
+            cat > /tmp/review-result.json <<JSON
+          {"counts":{"critical":0,"medium":0,"low":0,"nit":0},"findings":[],"verdict":"cached","cached_hash":"$NEW_HASH"}
+          JSON
+          else
+            echo "hit=false" >> "$GITHUB_OUTPUT"
+            echo "Cache miss — running full review."
+          fi
+
       - uses: oven-sh/setup-bun@v2
+        if: steps.cache.outputs.hit != 'true'
         with:
           bun-version: latest
 
       - uses: actions/setup-node@v4
+        if: steps.cache.outputs.hit != 'true'
         with:
           node-version: '22'
 
       - name: Install dependencies
+        if: steps.cache.outputs.hit != 'true'
         run: bun install
 
       - name: Build packages
+        if: steps.cache.outputs.hit != 'true'
         # Claude needs a built workspace to reason about type/import errors.
         run: bun run build
 
       - name: Install Claude Code CLI
+        if: steps.cache.outputs.hit != 'true'
         run: npm install -g @anthropic-ai/claude-code
 
       - name: Run /review-pr via Claude Code CLI
+        if: steps.cache.outputs.hit != 'true'
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -209,6 +267,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          CACHE_HIT: ${{ steps.cache.outputs.hit }}
+          CACHE_HASH: ${{ steps.cache.outputs.new_hash }}
         run: |
           set -euo pipefail
 
@@ -314,31 +374,57 @@ jobs:
 
           echo "Severity counts — critical: $CRIT, medium: $MED, low: $LOW, nit: $NIT"
 
-          # Post the full findings as a PR comment so the author (and
+          # Post the review result as a PR comment so the author (and
           # automation polling the PR) can see what Claude found without
-          # downloading the artifact.
+          # downloading the artifact. Two body shapes:
+          #   - `verdict: cached` → short "cached, no changes since HASH" note
+          #   - otherwise → full findings dump
+          # On a clean review (critical=0 && medium=0) we also embed an
+          # HTML-comment sentinel that future `Check review cache` runs
+          # grep for. Red reviews MUST NOT write the sentinel or we would
+          # cache a failing result.
           mkdir -p /tmp/diag
-          {
-            echo "## Claude Review — run $GITHUB_RUN_ID"
-            echo ""
-            echo "**Counts:** critical: $CRIT · medium: $MED · low: $LOW · nit: $NIT"
-            echo ""
-            echo "### Findings"
-            echo ""
-            jq -r '.findings[]? | "- **\(.severity)** `\(.file):\(.line)` — \(.message)"' "$RESULT" \
-              || echo "_no findings_"
-            echo ""
-            echo "### Verdict"
-            echo ""
-            jq -r '.verdict // "(none)"' "$RESULT"
-            echo ""
-            echo "<details><summary>Raw JSON</summary>"
-            echo ""
-            echo '```json'
-            cat "$RESULT"
-            echo '```'
-            echo "</details>"
-          } > /tmp/diag/review.md
+          VERDICT=$(jq -r '.verdict // "comment"' "$RESULT")
+          if [ "$VERDICT" = "cached" ]; then
+            {
+              echo "## Claude Review — run $GITHUB_RUN_ID (cached)"
+              echo ""
+              echo "Skipped: PR effective diff unchanged since last green review."
+              echo ""
+              echo "Hash: \`$CACHE_HASH\`"
+              echo ""
+              # Re-emit the sentinel so the cache lineage chains forward
+              # on every push even after a short-circuit.
+              echo "<!-- claude-review-cache: $CACHE_HASH -->"
+            } > /tmp/diag/review.md
+          else
+            {
+              echo "## Claude Review — run $GITHUB_RUN_ID"
+              echo ""
+              echo "**Counts:** critical: $CRIT · medium: $MED · low: $LOW · nit: $NIT"
+              echo ""
+              echo "### Findings"
+              echo ""
+              jq -r '.findings[]? | "- **\(.severity)** `\(.file):\(.line)` — \(.message)"' "$RESULT" \
+                || echo "_no findings_"
+              echo ""
+              echo "### Verdict"
+              echo ""
+              jq -r '.verdict // "(none)"' "$RESULT"
+              echo ""
+              echo "<details><summary>Raw JSON</summary>"
+              echo ""
+              echo '```json'
+              cat "$RESULT"
+              echo '```'
+              echo "</details>"
+              # Only a clean review (no critical, no medium) is cacheable.
+              if [ "$CRIT" -eq 0 ] && [ "$MED" -eq 0 ]; then
+                echo ""
+                echo "<!-- claude-review-cache: $CACHE_HASH -->"
+              fi
+            } > /tmp/diag/review.md
+          fi
 
           gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
             --body-file /tmp/diag/review.md || echo "::warning::Failed to post review PR comment"
@@ -348,7 +434,11 @@ jobs:
             exit 1
           fi
 
-          echo "No blocking findings (low/nit are advisory). Check passes."
+          if [ "$VERDICT" = "cached" ]; then
+            echo "Cached-green from hash $CACHE_HASH — check passes."
+          else
+            echo "No blocking findings (low/nit are advisory). Check passes."
+          fi
 
   autofix-loop:
     name: Claude Autofix Loop
