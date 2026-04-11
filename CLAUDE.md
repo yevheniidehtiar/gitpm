@@ -230,6 +230,47 @@ bun run build && node packages/cli/dist/index.js push --token "$GITHUB_TOKEN" --
 ```
 This ensures `.meta/` and GitHub Issues stay in sync. Never skip this step after modifying `.meta/` files.
 
+## Task Lifecycle & PR Linkage
+
+Stories move through a **three-state flow** aligned with release-please:
+
+```
+todo ──► in_progress ──► in_review ──► done
+         ▲              ▲             ▲
+         │              │             │
+         Claude         Claude        release-please
+         starts work    raises PR     bot (automated)
+```
+
+| Transition | Who does it | When |
+|---|---|---|
+| `todo` → `in_progress` | Claude (manual) | Before writing any code for the story |
+| `in_progress` → `in_review` | Claude (manual) | In the work PR itself, committed alongside the code |
+| `in_review` → `done` | `release-please.yml` (automated) | When release-please opens/updates the release PR |
+| GitHub issue closes | `post-merge-sync.yml` (automated) | After the release PR merges to master |
+
+**Rule 1 — Start of work:** When you begin working on a `.meta/` story, flip it to `in_progress` as your first action:
+```bash
+gitpm set .meta/epics/<epic>/stories/<story>.md status=in_progress
+```
+
+**Rule 2 — Raising a PR:** The PR that implements the story must do **two things**:
+
+1. Flip the story's status in the same diff:
+   ```bash
+   gitpm set .meta/epics/<epic>/stories/<story>.md status=in_review
+   ```
+2. List the story file(s) in the PR body under "Related GitPM stories" (the PR template has a section for this). This creates a persistent link in the PR description.
+
+**Rules 3 & 4 are fully automated — do not do them manually:**
+
+- When `release-please.yml` runs on master, its `mark-stories-done` job finds every story with `status: in_review` and flips it to `done` in a commit pushed onto the release PR branch (`chore(pm): mark shipped stories as done`). The release PR review surface shows exactly which tickets are going out in this release.
+- When the release PR merges to master, `post-merge-sync.yml` fires on the `.meta/**` path, runs `gitpm push`, and closes the corresponding GitHub issues via the standard sync path (`packages/sync-github/src/mapper.ts` maps `status: done` → GitHub `state: closed`).
+
+**Why three states instead of two:** `in_review` is the "merged to master, awaiting release" state — it's the gap between PR merge and npm publish. Keeping it distinct from `done` means the release PR review shows a clean list of "what's shipping", and stories aren't marked complete until they're actually published.
+
+**If a PR has no `.meta/` story** (e.g., docs-only, tooling, typo fix): skip Rules 1 & 2. The release-please job will simply find 0 `in_review` stories and exit cleanly.
+
 ## Interactive Confirmations
 
 When asking the user a yes/no or small multiple-choice question — phrases like "Want me to…?", "Should I…?", "Shall I proceed with…?", "Do you want X or Y?" — always use the **AskUserQuestion** tool instead of plain-text prose. This renders an interactive button dialog, which is faster and less ambiguous than the user typing "yes"/"no" in chat.

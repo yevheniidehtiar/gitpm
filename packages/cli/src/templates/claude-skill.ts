@@ -148,6 +148,42 @@ gitpm push --token "$GITHUB_TOKEN"
 
 Use \`gitpm sync --strategy local-wins\` when you have both local edits and remote changes.
 
+## Story lifecycle (three-state flow)
+
+Stories move through four states tied to the release pipeline:
+
+\`\`\`
+todo ──► in_progress ──► in_review ──► done
+\`\`\`
+
+**You are responsible for the first two transitions only** — the release-please
+CI job promotes \`in_review\` → \`done\` automatically, and \`post-merge-sync.yml\`
+closes the GitHub issue once the release PR merges.
+
+| Transition | Who | When |
+|---|---|---|
+| \`todo\` → \`in_progress\` | **You** | Before writing any code for the story |
+| \`in_progress\` → \`in_review\` | **You** | Inside the work PR itself, committed with the code |
+| \`in_review\` → \`done\` | release-please bot | When the release PR is created/updated |
+| GitHub issue closes | post-merge-sync bot | After the release PR merges |
+
+**Rule 1 — When you start work on a story, flip it to in_progress:**
+\`\`\`bash
+gitpm set .meta/epics/<epic>/stories/<story>.md status=in_progress
+\`\`\`
+
+**Rule 2 — When you raise the PR that implements the story, do two things in the same PR:**
+
+1. Flip the story's status in the diff:
+   \`\`\`bash
+   gitpm set .meta/epics/<epic>/stories/<story>.md status=in_review
+   \`\`\`
+2. Reference the story file path(s) in the PR body under "Related GitPM stories" (the PR template has a section for it).
+
+**Do NOT manually set status=done or close GitHub issues** — both are handled by CI. Setting \`status=done\` yourself short-circuits the release PR audit surface.
+
+If a PR has no \`.meta/\` story (docs, tooling, typo fix): skip both rules. CI will find 0 \`in_review\` stories and exit cleanly.
+
 ## Help
 
 - \`gitpm --help\` — list all commands
