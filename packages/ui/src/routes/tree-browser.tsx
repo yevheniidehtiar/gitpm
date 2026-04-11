@@ -72,7 +72,15 @@ export function TreeBrowser() {
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return items;
-  }, [allEntities, search, statusFilter, typeFilter, assigneeFilter, sortKey, sortDir]);
+  }, [
+    allEntities,
+    search,
+    statusFilter,
+    typeFilter,
+    assigneeFilter,
+    sortKey,
+    sortDir,
+  ]);
 
   // Build hierarchy: milestones -> epics -> stories
   const hierarchical = useMemo(() => {
@@ -134,7 +142,11 @@ export function TreeBrowser() {
     }
   };
 
-  const useHierarchy = !search && !statusFilter.length && !typeFilter.length && !assigneeFilter.length;
+  const useHierarchy =
+    !search &&
+    !statusFilter.length &&
+    !typeFilter.length &&
+    !assigneeFilter.length;
   const displayRows = useHierarchy
     ? hierarchical
     : filtered.map((e) => ({ entity: e, depth: 0 }));
