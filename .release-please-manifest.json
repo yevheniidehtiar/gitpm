@@ -4,5 +4,5 @@
   "packages/sync-gitlab": "0.1.6",
   "packages/sync-jira": "0.1.5",
   "packages/cli": "0.1.6",
-  "packages/ui": "0.1.5"
+  "packages/ui": "0.1.6"
 }
