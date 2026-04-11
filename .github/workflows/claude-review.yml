@@ -1,0 +1,350 @@
+name: Claude Code Review
+
+# Runs the `/review-pr` slash command against every PR push and gates the
+# check on finding severity. A second job waits in a sleep loop and invokes
+# Claude to auto-fix failing CI jobs until they turn green (or a safety cap
+# is hit). Both jobs authenticate via an OAuth token generated with
+# `claude setup-token` on a trusted machine and stored as the
+# CLAUDE_CODE_OAUTH_TOKEN repository secret.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [master]
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  checks: read
+  actions: read
+
+jobs:
+  review:
+    name: Claude Review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build packages
+        # Claude needs a built workspace to reason about type/import errors.
+        run: bun run build
+
+      - name: Run /review-pr via Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        with:
+          claude_args: "--max-turns 20"
+          prompt: |
+            You are running inside a GitHub Actions job for PR #${{ github.event.pull_request.number }}
+            on yevheniidehtiar/gitpm. Run the repo's `/review-pr ${{ github.event.pull_request.number }}`
+            slash command (defined at `.claude/commands/review-pr.md`) with the
+            following additional requirements:
+
+            1. DO NOT post any comment or review on GitHub. Output stays in the
+               Actions logs only. Ignore the "Posting to GitHub" step of the skill.
+
+            2. Classify every finding with exactly one of these severities:
+
+               - **critical**: correctness bugs, security issues, broken build/logic,
+                 thrown exceptions in library code where `Result<T, E>` is required,
+                 data loss, regressions.
+               - **medium**: CLAUDE.md convention violations (ESM `.js` import suffix,
+                 `type` imports where applicable, zod validation instead of manual
+                 type guards, `node:fs/promises` for file I/O, no `any`, colocated
+                 `*.test.ts`, conventional commit subjects), missing tests for new
+                 behavior, sloppy/absent error handling.
+               - **low**: reuse opportunities from the `simplify` pass, minor
+                 simplifications, dead code cleanup suggestions.
+               - **nit**: naming preferences, whitespace, subjective style the
+                 Biome linter would not flag.
+
+            3. Write a JSON file to `/tmp/review-result.json` with this exact shape:
+
+               ```json
+               {
+                 "counts": {"critical": 0, "medium": 0, "low": 0, "nit": 0},
+                 "findings": [
+                   {
+                     "severity": "critical|medium|low|nit",
+                     "file": "path/to/file.ts",
+                     "line": 42,
+                     "message": "short description"
+                   }
+                 ],
+                 "verdict": "approve|request_changes|comment"
+               }
+               ```
+
+               The `counts` object MUST sum to `findings.length`. Use this to
+               double-check yourself before writing the file.
+
+            4. Append a markdown report to the file at `$GITHUB_STEP_SUMMARY`
+               (an env var already set by GitHub Actions). Structure:
+
+               ```
+               ## Claude Review — PR #<n>
+
+               **Verdict:** <verdict>
+
+               **Counts:** critical: N · medium: N · low: N · nit: N
+
+               ### Critical
+               - `path/file.ts:LINE` — message
+
+               ### Medium
+               - ...
+
+               ### Low
+               - ...
+
+               ### Nit
+               - ...
+
+               ### Summary
+               <the normal review-pr Summary / Correctness / Conventions /
+               Tests / Reuse / CI sections, unabridged>
+               ```
+
+               If a severity bucket is empty, write `_None_` under that heading.
+
+            5. After writing both files, print the contents of
+               `/tmp/review-result.json` to stdout so the next workflow step
+               can parse it.
+
+            Do not exit non-zero yourself — a follow-up shell step will gate on
+            the counts in `/tmp/review-result.json`. Just produce the artifacts
+            and finish.
+
+      - name: Gate on severity
+        id: gate
+        run: |
+          set -euo pipefail
+          if [ ! -f /tmp/review-result.json ]; then
+            echo "::error::Claude did not produce /tmp/review-result.json"
+            exit 1
+          fi
+
+          echo "::group::review-result.json"
+          cat /tmp/review-result.json
+          echo "::endgroup::"
+
+          CRIT=$(jq -r '.counts.critical // 0' /tmp/review-result.json)
+          MED=$(jq -r '.counts.medium // 0' /tmp/review-result.json)
+          LOW=$(jq -r '.counts.low // 0' /tmp/review-result.json)
+          NIT=$(jq -r '.counts.nit // 0' /tmp/review-result.json)
+
+          echo "Severity counts — critical: $CRIT, medium: $MED, low: $LOW, nit: $NIT"
+
+          if [ "$CRIT" -gt 0 ] || [ "$MED" -gt 0 ]; then
+            echo "::error::Review found $CRIT critical and $MED medium issues — failing check"
+            exit 1
+          fi
+
+          echo "No blocking findings (low/nit are advisory). Check passes."
+
+  autofix-loop:
+    name: Claude Autofix Loop
+    runs-on: ubuntu-latest
+    # Skip PRs from forks — we can't push to a fork branch from this workflow.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Configure git identity
+        run: |
+          git config user.name "claude-autofix[bot]"
+          git config user.email "claude-autofix@users.noreply.github.com"
+
+      - name: Wait-and-fix loop
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          MAX_ITERATIONS=5
+          SLEEP_SEC=45
+          SELF_JOBS='["Claude Review","Claude Autofix Loop"]'
+
+          for i in $(seq 1 "$MAX_ITERATIONS"); do
+            echo "::group::Iteration $i"
+            echo "Sleeping ${SLEEP_SEC}s for other CI jobs to progress…"
+            sleep "$SLEEP_SEC"
+
+            HEAD_SHA=$(git rev-parse HEAD)
+            echo "Current HEAD: $HEAD_SHA"
+
+            # Fetch all check runs for this commit, excluding this workflow's
+            # own jobs so we don't wait on ourselves.
+            CHECK_RUNS=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" --paginate \
+              | jq --argjson self "$SELF_JOBS" \
+                  '[.check_runs[] | select(.name as $n | $self | index($n) | not)]')
+
+            TOTAL=$(echo "$CHECK_RUNS" | jq 'length')
+            if [ "$TOTAL" -eq 0 ]; then
+              echo "No external check runs yet — looping."
+              echo "::endgroup::"
+              continue
+            fi
+
+            # Any still queued/in_progress? Keep waiting.
+            PENDING=$(echo "$CHECK_RUNS" | jq '[.[] | select(.status != "completed")] | length')
+            if [ "$PENDING" -gt 0 ]; then
+              echo "$PENDING check runs still in progress — looping."
+              echo "::endgroup::"
+              continue
+            fi
+
+            # All completed — check for failures.
+            FAILING=$(echo "$CHECK_RUNS" | jq '[.[] | select(.conclusion == "failure" or .conclusion == "timed_out" or .conclusion == "cancelled")]')
+            FAIL_COUNT=$(echo "$FAILING" | jq 'length')
+
+            if [ "$FAIL_COUNT" -eq 0 ]; then
+              echo "All external checks are green — autofix loop done."
+              {
+                echo "## Claude Autofix Loop"
+                echo ""
+                echo "All external checks green after $((i - 1)) fix iteration(s)."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+
+            echo "$FAIL_COUNT check(s) failing — asking Claude to fix."
+            echo "$FAILING" | jq -r '.[] | "  - \(.name): \(.output.title // "no title")"'
+
+            # Write failing-job context to a file Claude can read.
+            mkdir -p /tmp/autofix
+            echo "$FAILING" | jq '[.[] | {name, conclusion, url: .html_url, title: .output.title, summary: .output.summary}]' \
+              > /tmp/autofix/failing-checks.json
+
+            # Invoke Claude for this iteration. Each iteration is a fresh
+            # action invocation so the OAuth session stays well inside the
+            # ~10–15 minute refresh window.
+            cat > /tmp/autofix/prompt.md <<'EOF'
+          You are running inside a GitHub Actions autofix loop for a gitpm PR.
+          Failing CI check context is in `/tmp/autofix/failing-checks.json`.
+
+          Your job:
+          1. Read `/tmp/autofix/failing-checks.json` and, for each failing check,
+             fetch the full job logs via `gh run view` or the check's `url`.
+          2. Diagnose the root cause. Do NOT modify tests to make them pass —
+             find the real bug in the code under test.
+          3. Fix the code following the gitpm conventions in `CLAUDE.md`
+             (ESM `.js` imports, `Result<T, E>` instead of thrown exceptions,
+             zod for validation, `node:fs/promises`, no `any`, colocated tests).
+          4. Run `bun run lint && bun run build && bun run test` locally to
+             verify the fix before finishing. If a verification step fails,
+             iterate until it passes or you are confident the failure is
+             pre-existing / out of scope.
+          5. Do NOT commit, push, or post any GitHub comment. The workflow
+             will commit any file changes you leave in the working tree.
+
+          If you cannot identify a fix, leave the working tree clean and
+          explain why in your final message — the workflow will detect the
+          clean tree and break the loop.
+          EOF
+
+            claude_prompt=$(cat /tmp/autofix/prompt.md)
+
+            echo "::endgroup::"
+            echo "::group::Iteration $i — Claude autofix invocation"
+
+            # Use the action's JS entrypoint from a nested step by calling
+            # it through a composite approach: we re-invoke the official
+            # action via `actions/github-script`-style inline is not
+            # possible here, so we instead install the CLI and run it
+            # directly. OAuth token is passed through the env.
+            if ! command -v claude >/dev/null 2>&1; then
+              echo "Installing @anthropic-ai/claude-code…"
+              npm i -g @anthropic-ai/claude-code
+            fi
+
+            claude -p "$claude_prompt" --max-turns 20 || {
+              echo "::warning::Claude exited non-zero — continuing to commit check"
+            }
+
+            echo "::endgroup::"
+            echo "::group::Iteration $i — commit & push"
+
+            if [ -z "$(git status --porcelain)" ]; then
+              echo "Claude produced no file changes — breaking loop."
+              {
+                echo "## Claude Autofix Loop"
+                echo ""
+                echo "Stopped at iteration $i: Claude could not produce a fix"
+                echo "for the failing checks. Manual intervention required."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+
+            git add -A
+            git commit -m "fix: autofix failing checks (iteration $i)
+
+          Automated fix by claude-autofix[bot] in response to failing CI.
+          See workflow run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+            # Retry push up to 4 times on transient network errors.
+            for attempt in 1 2 3 4 5; do
+              if git push origin "HEAD:${GITHUB_HEAD_REF}"; then
+                break
+              fi
+              backoff=$((2 ** (attempt - 1) * 2))
+              echo "push failed, retrying in ${backoff}s…"
+              sleep "$backoff"
+              if [ "$attempt" -eq 5 ]; then
+                echo "::error::Failed to push autofix commit after 5 attempts"
+                exit 1
+              fi
+            done
+
+            echo "Pushed autofix iteration $i. Loop will re-poll on next iteration."
+            echo "::endgroup::"
+          done
+
+          {
+            echo "## Claude Autofix Loop"
+            echo ""
+            echo "Reached max iterations ($MAX_ITERATIONS) without turning checks green."
+            echo "Manual intervention required."
+          } >> "$GITHUB_STEP_SUMMARY"
