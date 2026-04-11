@@ -79,9 +79,13 @@ jobs:
           # via the default GITHUB_TOKEN. Without this filter, any user
           # who can comment on the PR could post a forged sentinel with a
           # hash matching their own (unreviewed) diff and skip the gate.
+          # Match the full HTML-comment wrapper (not just the inner text)
+          # so Claude finding text that incidentally mentions
+          # `claude-review-cache: <some-hash>` in prose can never cause a
+          # spurious hit.
           if gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
               --jq '.[] | select(.user.login == "github-actions[bot]") | .body' 2>/dev/null \
-              | grep -Fq "claude-review-cache: $NEW_HASH"; then
+              | grep -Fq "<!-- claude-review-cache: $NEW_HASH -->"; then
             echo "hit=true" >> "$GITHUB_OUTPUT"
             echo "::notice::Cache hit — PR diff unchanged since last green review ($NEW_HASH). Short-circuiting."
             cat > /tmp/review-result.json <<JSON
