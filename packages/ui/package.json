@@ -25,6 +25,7 @@
   ],
   "scripts": {
     "build": "vite build",
+    "build:demo": "tsx scripts/bundle-demo-data.ts && VITE_DEMO_MODE=1 VITE_BASE=/gitpm/ vite build",
     "dev": "tsx src/dev.ts",
     "capture": "tsx scripts/capture.ts",
     "test:e2e": "playwright test",
