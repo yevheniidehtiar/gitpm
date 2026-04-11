@@ -301,6 +301,35 @@ jobs:
 
           echo "Severity counts — critical: $CRIT, medium: $MED, low: $LOW, nit: $NIT"
 
+          # Post the full findings as a PR comment so the author (and
+          # automation polling the PR) can see what Claude found without
+          # downloading the artifact.
+          mkdir -p /tmp/diag
+          {
+            echo "## Claude Review — run $GITHUB_RUN_ID"
+            echo ""
+            echo "**Counts:** critical: $CRIT · medium: $MED · low: $LOW · nit: $NIT"
+            echo ""
+            echo "### Findings"
+            echo ""
+            jq -r '.findings[]? | "- **\(.severity)** `\(.file):\(.line)` — \(.message)"' "$RESULT" \
+              || echo "_no findings_"
+            echo ""
+            echo "### Verdict"
+            echo ""
+            jq -r '.verdict // "(none)"' "$RESULT"
+            echo ""
+            echo "<details><summary>Raw JSON</summary>"
+            echo ""
+            echo '```json'
+            cat "$RESULT"
+            echo '```'
+            echo "</details>"
+          } > /tmp/diag/review.md
+
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+            --body-file /tmp/diag/review.md || echo "::warning::Failed to post review PR comment"
+
           if [ "$CRIT" -gt 0 ] || [ "$MED" -gt 0 ]; then
             echo "::error::Review found $CRIT critical and $MED medium issues — failing check"
             exit 1
