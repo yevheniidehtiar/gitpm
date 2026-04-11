@@ -261,4 +261,25 @@ describe('applyAssignments', () => {
       '## Description\n\nTest body',
     );
   });
+
+  it('rejects top-level __proto__ assignment without polluting prototype', () => {
+    const before = ({} as Record<string, unknown>).polluted;
+    const result = applyAssignments(baseStory, [
+      { field: '__proto__', operator: '=', value: 'polluted' },
+    ]);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Dangerous field name');
+    // Confirm no pollution leaked
+    expect(({} as Record<string, unknown>).polluted).toBe(before);
+  });
+
+  it('does not leak prototype pollution via intermediate object creation', () => {
+    // Ensure Object.prototype is not polluted after a legitimate nested set
+    applyAssignments(baseStory, [
+      { field: 'epic_ref.id', operator: '=', value: 'safe_value' },
+    ]);
+    expect(({} as Record<string, unknown>).id).toBeUndefined();
+    expect(({} as Record<string, unknown>).safe_value).toBeUndefined();
+  });
 });
