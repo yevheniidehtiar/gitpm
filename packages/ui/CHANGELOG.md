@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/yevheniidehtiar/gitpm/compare/ui-v0.1.5...ui-v0.1.6) (2026-04-11)
+
+
+### Features
+
+* **ui:** add public GitHub Pages demo deployment ([67b4253](https://github.com/yevheniidehtiar/gitpm/commit/67b4253b08109b6a9cc7f8c5efce52d54f61916e))
+
 ## [0.1.5](https://github.com/yevheniidehtiar/gitpm/compare/ui-v0.1.4...ui-v0.1.5) (2026-04-07)
 
 
