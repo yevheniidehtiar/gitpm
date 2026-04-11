@@ -12,6 +12,9 @@ jobs:
   release-please:
     name: Version Bump & Tag
     runs-on: ubuntu-latest
+    outputs:
+      prs_created: ${{ steps.release.outputs.prs_created }}
+      prs: ${{ steps.release.outputs.prs }}
     steps:
       - name: Generate GitHub App Token
         id: app-token
@@ -26,3 +29,116 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  # Second stage of the release-please workflow: find every story currently
+  # in `in_review` (= merged to master, awaiting release) and flip it to
+  # `done` directly on the release PR branch. The resulting commit makes
+  # the release PR's diff show exactly which tickets are being shipped,
+  # and downstream `post-merge-sync.yml` closes the matching GitHub issues
+  # once the release PR merges. See the "Task Lifecycle & PR Linkage"
+  # section in CLAUDE.md for the full chain.
+  mark-stories-done:
+    name: Mark in_review stories as done in release PR
+    needs: release-please
+    if: needs.release-please.outputs.prs_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - name: Extract release PR head branch
+        id: pr
+        env:
+          PRS_JSON: ${{ needs.release-please.outputs.prs }}
+        run: |
+          BRANCH=$(node -e "
+            const prs = JSON.parse(process.env.PRS_JSON || '[]');
+            if (!prs.length) { process.exit(0); }
+            console.log(prs[0].headBranchName);
+          ")
+          if [ -z "$BRANCH" ]; then
+            echo "No release PR branch reported by release-please; skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out release PR branch
+        if: steps.pr.outputs.skip != 'true'
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ steps.pr.outputs.branch }}
+          fetch-depth: 0
+
+      - name: Setup Bun
+        if: steps.pr.outputs.skip != 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node
+        if: steps.pr.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        if: steps.pr.outputs.skip != 'true'
+        run: bun install
+
+      - name: Build gitpm CLI (core + sync adapters + cli only)
+        if: steps.pr.outputs.skip != 'true'
+        run: |
+          bun run --filter '@gitpm/core' \
+                  --filter '@gitpm/sync-github' \
+                  --filter '@gitpm/sync-gitlab' \
+                  --filter '@gitpm/sync-jira' \
+                  --filter '@gitpm/cli' \
+                  build
+
+      - name: Promote in_review stories to done
+        if: steps.pr.outputs.skip != 'true'
+        id: promote
+        run: |
+          set -e
+          # Enumerate story file paths currently in `in_review`.
+          mapfile -t STORY_PATHS < <(
+            node packages/cli/dist/index.js query \
+              --type story --status in_review --format json \
+              | node -e "
+                const rows = JSON.parse(require('fs').readFileSync(0, 'utf-8'));
+                for (const r of rows) console.log(r.filePath);
+              "
+          )
+          if [ "${#STORY_PATHS[@]}" -eq 0 ]; then
+            echo "No in_review stories to promote."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          for path in "${STORY_PATHS[@]}"; do
+            echo "→ promoting $path to done"
+            node packages/cli/dist/index.js set "$path" status=done
+          done
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push status flip to release PR branch
+        if: steps.pr.outputs.skip != 'true' && steps.promote.outputs.changed == 'true'
+        run: |
+          git config user.name "gitpm-release-bot"
+          git config user.email "gitpm-release-bot@users.noreply.github.com"
+          git add .meta/
+          if git diff --staged --quiet; then
+            echo "No .meta/ changes staged; nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore(pm): mark shipped stories as done"
+          git push origin "HEAD:${{ steps.pr.outputs.branch }}"
