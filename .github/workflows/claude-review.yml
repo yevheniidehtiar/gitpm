@@ -22,7 +22,6 @@ permissions:
   issues: write
   checks: read
   actions: read
-  id-token: write
 
 jobs:
   review:
@@ -49,95 +48,100 @@ jobs:
         # Claude needs a built workspace to reason about type/import errors.
         run: bun run build
 
-      - name: Run /review-pr via Claude Code
-        id: claude
-        uses: anthropics/claude-code-action@v1
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run /review-pr via Claude Code CLI
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: "--max-turns 20"
-          prompt: |
-            You are running inside a GitHub Actions job for PR #${{ github.event.pull_request.number }}
-            on yevheniidehtiar/gitpm. Run the repo's `/review-pr ${{ github.event.pull_request.number }}`
-            slash command (defined at `.claude/commands/review-pr.md`) with the
-            following additional requirements:
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
 
-            1. DO NOT post any comment or review on GitHub. Output stays in the
-               Actions logs only. Ignore the "Posting to GitHub" step of the skill.
+          # Claude CLI in -p mode doesn't natively dispatch repo slash commands,
+          # so we inline the instructions and tell Claude to read and follow
+          # `.claude/commands/review-pr.md`.
+          cat > /tmp/review-prompt.md <<'EOF'
+          You are running inside a GitHub Actions job. Repository: yevheniidehtiar/gitpm.
+          Target PR number is in the `PR_NUMBER` environment variable.
 
-            2. Classify every finding with exactly one of these severities:
+          Task:
+          1. Read `.claude/commands/review-pr.md` from the working directory and
+             follow its "Steps" section to produce a structured PR review. For
+             GitHub data, use the `gh` CLI (`gh pr view $PR_NUMBER --json ...`,
+             `gh pr diff $PR_NUMBER`, `gh pr checks $PR_NUMBER`). Do NOT post
+             any comments or reviews — output stays in the Actions logs only.
 
-               - **critical**: correctness bugs, security issues, broken build/logic,
-                 thrown exceptions in library code where `Result<T, E>` is required,
-                 data loss, regressions.
-               - **medium**: CLAUDE.md convention violations (ESM `.js` import suffix,
-                 `type` imports where applicable, zod validation instead of manual
-                 type guards, `node:fs/promises` for file I/O, no `any`, colocated
-                 `*.test.ts`, conventional commit subjects), missing tests for new
-                 behavior, sloppy/absent error handling.
-               - **low**: reuse opportunities from the `simplify` pass, minor
-                 simplifications, dead code cleanup suggestions.
-               - **nit**: naming preferences, whitespace, subjective style the
-                 Biome linter would not flag.
+          2. Classify every finding with exactly one of these severities:
 
-            3. Write a JSON file to `/tmp/review-result.json` with this exact shape:
+             - **critical**: correctness bugs, security issues, broken
+               build/logic, thrown exceptions in library code where
+               `Result<T, E>` is required, data loss, regressions.
+             - **medium**: CLAUDE.md convention violations (ESM `.js` import
+               suffix, `type` imports where applicable, zod instead of manual
+               type guards, `node:fs/promises`, no `any`, colocated `*.test.ts`,
+               conventional commit subjects), missing tests for new behavior,
+               sloppy or absent error handling.
+             - **low**: reuse opportunities from a `simplify` pass, minor
+               simplifications, dead code cleanup suggestions.
+             - **nit**: naming preferences, whitespace, subjective style the
+               Biome linter would not flag.
 
-               ```json
-               {
-                 "counts": {"critical": 0, "medium": 0, "low": 0, "nit": 0},
-                 "findings": [
-                   {
-                     "severity": "critical|medium|low|nit",
-                     "file": "path/to/file.ts",
-                     "line": 42,
-                     "message": "short description"
-                   }
-                 ],
-                 "verdict": "approve|request_changes|comment"
-               }
-               ```
+          3. Write `/tmp/review-result.json` with this exact shape:
 
-               The `counts` object MUST sum to `findings.length`. Use this to
-               double-check yourself before writing the file.
+             {
+               "counts": {"critical": 0, "medium": 0, "low": 0, "nit": 0},
+               "findings": [
+                 {
+                   "severity": "critical|medium|low|nit",
+                   "file": "path/to/file.ts",
+                   "line": 42,
+                   "message": "short description"
+                 }
+               ],
+               "verdict": "approve|request_changes|comment"
+             }
 
-            4. Append a markdown report to the file at `$GITHUB_STEP_SUMMARY`
-               (an env var already set by GitHub Actions). Structure:
+             `counts` MUST sum to `findings.length`. Double-check before writing.
 
-               ```
-               ## Claude Review — PR #<n>
+          4. Append a markdown report to the file whose path is in the
+             `GITHUB_STEP_SUMMARY` environment variable. Structure:
 
-               **Verdict:** <verdict>
+             ## Claude Review — PR #<n>
 
-               **Counts:** critical: N · medium: N · low: N · nit: N
+             **Verdict:** <verdict>
 
-               ### Critical
-               - `path/file.ts:LINE` — message
+             **Counts:** critical: N · medium: N · low: N · nit: N
 
-               ### Medium
-               - ...
+             ### Critical
+             - `path/file.ts:LINE` — message
 
-               ### Low
-               - ...
+             ### Medium
+             - ...
 
-               ### Nit
-               - ...
+             ### Low
+             - ...
 
-               ### Summary
-               <the normal review-pr Summary / Correctness / Conventions /
-               Tests / Reuse / CI sections, unabridged>
-               ```
+             ### Nit
+             - ...
 
-               If a severity bucket is empty, write `_None_` under that heading.
+             ### Summary
+             <the normal review-pr Summary / Correctness / Conventions /
+             Tests / Reuse / CI sections, unabridged>
 
-            5. After writing both files, print the contents of
-               `/tmp/review-result.json` to stdout so the next workflow step
-               can parse it.
+             If a severity bucket is empty, write `_None_` under that heading.
 
-            Do not exit non-zero yourself — a follow-up shell step will gate on
-            the counts in `/tmp/review-result.json`. Just produce the artifacts
-            and finish.
+          5. After writing both files, print the contents of
+             `/tmp/review-result.json` to stdout.
+
+          Do NOT exit non-zero yourself. A follow-up shell step will gate on
+          the counts in `/tmp/review-result.json`.
+          EOF
+
+          prompt=$(cat /tmp/review-prompt.md)
+          claude -p "$prompt" --max-turns 20
 
       - name: Gate on severity
         id: gate
@@ -291,11 +295,8 @@ jobs:
             echo "::endgroup::"
             echo "::group::Iteration $i — Claude autofix invocation"
 
-            # Use the action's JS entrypoint from a nested step by calling
-            # it through a composite approach: we re-invoke the official
-            # action via `actions/github-script`-style inline is not
-            # possible here, so we instead install the CLI and run it
-            # directly. OAuth token is passed through the env.
+            # Install the CLI on the first iteration; subsequent iterations
+            # reuse it. OAuth token is inherited from the step env block.
             if ! command -v claude >/dev/null 2>&1; then
               echo "Installing @anthropic-ai/claude-code…"
               npm i -g @anthropic-ai/claude-code
