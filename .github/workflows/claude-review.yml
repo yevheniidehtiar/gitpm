@@ -73,12 +73,17 @@ jobs:
           # handles the revert scenario where the current hash matches a
           # sentinel from two runs ago. Pipeline is wrapped in `|| true`
           # so network/API errors fail open to a cache miss.
+          #
+          # SECURITY: the jq filter restricts sentinels to comments from
+          # `github-actions[bot]` — the identity this workflow posts under
+          # via the default GITHUB_TOKEN. Without this filter, any user
+          # who can comment on the PR could post a forged sentinel with a
+          # hash matching their own (unreviewed) diff and skip the gate.
           if gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-              --jq '.[].body' 2>/dev/null \
+              --jq '.[] | select(.user.login == "github-actions[bot]") | .body' 2>/dev/null \
               | grep -Fq "claude-review-cache: $NEW_HASH"; then
             echo "hit=true" >> "$GITHUB_OUTPUT"
             echo "::notice::Cache hit — PR diff unchanged since last green review ($NEW_HASH). Short-circuiting."
-            mkdir -p /tmp
             cat > /tmp/review-result.json <<JSON
           {"counts":{"critical":0,"medium":0,"low":0,"nit":0},"findings":[],"verdict":"cached","cached_hash":"$NEW_HASH"}
           JSON
