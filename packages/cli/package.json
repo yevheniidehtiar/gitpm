@@ -2,6 +2,28 @@
   "name": "@gitpm/cli",
   "version": "0.1.5",
   "license": "MIT",
+  "description": "Git-native project management CLI — manage roadmaps, epics, and stories from a .meta/ tree synced with GitHub, GitLab, and Jira",
+  "keywords": [
+    "gitpm",
+    "project-management",
+    "github",
+    "gitlab",
+    "jira",
+    "issues",
+    "roadmap",
+    "epics",
+    "cli",
+    "developer-tools"
+  ],
+  "homepage": "https://github.com/yevheniidehtiar/gitpm#readme",
+  "bugs": {
+    "url": "https://github.com/yevheniidehtiar/gitpm/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yevheniidehtiar/gitpm.git",
+    "directory": "packages/cli"
+  },
   "type": "module",
   "bin": {
     "gitpm": "./dist/index.js"
