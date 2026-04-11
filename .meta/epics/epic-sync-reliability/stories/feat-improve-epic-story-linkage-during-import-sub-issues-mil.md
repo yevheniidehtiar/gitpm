@@ -2,7 +2,7 @@
 type: story
 id: 3s7ljxxGGxnC
 title: "feat: improve epic-story linkage during import (sub-issues, milestones, labels)"
-status: todo
+status: in_progress
 priority: high
 assignee: null
 labels:
