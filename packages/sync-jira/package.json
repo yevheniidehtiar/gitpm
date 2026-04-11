@@ -2,6 +2,23 @@
   "name": "@gitpm/sync-jira",
   "version": "0.1.5",
   "license": "MIT",
+  "description": "Jira sync adapter for gitpm — bidirectional sync between .meta/ and Jira Issues",
+  "keywords": [
+    "gitpm",
+    "jira",
+    "sync",
+    "issues",
+    "project-management"
+  ],
+  "homepage": "https://github.com/yevheniidehtiar/gitpm#readme",
+  "bugs": {
+    "url": "https://github.com/yevheniidehtiar/gitpm/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yevheniidehtiar/gitpm.git",
+    "directory": "packages/sync-jira"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

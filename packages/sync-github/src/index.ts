@@ -33,6 +33,7 @@ export {
   computeContentHash,
   createInitialState,
   loadState,
+  reconstructState,
   saveState,
 } from './state.js';
 export { syncWithGitHub } from './sync.js';
