@@ -19,6 +19,7 @@ export function TreeBrowser() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  const [assigneeFilter, setAssigneeFilter] = useState<string[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>('type');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [showCreate, setShowCreate] = useState(false);
@@ -36,6 +37,15 @@ export function TreeBrowser() {
     ];
   }, [tree]);
 
+  const uniqueAssignees = useMemo(() => {
+    const names = allEntities
+      .map((e) => e.assignee || e.owner)
+      .filter((v): v is string => v != null);
+    return [...new Set(names)].sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' }),
+    );
+  }, [allEntities]);
+
   const filtered = useMemo(() => {
     let items = allEntities;
     if (search) {
@@ -48,6 +58,13 @@ export function TreeBrowser() {
     if (typeFilter.length) {
       items = items.filter((e) => typeFilter.includes(e.type));
     }
+    if (assigneeFilter.length) {
+      items = items.filter((e) => {
+        const name = e.assignee || e.owner;
+        if (name == null) return assigneeFilter.includes('__unassigned__');
+        return assigneeFilter.includes(name);
+      });
+    }
     items.sort((a, b) => {
       const av = (a[sortKey] ?? '') as string;
       const bv = (b[sortKey] ?? '') as string;
@@ -55,7 +72,15 @@ export function TreeBrowser() {
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return items;
-  }, [allEntities, search, statusFilter, typeFilter, sortKey, sortDir]);
+  }, [
+    allEntities,
+    search,
+    statusFilter,
+    typeFilter,
+    assigneeFilter,
+    sortKey,
+    sortDir,
+  ]);
 
   // Build hierarchy: milestones -> epics -> stories
   const hierarchical = useMemo(() => {
@@ -117,7 +142,11 @@ export function TreeBrowser() {
     }
   };
 
-  const useHierarchy = !search && !statusFilter.length && !typeFilter.length;
+  const useHierarchy =
+    !search &&
+    !statusFilter.length &&
+    !typeFilter.length &&
+    !assigneeFilter.length;
   const displayRows = useHierarchy
     ? hierarchical
     : filtered.map((e) => ({ entity: e, depth: 0 }));
@@ -208,6 +237,23 @@ export function TreeBrowser() {
           {['story', 'epic', 'milestone', 'prd', 'roadmap'].map((t) => (
             <option key={t} value={t}>
               {t}
+            </option>
+          ))}
+        </select>
+        <select
+          multiple
+          value={assigneeFilter}
+          onChange={(e) =>
+            setAssigneeFilter(
+              Array.from(e.target.selectedOptions, (o) => o.value),
+            )
+          }
+          className="px-2 py-1.5 text-sm border border-gray-300 rounded"
+        >
+          <option value="__unassigned__">Unassigned</option>
+          {uniqueAssignees.map((a) => (
+            <option key={a} value={a}>
+              {a}
             </option>
           ))}
         </select>

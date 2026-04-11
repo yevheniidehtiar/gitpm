@@ -122,6 +122,61 @@ test.describe('Tree Browser', () => {
     await expect(tableLink(page, 'Epic Alpha')).toHaveCount(0);
   });
 
+  test('assignee filter dropdown lists fixture assignees plus Unassigned', async ({
+    page,
+  }) => {
+    // The assignee filter is the third <select multiple>, after status and
+    // type. It derives options from the union of `assignee`/`owner` fields
+    // across all entities in the tree.
+    const assigneeSelect = page.locator('select[multiple]').nth(2);
+
+    // Fixture assignees: alice (stories 1/3/6 + epic-alpha owner),
+    // bob (stories 2/5 + epic-beta owner), carol (story 4). Milestone and
+    // roadmap have no assignee/owner, so "Unassigned" must be present too.
+    const optionValues = await assigneeSelect
+      .locator('option')
+      .evaluateAll((opts) => opts.map((o) => (o as HTMLOptionElement).value));
+
+    expect(optionValues).toContain('__unassigned__');
+    expect(optionValues).toContain('alice');
+    expect(optionValues).toContain('bob');
+    expect(optionValues).toContain('carol');
+  });
+
+  test('assignee filter narrows rows to stories/epics owned by that person', async ({
+    page,
+  }) => {
+    const assigneeSelect = page.locator('select[multiple]').nth(2);
+    await assigneeSelect.selectOption(['carol']);
+
+    // Only carol's story should be visible.
+    await expect(tableLink(page, /Story 4 — Backlog Carol/)).toBeVisible();
+
+    // Other assignees' entities must be filtered out.
+    await expect(tableLink(page, /Story 2 — In Progress Bob/)).toHaveCount(0);
+    await expect(tableLink(page, /Story 6 — Orphan Alice/)).toHaveCount(0);
+    await expect(tableLink(page, 'Epic Alpha')).toHaveCount(0);
+    await expect(tableLink(page, 'Epic Beta')).toHaveCount(0);
+    await expect(tableLink(page, 'v1.0 Fixture Milestone')).toHaveCount(0);
+  });
+
+  test('assignee filter Unassigned option shows only entities without owner', async ({
+    page,
+  }) => {
+    const assigneeSelect = page.locator('select[multiple]').nth(2);
+    await assigneeSelect.selectOption(['__unassigned__']);
+
+    // Milestone and roadmap in the fixture have no assignee/owner.
+    await expect(tableLink(page, 'v1.0 Fixture Milestone')).toBeVisible();
+    await expect(tableLink(page, 'E2E Fixture Roadmap')).toBeVisible();
+
+    // Stories and epics all have assignees/owners and must be filtered out.
+    await expect(tableLink(page, /Story 6 — Orphan Alice/)).toHaveCount(0);
+    await expect(tableLink(page, /Story 4 — Backlog Carol/)).toHaveCount(0);
+    await expect(tableLink(page, 'Epic Alpha')).toHaveCount(0);
+    await expect(tableLink(page, 'Epic Beta')).toHaveCount(0);
+  });
+
   test('sorting by title toggles ascending and descending', async ({
     page,
   }) => {

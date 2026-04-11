@@ -18,6 +18,7 @@ const PICKABLE_STATUSES = new Set(['backlog', 'todo']);
 export const nextCommand = new Command('next')
   .description('Show the next stories ready to be picked up')
   .option('-n, --count <number>', 'Number of stories to show', '5')
+  .option('-a, --assignee <name>', 'Filter by assignee')
   .action(async (opts, cmd) => {
     const metaDir = resolveMetaDir(cmd.optsWithGlobals().metaDir);
     const count = Number.parseInt(opts.count, 10);
@@ -28,7 +29,7 @@ export const nextCommand = new Command('next')
       process.exit(1);
     }
 
-    const stories = parseResult.value.stories
+    let stories = parseResult.value.stories
       .filter((s: Story) => PICKABLE_STATUSES.has(s.status))
       .sort((a: Story, b: Story) => {
         const pa = PRIORITY_ORDER[a.priority] ?? 99;
@@ -37,8 +38,16 @@ export const nextCommand = new Command('next')
         // Within same priority, prefer todo over backlog
         if (a.status !== b.status) return a.status === 'todo' ? -1 : 1;
         return 0;
-      })
-      .slice(0, count);
+      });
+
+    if (opts.assignee) {
+      const needle = opts.assignee.toLowerCase();
+      stories = stories.filter(
+        (s: Story) => s.assignee != null && s.assignee.toLowerCase() === needle,
+      );
+    }
+
+    stories = stories.slice(0, count);
 
     if (stories.length === 0) {
       console.log(chalk.yellow('No stories ready to be picked up.'));
@@ -51,7 +60,10 @@ export const nextCommand = new Command('next')
       const file = relative(process.cwd(), story.filePath);
       const pri = formatPriority(story.priority);
       const status = chalk.dim(`[${story.status}]`);
-      console.log(`  ${pri} ${status} ${story.title}`);
+      const assignee = story.assignee
+        ? chalk.cyan(`@${story.assignee}`)
+        : chalk.dim('unassigned');
+      console.log(`  ${pri} ${status} ${story.title} ${assignee}`);
       console.log(`    ${chalk.dim(file)}\n`);
     }
   });
