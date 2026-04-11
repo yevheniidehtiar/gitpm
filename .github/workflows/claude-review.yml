@@ -157,6 +157,7 @@ jobs:
           claude -p "$prompt" \
             --max-turns 40 \
             --verbose \
+            --dangerously-skip-permissions \
             --output-format stream-json \
             2>/tmp/claude-review/stderr.log \
             | tee /tmp/claude-review/stream.jsonl
@@ -439,7 +440,9 @@ jobs:
               npm i -g @anthropic-ai/claude-code
             fi
 
-            claude -p "$claude_prompt" --max-turns 20 || {
+            claude -p "$claude_prompt" \
+              --max-turns 20 \
+              --dangerously-skip-permissions || {
               echo "::warning::Claude exited non-zero — continuing to commit check"
             }
 
