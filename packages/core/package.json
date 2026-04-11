@@ -2,6 +2,24 @@
   "name": "@gitpm/core",
   "version": "0.1.5",
   "license": "MIT",
+  "description": "Schema engine for gitpm — parse, validate, and serialize .meta/ project management trees",
+  "keywords": [
+    "gitpm",
+    "project-management",
+    "schema",
+    "zod",
+    "markdown",
+    "yaml-frontmatter"
+  ],
+  "homepage": "https://github.com/yevheniidehtiar/gitpm#readme",
+  "bugs": {
+    "url": "https://github.com/yevheniidehtiar/gitpm/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yevheniidehtiar/gitpm.git",
+    "directory": "packages/core"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

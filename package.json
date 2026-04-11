@@ -2,6 +2,15 @@
   "name": "gitpm-monorepo",
   "private": true,
   "license": "MIT",
+  "description": "Git-native project management — monorepo root for gitpm",
+  "homepage": "https://github.com/yevheniidehtiar/gitpm#readme",
+  "bugs": {
+    "url": "https://github.com/yevheniidehtiar/gitpm/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yevheniidehtiar/gitpm.git"
+  },
   "workspaces": ["packages/*"],
   "scripts": {
     "build": "bun run --filter '*' build",
