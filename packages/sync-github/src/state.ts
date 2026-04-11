@@ -87,9 +87,12 @@ export async function reconstructState(
     const gh = 'github' in entity ? entity.github : undefined;
     if (!gh) continue;
 
+    // Pre-sync entities (imported or hand-written) may have no `last_sync_hash`
+    // yet; treat absence as an empty baseline hash so diffByHash still works —
+    // any local/remote change will compare unequal and be flagged as changed.
     const entry: SyncStateEntry = {
-      local_hash: gh.last_sync_hash,
-      remote_hash: gh.last_sync_hash,
+      local_hash: gh.last_sync_hash ?? '',
+      remote_hash: gh.last_sync_hash ?? '',
       synced_at: gh.synced_at,
     };
 
