@@ -192,6 +192,9 @@ jobs:
 
       - name: Gate on severity
         id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
 
@@ -213,35 +216,75 @@ jobs:
 
           if [ -z "$RESULT" ]; then
             echo "::error::Claude did not produce review-result.json in any expected location"
-            echo ""
-            echo "::group::Files under /tmp"
-            ls -la /tmp/ || true
-            ls -la /tmp/claude-review/ || true
-            echo "::endgroup::"
 
-            echo "::group::Files in workspace root"
-            ls -la "$GITHUB_WORKSPACE" | head -40 || true
-            echo "::endgroup::"
+            # Build a diagnostic report and post it as a PR comment so it's
+            # visible via the public API without needing to download the
+            # artifact or the workflow log.
+            mkdir -p /tmp/diag
+            {
+              echo "## Claude Review diagnostic — run $GITHUB_RUN_ID"
+              echo ""
+              echo "\`review-result.json\` was not found at \`/tmp\`, \`$GITHUB_WORKSPACE\`, or \`/tmp/claude-review\`."
+              echo ""
+              echo "### Files under /tmp"
+              echo '```'
+              ls -la /tmp/ 2>&1 | head -60 || true
+              echo '```'
+              echo ""
+              echo "### Files under /tmp/claude-review"
+              echo '```'
+              ls -la /tmp/claude-review/ 2>&1 || true
+              echo '```'
+              echo ""
+              echo "### Files in workspace root"
+              echo '```'
+              ls -la "$GITHUB_WORKSPACE" 2>&1 | head -40 || true
+              echo '```'
+            } > /tmp/diag/report.md
 
-            # Dump diagnostic info from the Claude transcript so we don't
-            # have to download the artifact to see what happened.
             if [ -f /tmp/claude-review/stream.jsonl ]; then
-              echo "::group::Claude assistant text messages (what Claude said)"
-              jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text' \
-                /tmp/claude-review/stream.jsonl 2>/dev/null || echo "(could not parse)"
-              echo "::endgroup::"
-
-              echo "::group::Claude tool calls (what Claude did)"
-              jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | "→ \(.name) \(.input | tostring | .[0:300])"' \
-                /tmp/claude-review/stream.jsonl 2>/dev/null || echo "(could not parse)"
-              echo "::endgroup::"
-
-              echo "::group::Final result event (if any)"
-              jq -r 'select(.type == "result")' /tmp/claude-review/stream.jsonl 2>/dev/null | tail -50 || echo "(none)"
-              echo "::endgroup::"
+              LINES=$(wc -l < /tmp/claude-review/stream.jsonl)
+              {
+                echo ""
+                echo "### stream.jsonl (\`$LINES\` events)"
+                echo ""
+                echo "#### Assistant text messages"
+                echo '```'
+                jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text' \
+                  /tmp/claude-review/stream.jsonl 2>&1 | head -200 || echo "(parse failed)"
+                echo '```'
+                echo ""
+                echo "#### Tool calls made"
+                echo '```'
+                jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | "→ \(.name) \(.input | tostring | .[0:400])"' \
+                  /tmp/claude-review/stream.jsonl 2>&1 | head -80 || echo "(parse failed)"
+                echo '```'
+                echo ""
+                echo "#### Final result event"
+                echo '```json'
+                jq -c 'select(.type == "result")' /tmp/claude-review/stream.jsonl 2>&1 | tail -5 || echo "(none)"
+                echo '```'
+                echo ""
+                echo "#### Stderr (last 50 lines)"
+                echo '```'
+                tail -50 /tmp/claude-review/stderr.log 2>&1 || echo "(none)"
+                echo '```'
+              } >> /tmp/diag/report.md
             else
-              echo "::warning::No stream.jsonl at /tmp/claude-review/stream.jsonl"
+              echo "" >> /tmp/diag/report.md
+              echo "**No \`stream.jsonl\` found — Claude CLI may have failed before it could write events.**" >> /tmp/diag/report.md
             fi
+
+            # Echo the report to the step log too so it's there if anyone
+            # has log-read access.
+            echo "::group::Diagnostic report (also posted as PR comment)"
+            cat /tmp/diag/report.md
+            echo "::endgroup::"
+
+            # Post to PR. `|| true` so a failure to post doesn't swallow
+            # the root-cause exit 1.
+            gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+              --body-file /tmp/diag/report.md || echo "::warning::Failed to post diagnostic PR comment"
 
             exit 1
           fi
