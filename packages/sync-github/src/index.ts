@@ -1,3 +1,9 @@
+export {
+  clearCheckpoint,
+  hasCheckpoint,
+  loadCheckpoint,
+  saveCheckpoint,
+} from './checkpoint.js';
 export type {
   GhIssue,
   GhMilestone,
@@ -51,6 +57,7 @@ export type {
   ImportResult,
   LinkStrategy,
   Resolution,
+  SyncCheckpoint,
   SyncOptions,
   SyncResult,
   SyncState,

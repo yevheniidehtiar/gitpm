@@ -1,6 +1,12 @@
 import { join } from 'node:path';
 import type { Epic, Milestone, Result, Story } from '@gitpm/core';
 import { parseTree, writeFile } from '@gitpm/core';
+import {
+  clearCheckpoint,
+  hasCheckpoint,
+  loadCheckpoint,
+  saveCheckpoint,
+} from './checkpoint.js';
 import type { GhIssue, GhMilestone } from './client.js';
 import { GitHubClient } from './client.js';
 import { resolveConflicts } from './conflict.js';
@@ -11,7 +17,12 @@ import {
 } from './diff.js';
 import { entityToGhIssue, milestoneToGhMilestone } from './mapper.js';
 import { computeContentHash, loadState, saveState } from './state.js';
-import type { FieldConflict, SyncOptions, SyncResult } from './types.js';
+import type {
+  FieldConflict,
+  SyncCheckpoint,
+  SyncOptions,
+  SyncResult,
+} from './types.js';
 
 /**
  * Compute a hash of a remote GitHub issue for comparison with sync state.
@@ -55,7 +66,23 @@ export async function syncWithGitHub(
     }
     const state = stateResult.value;
 
-    // 2. Parse local tree
+    // 2. Load checkpoint if present (for resume)
+    let checkpoint: SyncCheckpoint | null = null;
+    let resumedFromCheckpoint = false;
+    const hasExisting = await hasCheckpoint(metaDir);
+    if (hasExisting.ok && hasExisting.value) {
+      const cpResult = await loadCheckpoint(metaDir);
+      if (cpResult.ok && cpResult.value.repo === repo) {
+        checkpoint = cpResult.value;
+        resumedFromCheckpoint = true;
+      }
+    }
+
+    const processedEntityIds = new Set<string>(
+      checkpoint?.processedEntityIds ?? [],
+    );
+
+    // 3. Parse local tree
     const treeResult = await parseTree(metaDir);
     if (!treeResult.ok) return treeResult;
     const tree = treeResult.value;
@@ -67,309 +94,348 @@ export async function syncWithGitHub(
       conflicts: [],
       resolved: 0,
       skipped: 0,
+      resumedFromCheckpoint,
+      failedEntities: [],
     };
 
-    // 3. Build entity lookup maps
+    // Helper to save checkpoint on failure
+    const saveProgress = async (
+      failedEntityId: string,
+      errorMessage: string,
+    ): Promise<void> => {
+      const cp: SyncCheckpoint = {
+        startedAt: checkpoint?.startedAt ?? new Date().toISOString(),
+        repo,
+        processedEntityIds: [...processedEntityIds],
+        lastError: { entityId: failedEntityId, message: errorMessage },
+      };
+      await saveCheckpoint(metaDir, cp);
+    };
+
+    // 4. Build entity lookup maps
     const milestoneById = new Map(tree.milestones.map((m) => [m.id, m]));
     const epicById = new Map(tree.epics.map((e) => [e.id, e]));
     const storyById = new Map(tree.stories.map((s) => [s.id, s]));
 
-    // 4. Process each entity in sync state
+    // 5. Process each entity in sync state
     for (const [entityId, entry] of Object.entries(state.entities)) {
-      const localEntity =
-        milestoneById.get(entityId) ??
-        epicById.get(entityId) ??
-        storyById.get(entityId);
+      // Skip already-processed entities when resuming
+      if (processedEntityIds.has(entityId)) continue;
 
-      // Handle local deletion
-      if (!localEntity) {
-        if (!dryRun) {
-          // Close on GitHub
-          if (entry.github_issue_number) {
-            await client.updateIssue(
-              owner,
-              repoName,
-              entry.github_issue_number,
-              {
-                state: 'closed',
-              },
-            );
-          }
-          if (entry.github_milestone_number) {
-            await client.updateMilestone(
-              owner,
-              repoName,
-              entry.github_milestone_number,
-              { state: 'closed' },
-            );
-          }
-          delete state.entities[entityId];
-        }
-        result.pushed.issues++;
-        continue;
-      }
+      try {
+        const localEntity =
+          milestoneById.get(entityId) ??
+          epicById.get(entityId) ??
+          storyById.get(entityId);
 
-      const currentLocalHash = computeContentHash(localEntity);
-
-      // Fetch current remote state
-      if (entry.github_milestone_number && localEntity.type === 'milestone') {
-        const remoteMilestone = await client.getMilestone(
-          owner,
-          repoName,
-          entry.github_milestone_number,
-        );
-
-        if (!remoteMilestone) {
-          // Remote deleted — update local status
+        // Handle local deletion
+        if (!localEntity) {
           if (!dryRun) {
-            localEntity.status = 'cancelled';
-            const filePath = join(metaDir, '..', localEntity.filePath);
-            await writeFile(localEntity, filePath);
-            const hash = computeContentHash(localEntity);
-            state.entities[entityId] = {
-              ...entry,
-              local_hash: hash,
-              remote_hash: hash,
-              synced_at: new Date().toISOString(),
-            };
-          }
-          result.pulled.milestones++;
-          continue;
-        }
-
-        const currentRemoteHash = computeRemoteMilestoneHash(remoteMilestone);
-        const direction = diffByHash(
-          currentLocalHash,
-          currentRemoteHash,
-          entry,
-        );
-
-        if (direction === 'in_sync') continue;
-
-        if (direction === 'local_changed') {
-          // Push local → remote
-          if (!dryRun) {
-            const params = milestoneToGhMilestone(localEntity);
-            await client.updateMilestone(
-              owner,
-              repoName,
-              entry.github_milestone_number,
-              params,
-            );
-            state.entities[entityId] = {
-              ...entry,
-              local_hash: currentLocalHash,
-              remote_hash: currentLocalHash,
-              synced_at: new Date().toISOString(),
-            };
-          }
-          result.pushed.milestones++;
-        } else if (direction === 'remote_changed') {
-          // Pull remote → local
-          if (!dryRun) {
-            applyRemoteMilestone(localEntity, remoteMilestone);
-            const filePath = join(metaDir, '..', localEntity.filePath);
-            await writeFile(localEntity, filePath);
-            const hash = computeContentHash(localEntity);
-            state.entities[entityId] = {
-              ...entry,
-              local_hash: hash,
-              remote_hash: currentRemoteHash,
-              synced_at: new Date().toISOString(),
-            };
-          }
-          result.pulled.milestones++;
-        } else {
-          // Both changed — conflict
-          const conflict: FieldConflict = {
-            entityId,
-            entityTitle: localEntity.title,
-            entityType: 'milestone',
-            field: '_all',
-            baseValue: null,
-            localValue: currentLocalHash,
-            remoteValue: currentRemoteHash,
-          };
-
-          const resolutions = resolveConflicts([conflict], strategy);
-          if (resolutions.length > 0) {
-            const pick = resolutions[0].pick;
-            if (!dryRun) {
-              if (pick === 'local') {
-                const params = milestoneToGhMilestone(localEntity);
-                await client.updateMilestone(
-                  owner,
-                  repoName,
-                  entry.github_milestone_number,
-                  params,
-                );
-                state.entities[entityId] = {
-                  ...entry,
-                  local_hash: currentLocalHash,
-                  remote_hash: currentLocalHash,
-                  synced_at: new Date().toISOString(),
-                };
-              } else {
-                applyRemoteMilestone(localEntity, remoteMilestone);
-                const filePath = join(metaDir, '..', localEntity.filePath);
-                await writeFile(localEntity, filePath);
-                const hash = computeContentHash(localEntity);
-                state.entities[entityId] = {
-                  ...entry,
-                  local_hash: hash,
-                  remote_hash: currentRemoteHash,
-                  synced_at: new Date().toISOString(),
-                };
-              }
+            // Close on GitHub
+            if (entry.github_issue_number) {
+              await client.updateIssue(
+                owner,
+                repoName,
+                entry.github_issue_number,
+                {
+                  state: 'closed',
+                },
+              );
             }
-            result.resolved++;
-          } else {
-            result.conflicts.push(conflict);
-            result.skipped++;
-          }
-        }
-      } else if (entry.github_issue_number) {
-        const remoteIssue = await client.getIssue(
-          owner,
-          repoName,
-          entry.github_issue_number,
-        );
-
-        if (!remoteIssue) {
-          // Remote deleted/closed — update local status
-          if (
-            !dryRun &&
-            (localEntity.type === 'story' || localEntity.type === 'epic')
-          ) {
-            localEntity.status = 'cancelled';
-            const filePath = join(metaDir, '..', localEntity.filePath);
-            await writeFile(localEntity, filePath);
-            const hash = computeContentHash(localEntity);
-            state.entities[entityId] = {
-              ...entry,
-              local_hash: hash,
-              remote_hash: hash,
-              synced_at: new Date().toISOString(),
-            };
-          }
-          result.pulled.issues++;
-          continue;
-        }
-
-        const currentRemoteHash = computeRemoteIssueHash(remoteIssue);
-        const direction = diffByHash(
-          currentLocalHash,
-          currentRemoteHash,
-          entry,
-        );
-
-        if (direction === 'in_sync') continue;
-
-        if (direction === 'local_changed') {
-          if (
-            !dryRun &&
-            (localEntity.type === 'story' || localEntity.type === 'epic')
-          ) {
-            const params = entityToGhIssue(localEntity);
-            await client.updateIssue(
-              owner,
-              repoName,
-              entry.github_issue_number,
-              {
-                title: params.title,
-                body: params.body,
-                state: params.state,
-                labels: params.labels,
-                assignees: params.assignees,
-              },
-            );
-            state.entities[entityId] = {
-              ...entry,
-              local_hash: currentLocalHash,
-              remote_hash: currentLocalHash,
-              synced_at: new Date().toISOString(),
-            };
+            if (entry.github_milestone_number) {
+              await client.updateMilestone(
+                owner,
+                repoName,
+                entry.github_milestone_number,
+                { state: 'closed' },
+              );
+            }
+            delete state.entities[entityId];
           }
           result.pushed.issues++;
-        } else if (direction === 'remote_changed') {
-          if (
-            !dryRun &&
-            (localEntity.type === 'story' || localEntity.type === 'epic')
-          ) {
-            applyRemoteIssue(localEntity, remoteIssue);
-            const filePath = join(metaDir, '..', localEntity.filePath);
-            await writeFile(localEntity, filePath);
-            const hash = computeContentHash(localEntity);
-            state.entities[entityId] = {
-              ...entry,
-              local_hash: hash,
-              remote_hash: currentRemoteHash,
-              synced_at: new Date().toISOString(),
-            };
-          }
-          result.pulled.issues++;
-        } else {
-          // Both changed — conflict
-          const conflict: FieldConflict = {
-            entityId,
-            entityTitle: localEntity.title,
-            entityType: localEntity.type,
-            field: '_all',
-            baseValue: null,
-            localValue: currentLocalHash,
-            remoteValue: currentRemoteHash,
-          };
+          processedEntityIds.add(entityId);
+          continue;
+        }
 
-          const resolutions = resolveConflicts([conflict], strategy);
-          if (resolutions.length > 0) {
-            const pick = resolutions[0].pick;
+        const currentLocalHash = computeContentHash(localEntity);
+
+        // Fetch current remote state
+        if (entry.github_milestone_number && localEntity.type === 'milestone') {
+          const remoteMilestone = await client.getMilestone(
+            owner,
+            repoName,
+            entry.github_milestone_number,
+          );
+
+          if (!remoteMilestone) {
+            // Remote deleted — update local status
+            if (!dryRun) {
+              localEntity.status = 'cancelled';
+              const filePath = join(metaDir, '..', localEntity.filePath);
+              await writeFile(localEntity, filePath);
+              const hash = computeContentHash(localEntity);
+              state.entities[entityId] = {
+                ...entry,
+                local_hash: hash,
+                remote_hash: hash,
+                synced_at: new Date().toISOString(),
+              };
+            }
+            result.pulled.milestones++;
+            processedEntityIds.add(entityId);
+            continue;
+          }
+
+          const currentRemoteHash = computeRemoteMilestoneHash(remoteMilestone);
+          const direction = diffByHash(
+            currentLocalHash,
+            currentRemoteHash,
+            entry,
+          );
+
+          if (direction === 'in_sync') {
+            processedEntityIds.add(entityId);
+            continue;
+          }
+
+          if (direction === 'local_changed') {
+            // Push local → remote
+            if (!dryRun) {
+              const params = milestoneToGhMilestone(localEntity);
+              await client.updateMilestone(
+                owner,
+                repoName,
+                entry.github_milestone_number,
+                params,
+              );
+              state.entities[entityId] = {
+                ...entry,
+                local_hash: currentLocalHash,
+                remote_hash: currentLocalHash,
+                synced_at: new Date().toISOString(),
+              };
+            }
+            result.pushed.milestones++;
+          } else if (direction === 'remote_changed') {
+            // Pull remote → local
+            if (!dryRun) {
+              applyRemoteMilestone(localEntity, remoteMilestone);
+              const filePath = join(metaDir, '..', localEntity.filePath);
+              await writeFile(localEntity, filePath);
+              const hash = computeContentHash(localEntity);
+              state.entities[entityId] = {
+                ...entry,
+                local_hash: hash,
+                remote_hash: currentRemoteHash,
+                synced_at: new Date().toISOString(),
+              };
+            }
+            result.pulled.milestones++;
+          } else {
+            // Both changed — conflict
+            const conflict: FieldConflict = {
+              entityId,
+              entityTitle: localEntity.title,
+              entityType: 'milestone',
+              field: '_all',
+              baseValue: null,
+              localValue: currentLocalHash,
+              remoteValue: currentRemoteHash,
+            };
+
+            const resolutions = resolveConflicts([conflict], strategy);
+            if (resolutions.length > 0) {
+              const pick = resolutions[0].pick;
+              if (!dryRun) {
+                if (pick === 'local') {
+                  const params = milestoneToGhMilestone(localEntity);
+                  await client.updateMilestone(
+                    owner,
+                    repoName,
+                    entry.github_milestone_number,
+                    params,
+                  );
+                  state.entities[entityId] = {
+                    ...entry,
+                    local_hash: currentLocalHash,
+                    remote_hash: currentLocalHash,
+                    synced_at: new Date().toISOString(),
+                  };
+                } else {
+                  applyRemoteMilestone(localEntity, remoteMilestone);
+                  const filePath = join(metaDir, '..', localEntity.filePath);
+                  await writeFile(localEntity, filePath);
+                  const hash = computeContentHash(localEntity);
+                  state.entities[entityId] = {
+                    ...entry,
+                    local_hash: hash,
+                    remote_hash: currentRemoteHash,
+                    synced_at: new Date().toISOString(),
+                  };
+                }
+              }
+              result.resolved++;
+            } else {
+              result.conflicts.push(conflict);
+              result.skipped++;
+            }
+          }
+        } else if (entry.github_issue_number) {
+          const remoteIssue = await client.getIssue(
+            owner,
+            repoName,
+            entry.github_issue_number,
+          );
+
+          if (!remoteIssue) {
+            // Remote deleted/closed — update local status
             if (
               !dryRun &&
               (localEntity.type === 'story' || localEntity.type === 'epic')
             ) {
-              if (pick === 'local') {
-                const params = entityToGhIssue(localEntity);
-                await client.updateIssue(
-                  owner,
-                  repoName,
-                  entry.github_issue_number,
-                  {
-                    title: params.title,
-                    body: params.body,
-                    state: params.state,
-                    labels: params.labels,
-                    assignees: params.assignees,
-                  },
-                );
-                state.entities[entityId] = {
-                  ...entry,
-                  local_hash: currentLocalHash,
-                  remote_hash: currentLocalHash,
-                  synced_at: new Date().toISOString(),
-                };
-              } else {
-                applyRemoteIssue(localEntity, remoteIssue);
-                const filePath = join(metaDir, '..', localEntity.filePath);
-                await writeFile(localEntity, filePath);
-                const hash = computeContentHash(localEntity);
-                state.entities[entityId] = {
-                  ...entry,
-                  local_hash: hash,
-                  remote_hash: currentRemoteHash,
-                  synced_at: new Date().toISOString(),
-                };
-              }
+              localEntity.status = 'cancelled';
+              const filePath = join(metaDir, '..', localEntity.filePath);
+              await writeFile(localEntity, filePath);
+              const hash = computeContentHash(localEntity);
+              state.entities[entityId] = {
+                ...entry,
+                local_hash: hash,
+                remote_hash: hash,
+                synced_at: new Date().toISOString(),
+              };
             }
-            result.resolved++;
+            result.pulled.issues++;
+            processedEntityIds.add(entityId);
+            continue;
+          }
+
+          const currentRemoteHash = computeRemoteIssueHash(remoteIssue);
+          const direction = diffByHash(
+            currentLocalHash,
+            currentRemoteHash,
+            entry,
+          );
+
+          if (direction === 'in_sync') {
+            processedEntityIds.add(entityId);
+            continue;
+          }
+
+          if (direction === 'local_changed') {
+            if (
+              !dryRun &&
+              (localEntity.type === 'story' || localEntity.type === 'epic')
+            ) {
+              const params = entityToGhIssue(localEntity);
+              await client.updateIssue(
+                owner,
+                repoName,
+                entry.github_issue_number,
+                {
+                  title: params.title,
+                  body: params.body,
+                  state: params.state,
+                  labels: params.labels,
+                  assignees: params.assignees,
+                },
+              );
+              state.entities[entityId] = {
+                ...entry,
+                local_hash: currentLocalHash,
+                remote_hash: currentLocalHash,
+                synced_at: new Date().toISOString(),
+              };
+            }
+            result.pushed.issues++;
+          } else if (direction === 'remote_changed') {
+            if (
+              !dryRun &&
+              (localEntity.type === 'story' || localEntity.type === 'epic')
+            ) {
+              applyRemoteIssue(localEntity, remoteIssue);
+              const filePath = join(metaDir, '..', localEntity.filePath);
+              await writeFile(localEntity, filePath);
+              const hash = computeContentHash(localEntity);
+              state.entities[entityId] = {
+                ...entry,
+                local_hash: hash,
+                remote_hash: currentRemoteHash,
+                synced_at: new Date().toISOString(),
+              };
+            }
+            result.pulled.issues++;
           } else {
-            result.conflicts.push(conflict);
-            result.skipped++;
+            // Both changed — conflict
+            const conflict: FieldConflict = {
+              entityId,
+              entityTitle: localEntity.title,
+              entityType: localEntity.type,
+              field: '_all',
+              baseValue: null,
+              localValue: currentLocalHash,
+              remoteValue: currentRemoteHash,
+            };
+
+            const resolutions = resolveConflicts([conflict], strategy);
+            if (resolutions.length > 0) {
+              const pick = resolutions[0].pick;
+              if (
+                !dryRun &&
+                (localEntity.type === 'story' || localEntity.type === 'epic')
+              ) {
+                if (pick === 'local') {
+                  const params = entityToGhIssue(localEntity);
+                  await client.updateIssue(
+                    owner,
+                    repoName,
+                    entry.github_issue_number,
+                    {
+                      title: params.title,
+                      body: params.body,
+                      state: params.state,
+                      labels: params.labels,
+                      assignees: params.assignees,
+                    },
+                  );
+                  state.entities[entityId] = {
+                    ...entry,
+                    local_hash: currentLocalHash,
+                    remote_hash: currentLocalHash,
+                    synced_at: new Date().toISOString(),
+                  };
+                } else {
+                  applyRemoteIssue(localEntity, remoteIssue);
+                  const filePath = join(metaDir, '..', localEntity.filePath);
+                  await writeFile(localEntity, filePath);
+                  const hash = computeContentHash(localEntity);
+                  state.entities[entityId] = {
+                    ...entry,
+                    local_hash: hash,
+                    remote_hash: currentRemoteHash,
+                    synced_at: new Date().toISOString(),
+                  };
+                }
+              }
+              result.resolved++;
+            } else {
+              result.conflicts.push(conflict);
+              result.skipped++;
+            }
           }
         }
+
+        processedEntityIds.add(entityId);
+      } catch (entityErr) {
+        const errorMessage =
+          entityErr instanceof Error
+            ? entityErr.message
+            : `Failed to sync entity: ${entityErr}`;
+        result.failedEntities.push({ entityId, error: errorMessage });
+        await saveProgress(entityId, errorMessage);
       }
     }
 
-    // 5. Handle new local entities (not in sync state)
+    // 6. Handle new local entities (not in sync state)
     const syncedIds = new Set(Object.keys(state.entities));
     const newEntities: (Epic | Story | Milestone)[] = [
       ...tree.milestones.filter((m) => !syncedIds.has(m.id)),
@@ -378,67 +444,93 @@ export async function syncWithGitHub(
     ];
 
     for (const entity of newEntities) {
-      if (entity.type === 'milestone') {
-        if (!dryRun) {
-          const params = milestoneToGhMilestone(entity);
-          const created = await client.createMilestone(owner, repoName, params);
-          entity.github = {
-            milestone_id: created.number,
-            repo,
-            last_sync_hash: computeContentHash(entity),
-            synced_at: new Date().toISOString(),
-          };
-          const filePath = join(metaDir, '..', entity.filePath);
-          await writeFile(entity, filePath);
-          const hash = computeContentHash(entity);
-          state.entities[entity.id] = {
-            github_milestone_number: created.number,
-            local_hash: hash,
-            remote_hash: hash,
-            synced_at: new Date().toISOString(),
-          };
-        }
-        result.pushed.milestones++;
-      } else {
-        if (!dryRun) {
-          const params = entityToGhIssue(entity);
-          const created = await client.createIssue(owner, repoName, {
-            title: params.title,
-            body: params.body,
-            labels: params.labels,
-            assignees: params.assignees,
-          });
+      // Skip already-processed entities when resuming
+      if (processedEntityIds.has(entity.id)) continue;
 
-          if (params.state === 'closed') {
-            await client.updateIssue(owner, repoName, created.number, {
-              state: 'closed',
-            });
+      try {
+        if (entity.type === 'milestone') {
+          if (!dryRun) {
+            const params = milestoneToGhMilestone(entity);
+            const created = await client.createMilestone(
+              owner,
+              repoName,
+              params,
+            );
+            entity.github = {
+              milestone_id: created.number,
+              repo,
+              last_sync_hash: computeContentHash(entity),
+              synced_at: new Date().toISOString(),
+            };
+            const filePath = join(metaDir, '..', entity.filePath);
+            await writeFile(entity, filePath);
+            const hash = computeContentHash(entity);
+            state.entities[entity.id] = {
+              github_milestone_number: created.number,
+              local_hash: hash,
+              remote_hash: hash,
+              synced_at: new Date().toISOString(),
+            };
           }
+          result.pushed.milestones++;
+        } else {
+          if (!dryRun) {
+            const params = entityToGhIssue(entity);
+            const created = await client.createIssue(owner, repoName, {
+              title: params.title,
+              body: params.body,
+              labels: params.labels,
+              assignees: params.assignees,
+            });
 
-          entity.github = {
-            issue_number: created.number,
-            repo,
-            last_sync_hash: computeContentHash(entity),
-            synced_at: new Date().toISOString(),
-          };
-          const filePath = join(metaDir, '..', entity.filePath);
-          await writeFile(entity, filePath);
-          const hash = computeContentHash(entity);
-          state.entities[entity.id] = {
-            github_issue_number: created.number,
-            local_hash: hash,
-            remote_hash: hash,
-            synced_at: new Date().toISOString(),
-          };
+            if (params.state === 'closed') {
+              await client.updateIssue(owner, repoName, created.number, {
+                state: 'closed',
+              });
+            }
+
+            entity.github = {
+              issue_number: created.number,
+              repo,
+              last_sync_hash: computeContentHash(entity),
+              synced_at: new Date().toISOString(),
+            };
+            const filePath = join(metaDir, '..', entity.filePath);
+            await writeFile(entity, filePath);
+            const hash = computeContentHash(entity);
+            state.entities[entity.id] = {
+              github_issue_number: created.number,
+              local_hash: hash,
+              remote_hash: hash,
+              synced_at: new Date().toISOString(),
+            };
+          }
+          result.pushed.issues++;
         }
-        result.pushed.issues++;
+
+        processedEntityIds.add(entity.id);
+      } catch (entityErr) {
+        const errorMessage =
+          entityErr instanceof Error
+            ? entityErr.message
+            : `Failed to sync entity: ${entityErr}`;
+        result.failedEntities.push({
+          entityId: entity.id,
+          error: errorMessage,
+        });
+        await saveProgress(entity.id, errorMessage);
       }
     }
 
-    // 6. Save state
+    // 7. Save state and clear checkpoint on success
     if (!dryRun) {
       state.last_sync = new Date().toISOString();
       await saveState(metaDir, state);
+    }
+
+    // Only clear checkpoint if there were no failures
+    if (result.failedEntities.length === 0) {
+      await clearCheckpoint(metaDir);
     }
 
     return { ok: true, value: result };
