@@ -1,8 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { DEMO_MODE, demoFetch } from './demoApi.js';
 
 const BASE = '/api';
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  if (DEMO_MODE) {
+    return demoFetch<T>(url, init);
+  }
   const res = await fetch(`${BASE}${url}`, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...init?.headers },
