@@ -31,7 +31,7 @@ export async function syncWithGitLab(
   options: SyncOptions,
 ): Promise<Result<SyncResult>> {
   try {
-    const { token, project, metaDir, strategy = 'ask', dryRun } = options;
+    const { token, metaDir, strategy = 'ask', dryRun } = options;
     const baseUrl = options.baseUrl ?? 'https://gitlab.com';
 
     // 1. Load config to get project_id
