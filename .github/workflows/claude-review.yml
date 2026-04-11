@@ -17,16 +17,18 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
   issues: write
-  checks: read
-  actions: read
 
 jobs:
   review:
     name: Claude Review
     runs-on: ubuntu-latest
+    # Cap the review job well below the default 360-minute slot. Claude
+    # Review historically finishes in 5–6 min; 20 min leaves headroom
+    # for a slow run while preventing a hung session from tying up CI.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -98,16 +100,27 @@ jobs:
              section. For GitHub data use the `gh` CLI: `gh pr view
              $PR_NUMBER`, `gh pr diff $PR_NUMBER`, `gh pr checks $PR_NUMBER`.
           2. Read the changed files at HEAD. Skip lockfiles and `dist/`.
-          3. Classify every finding:
+          3. Classify every finding. **Judge severity against how the rest
+             of the repository is already written.** If a pattern is
+             consistent with existing files in the repo, the PR is following
+             the house convention — that alone CANNOT be `medium`. Only
+             genuine divergence from CLAUDE.md or from observable repo
+             patterns qualifies as a convention violation.
              - **critical**: correctness bugs, security issues, broken
                build/logic, thrown exceptions in library code where
                `Result<T, E>` is required, data loss, regressions.
-             - **medium**: CLAUDE.md convention violations (ESM `.js` import
-               suffix, `type` imports where applicable, zod instead of manual
-               type guards, `node:fs/promises`, no `any`, colocated
-               `*.test.ts`, conventional commit subjects), missing tests for
-               new behavior, sloppy or absent error handling.
-             - **low**: reuse opportunities, minor simplifications, dead code.
+             - **medium**: CLAUDE.md convention violations the diff
+               introduces or files that diverge from the pattern every
+               other file in the same area already follows (ESM `.js`
+               import suffix, `type` imports, zod instead of manual type
+               guards, `node:fs/promises`, no `any`, colocated `*.test.ts`,
+               conventional commit subjects), missing tests for new
+               behavior, sloppy or absent error handling.
+             - **low**: reuse opportunities, minor simplifications, dead
+               code, AND security-hardening suggestions that would require
+               a repo-wide policy change (e.g. pinning all action SHAs
+               when the rest of the repo uses floating tags) — those are
+               valid but out of scope for a single-file PR.
              - **nit**: naming/whitespace/style not caught by Biome.
 
           ## Outputs (in this order)
@@ -343,6 +356,16 @@ jobs:
     # Skip PRs from forks — we can't push to a fork branch from this workflow.
     if: github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 45
+    # Override workflow-level permissions with the broader set this job
+    # needs: `contents: write` to push fix commits, plus `checks: read`
+    # and `actions: read` for the polling loop. The `review` job keeps
+    # the minimal `contents: read` inherited from the workflow block.
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      checks: read
+      actions: read
     steps:
       # Generate a GitHub App token so autofix commits trigger new workflow
       # runs. The default GITHUB_TOKEN is subject to anti-loop protection —
