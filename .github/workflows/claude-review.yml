@@ -344,11 +344,25 @@ jobs:
     if: github.event.pull_request.head.repo.full_name == github.repository
     timeout-minutes: 45
     steps:
+      # Generate a GitHub App token so autofix commits trigger new workflow
+      # runs. The default GITHUB_TOKEN is subject to anti-loop protection —
+      # pushes made with it do NOT dispatch new `pull_request` events, which
+      # means the next iteration of this loop would see 0 check runs on the
+      # new SHA and spin uselessly. The RELEASE_APP_ID / RELEASE_APP_PRIVATE_KEY
+      # secrets are the same GitHub App release-please.yml uses for its own
+      # post-merge commits.
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -369,7 +383,9 @@ jobs:
       - name: Wait-and-fix loop
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Use the App token so `git push` below triggers new workflow runs
+          # on the PR and the next-iteration poll sees fresh check-runs.
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
@@ -489,7 +505,12 @@ jobs:
               exit 0
             fi
 
-            git add -A
+            # Stage only files Claude actually modified (tracked files).
+            # Using `-u` instead of `-A` avoids staging build artifacts,
+            # temp files, or any secret accidentally written to the working
+            # tree. Claude's autofix prompt is scoped to fixing bugs in
+            # existing code, so it should not need to stage untracked files.
+            git add -u
             git commit -m "fix: autofix failing checks (iteration $i)
 
           Automated fix by claude-autofix[bot] in response to failing CI.
