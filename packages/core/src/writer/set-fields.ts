@@ -14,6 +14,15 @@ function isDangerousKey(key: string): boolean {
   return DANGEROUS_KEYS.has(key);
 }
 
+function dangerousKeyError(part: string, path: string): Result<ParsedEntity> {
+  return {
+    ok: false,
+    error: new Error(
+      `Dangerous field name "${part}" in "${path}" — this could cause prototype pollution`,
+    ),
+  };
+}
+
 export interface FieldAssignment {
   field: string;
   operator: '=' | '+=' | '-=';
@@ -60,6 +69,7 @@ function setNestedField(
   value: unknown,
 ): Result<void> {
   const parts = path.split('.');
+  // Reject dangerous keys in any segment of the path.
   for (const part of parts) {
     if (isDangerousKey(part)) {
       return {
@@ -73,16 +83,34 @@ function setNestedField(
   let current = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
+    const existing = Object.hasOwn(current, part) ? current[part] : undefined;
     if (
-      current[part] === null ||
-      current[part] === undefined ||
-      typeof current[part] !== 'object'
+      existing === null ||
+      existing === undefined ||
+      typeof existing !== 'object'
     ) {
-      current[part] = {};
+      // Create with a null prototype so intermediate objects cannot be
+      // used as a vector to reach Object.prototype.
+      const fresh = Object.create(null) as Record<string, unknown>;
+      Object.defineProperty(current, part, {
+        value: fresh,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+      current = fresh;
+    } else {
+      current = existing as Record<string, unknown>;
     }
-    current = current[part] as Record<string, unknown>;
   }
-  current[parts[parts.length - 1]] = value;
+  const last = parts[parts.length - 1];
+  // Use defineProperty to bypass any accessor on the prototype chain.
+  Object.defineProperty(current, last, {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
   return { ok: true, value: undefined };
 }
 
@@ -102,21 +130,16 @@ export function applyAssignments(
   for (const assignment of assignments) {
     const { field, operator, value } = assignment;
 
-    // Guard against prototype pollution for all operators
+    // Guard against prototype pollution for all operators.
     const fieldParts = field.split('.');
     for (const part of fieldParts) {
       if (isDangerousKey(part)) {
-        return {
-          ok: false,
-          error: new Error(
-            `Dangerous field name "${part}" in "${field}" — this could cause prototype pollution`,
-          ),
-        };
+        return dangerousKeyError(part, field);
       }
     }
 
     if (operator === '+=') {
-      const current = data[field];
+      const current = Object.hasOwn(data, field) ? data[field] : undefined;
       if (Array.isArray(current)) {
         data[field] = [...current, value];
       } else {
@@ -129,7 +152,7 @@ export function applyAssignments(
     }
 
     if (operator === '-=') {
-      const current = data[field];
+      const current = Object.hasOwn(data, field) ? data[field] : undefined;
       if (Array.isArray(current)) {
         data[field] = current.filter((item: unknown) => item !== value);
       } else {
@@ -146,10 +169,19 @@ export function applyAssignments(
     if (field.includes('.')) {
       const nestedResult = setNestedField(data, field, coerced);
       if (!nestedResult.ok) {
-        return nestedResult;
+        return {
+          ok: false,
+          error: nestedResult.error,
+        };
       }
     } else {
-      data[field] = coerced;
+      // Use defineProperty to avoid any accessor on the prototype chain.
+      Object.defineProperty(data, field, {
+        value: coerced,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
     }
   }
 
