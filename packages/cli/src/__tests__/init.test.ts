@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Command } from 'commander';
@@ -29,6 +29,16 @@ async function run(...args: string[]) {
   await program.parseAsync(['node', 'gitpm', 'init', ...args]);
 }
 
+/**
+ * The real scaffoldMeta is mocked to a no-op, so tests must create the
+ * .meta directory themselves (collectFiles reads it, and the skill
+ * scaffolder treats dirname(metaDir) as the project root).
+ */
+async function seedMetaDir(metaDir: string): Promise<void> {
+  await mkdir(metaDir, { recursive: true });
+  await writeFile(join(metaDir, 'roadmap.yaml'), '');
+}
+
 // --- Tests ---
 
 describe('gitpm init', () => {
@@ -56,9 +66,7 @@ describe('gitpm init', () => {
 
     // scaffoldMeta is mocked, so collectFiles will read from an empty dir.
     // We need to create at least one file so the readdir doesn't fail.
-    const { mkdir, writeFile } = await import('node:fs/promises');
-    await mkdir(metaDir, { recursive: true });
-    await writeFile(join(metaDir, 'roadmap.yaml'), '');
+    await seedMetaDir(metaDir);
 
     await run('my-project', '--meta-dir', metaDir);
 
@@ -72,9 +80,7 @@ describe('gitpm init', () => {
     mockInput.mockResolvedValue('prompted-name');
     mockScaffoldMeta.mockResolvedValue({ ok: true, value: undefined });
 
-    const { mkdir, writeFile } = await import('node:fs/promises');
-    await mkdir(metaDir, { recursive: true });
-    await writeFile(join(metaDir, 'roadmap.yaml'), '');
+    await seedMetaDir(metaDir);
 
     await run('--meta-dir', metaDir);
 
@@ -101,12 +107,82 @@ describe('gitpm init', () => {
     const customDir = join(tmpDir, 'custom-meta');
     mockScaffoldMeta.mockResolvedValue({ ok: true, value: undefined });
 
-    const { mkdir, writeFile } = await import('node:fs/promises');
-    await mkdir(customDir, { recursive: true });
-    await writeFile(join(customDir, 'roadmap.yaml'), '');
+    await seedMetaDir(customDir);
 
     await run('test-proj', '--meta-dir', customDir);
 
     expect(mockScaffoldMeta).toHaveBeenCalledWith(customDir, 'test-proj');
+  });
+
+  describe('Claude Code skill scaffolding', () => {
+    it('writes the skill into .claude/skills/gitpm/ by default', async () => {
+      const metaDir = join(tmpDir, '.meta');
+      mockScaffoldMeta.mockResolvedValue({ ok: true, value: undefined });
+      await seedMetaDir(metaDir);
+
+      await run('my-project', '--meta-dir', metaDir);
+
+      const skillPath = join(tmpDir, '.claude', 'skills', 'gitpm', 'SKILL.md');
+      const body = await readFile(skillPath, 'utf-8');
+
+      // Frontmatter matches what Claude Code expects for skill discovery
+      expect(body).toMatch(/^---\nname: gitpm\ndescription: /);
+      // Teaches the 6 commands the skill is meant to promote
+      expect(body).toContain('gitpm query');
+      expect(body).toContain('gitpm show');
+      expect(body).toContain('gitpm set');
+      expect(body).toContain('gitpm create');
+      expect(body).toContain('gitpm move');
+      expect(body).toContain('gitpm commit');
+    });
+
+    it('skips the skill when --no-claude-skill is passed', async () => {
+      const metaDir = join(tmpDir, '.meta');
+      mockScaffoldMeta.mockResolvedValue({ ok: true, value: undefined });
+      await seedMetaDir(metaDir);
+
+      await run('my-project', '--meta-dir', metaDir, '--no-claude-skill');
+
+      const skillPath = join(tmpDir, '.claude', 'skills', 'gitpm', 'SKILL.md');
+      await expect(readFile(skillPath, 'utf-8')).rejects.toThrow();
+    });
+
+    it('does not overwrite an existing skill file', async () => {
+      const metaDir = join(tmpDir, '.meta');
+      mockScaffoldMeta.mockResolvedValue({ ok: true, value: undefined });
+      await seedMetaDir(metaDir);
+
+      const skillDir = join(tmpDir, '.claude', 'skills', 'gitpm');
+      const skillPath = join(skillDir, 'SKILL.md');
+      const userEditedContent = '# my customized skill — do not overwrite';
+      await mkdir(skillDir, { recursive: true });
+      await writeFile(skillPath, userEditedContent, 'utf-8');
+
+      await run('my-project', '--meta-dir', metaDir);
+
+      const after = await readFile(skillPath, 'utf-8');
+      expect(after).toBe(userEditedContent);
+    });
+
+    it('places the skill next to .meta/ even when metaDir is nested', async () => {
+      // Simulate a consumer running `gitpm init --meta-dir apps/web/.meta`.
+      const projectRoot = join(tmpDir, 'apps', 'web');
+      const metaDir = join(projectRoot, '.meta');
+      mockScaffoldMeta.mockResolvedValue({ ok: true, value: undefined });
+      await seedMetaDir(metaDir);
+
+      await run('nested-proj', '--meta-dir', metaDir);
+
+      // Skill lives alongside .meta/, not at tmpDir root
+      const skillPath = join(
+        projectRoot,
+        '.claude',
+        'skills',
+        'gitpm',
+        'SKILL.md',
+      );
+      const body = await readFile(skillPath, 'utf-8');
+      expect(body).toContain('name: gitpm');
+    });
   });
 });
