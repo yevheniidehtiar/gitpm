@@ -2,7 +2,7 @@
 type: story
 id: e6Mnoo3iNwiv
 title: "feat: add assignee filter to Tree Browser"
-status: todo
+status: in_progress
 priority: high
 assignee: null
 labels:
