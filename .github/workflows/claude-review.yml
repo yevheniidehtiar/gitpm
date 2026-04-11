@@ -64,80 +64,85 @@ jobs:
           # so we inline the instructions and tell Claude to read and follow
           # `.claude/commands/review-pr.md`.
           cat > /tmp/review-prompt.md <<'EOF'
-          You are running inside a GitHub Actions job. Repository: yevheniidehtiar/gitpm.
-          Target PR number is in the `PR_NUMBER` environment variable.
+          You are running as a PR reviewer inside a GitHub Actions job.
+          Repository: yevheniidehtiar/gitpm. PR number: in `$PR_NUMBER`.
 
-          Task:
-          1. Read `.claude/commands/review-pr.md` from the working directory and
-             follow its "Steps" section to produce a structured PR review. For
-             GitHub data, use the `gh` CLI (`gh pr view $PR_NUMBER --json ...`,
-             `gh pr diff $PR_NUMBER`, `gh pr checks $PR_NUMBER`). Do NOT post
-             any comments or reviews — output stays in the Actions logs only.
+          ## YOUR PRIMARY DELIVERABLE (must complete before ending the session)
 
-          2. Classify every finding with exactly one of these severities:
+          You MUST write a file at the absolute path `/tmp/review-result.json`
+          using the Write tool. This is non-negotiable. If you do not write
+          this file, the CI check fails. Write it even if the PR has no
+          findings at all (in which case `counts` are all 0 and `findings`
+          is `[]`). Use this exact JSON shape:
 
+          ```json
+          {
+            "counts": {"critical": 0, "medium": 0, "low": 0, "nit": 0},
+            "findings": [
+              {
+                "severity": "critical|medium|low|nit",
+                "file": "path/to/file.ts",
+                "line": 42,
+                "message": "short description"
+              }
+            ],
+            "verdict": "approve|request_changes|comment"
+          }
+          ```
+
+          `counts` MUST sum to `findings.length`.
+
+          ## Review process
+
+          1. Read `.claude/commands/review-pr.md` and apply its "Steps"
+             section. For GitHub data use the `gh` CLI: `gh pr view
+             $PR_NUMBER`, `gh pr diff $PR_NUMBER`, `gh pr checks $PR_NUMBER`.
+          2. Read the changed files at HEAD. Skip lockfiles and `dist/`.
+          3. Classify every finding:
              - **critical**: correctness bugs, security issues, broken
                build/logic, thrown exceptions in library code where
                `Result<T, E>` is required, data loss, regressions.
              - **medium**: CLAUDE.md convention violations (ESM `.js` import
                suffix, `type` imports where applicable, zod instead of manual
-               type guards, `node:fs/promises`, no `any`, colocated `*.test.ts`,
-               conventional commit subjects), missing tests for new behavior,
-               sloppy or absent error handling.
-             - **low**: reuse opportunities from a `simplify` pass, minor
-               simplifications, dead code cleanup suggestions.
-             - **nit**: naming preferences, whitespace, subjective style the
-               Biome linter would not flag.
+               type guards, `node:fs/promises`, no `any`, colocated
+               `*.test.ts`, conventional commit subjects), missing tests for
+               new behavior, sloppy or absent error handling.
+             - **low**: reuse opportunities, minor simplifications, dead code.
+             - **nit**: naming/whitespace/style not caught by Biome.
 
-          3. Write `/tmp/review-result.json` with this exact shape:
+          ## Outputs (in this order)
 
-             {
-               "counts": {"critical": 0, "medium": 0, "low": 0, "nit": 0},
-               "findings": [
-                 {
-                   "severity": "critical|medium|low|nit",
-                   "file": "path/to/file.ts",
-                   "line": 42,
-                   "message": "short description"
-                 }
-               ],
-               "verdict": "approve|request_changes|comment"
-             }
+          STEP A — Write `/tmp/review-result.json` (the JSON above). Use the
+          Write tool with the absolute path `/tmp/review-result.json`.
 
-             `counts` MUST sum to `findings.length`. Double-check before writing.
+          STEP B — Append a markdown report to the file at
+          `$GITHUB_STEP_SUMMARY` (read the env var, then use Bash
+          `cat >> "$GITHUB_STEP_SUMMARY" <<'END'` to append). Structure:
 
-          4. Append a markdown report to the file whose path is in the
-             `GITHUB_STEP_SUMMARY` environment variable. Structure:
+          ```
+          ## Claude Review — PR #<n>
 
-             ## Claude Review — PR #<n>
+          **Verdict:** <verdict>
 
-             **Verdict:** <verdict>
+          **Counts:** critical: N · medium: N · low: N · nit: N
 
-             **Counts:** critical: N · medium: N · low: N · nit: N
+          ### Critical
+          - `path/file.ts:LINE` — message
 
-             ### Critical
-             - `path/file.ts:LINE` — message
+          ### Medium / Low / Nit (same shape, `_None_` if empty)
 
-             ### Medium
-             - ...
+          ### Summary
+          <normal review-pr Summary / Correctness / Conventions / Tests /
+          Reuse / CI sections>
+          ```
 
-             ### Low
-             - ...
+          ## Hard rules
 
-             ### Nit
-             - ...
-
-             ### Summary
-             <the normal review-pr Summary / Correctness / Conventions /
-             Tests / Reuse / CI sections, unabridged>
-
-             If a severity bucket is empty, write `_None_` under that heading.
-
-          5. After writing both files, print the contents of
-             `/tmp/review-result.json` to stdout.
-
-          Do NOT exit non-zero yourself. A follow-up shell step will gate on
-          the counts in `/tmp/review-result.json`.
+          - DO NOT post any GitHub comment, review, or approval. Output
+            stays in the Actions logs and artifact.
+          - DO NOT exit early. Always complete STEP A before ending.
+          - DO NOT use relative paths for the JSON file. It must be
+            `/tmp/review-result.json` exactly.
           EOF
 
           prompt=$(cat /tmp/review-prompt.md)
@@ -150,13 +155,20 @@ jobs:
           mkdir -p /tmp/claude-review
           set +e
           claude -p "$prompt" \
-            --max-turns 20 \
+            --max-turns 40 \
             --verbose \
             --output-format stream-json \
             2>/tmp/claude-review/stderr.log \
             | tee /tmp/claude-review/stream.jsonl
           CLAUDE_EXIT=$?
           set -e
+
+          # If Claude wrote the result file into the repo root instead of
+          # /tmp (which happens when it uses a relative path), move it.
+          if [ -f "$GITHUB_WORKSPACE/review-result.json" ] && [ ! -f /tmp/review-result.json ]; then
+            echo "Claude wrote review-result.json into the workspace; moving to /tmp"
+            mv "$GITHUB_WORKSPACE/review-result.json" /tmp/review-result.json
+          fi
 
           echo "::group::Claude stderr"
           cat /tmp/claude-review/stderr.log || true
@@ -182,19 +194,66 @@ jobs:
         id: gate
         run: |
           set -euo pipefail
-          if [ ! -f /tmp/review-result.json ]; then
-            echo "::error::Claude did not produce /tmp/review-result.json"
+
+          # Claude's Write tool requires absolute paths, but it may also drop
+          # files into the repo working directory. Look in both spots and
+          # also inside /tmp/claude-review in case the stream writer took
+          # a detour.
+          RESULT=""
+          for candidate in \
+            /tmp/review-result.json \
+            "$GITHUB_WORKSPACE/review-result.json" \
+            /tmp/claude-review/review-result.json; do
+            if [ -f "$candidate" ]; then
+              RESULT="$candidate"
+              echo "Found review result at: $candidate"
+              break
+            fi
+          done
+
+          if [ -z "$RESULT" ]; then
+            echo "::error::Claude did not produce review-result.json in any expected location"
+            echo ""
+            echo "::group::Files under /tmp"
+            ls -la /tmp/ || true
+            ls -la /tmp/claude-review/ || true
+            echo "::endgroup::"
+
+            echo "::group::Files in workspace root"
+            ls -la "$GITHUB_WORKSPACE" | head -40 || true
+            echo "::endgroup::"
+
+            # Dump diagnostic info from the Claude transcript so we don't
+            # have to download the artifact to see what happened.
+            if [ -f /tmp/claude-review/stream.jsonl ]; then
+              echo "::group::Claude assistant text messages (what Claude said)"
+              jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text' \
+                /tmp/claude-review/stream.jsonl 2>/dev/null || echo "(could not parse)"
+              echo "::endgroup::"
+
+              echo "::group::Claude tool calls (what Claude did)"
+              jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | "→ \(.name) \(.input | tostring | .[0:300])"' \
+                /tmp/claude-review/stream.jsonl 2>/dev/null || echo "(could not parse)"
+              echo "::endgroup::"
+
+              echo "::group::Final result event (if any)"
+              jq -r 'select(.type == "result")' /tmp/claude-review/stream.jsonl 2>/dev/null | tail -50 || echo "(none)"
+              echo "::endgroup::"
+            else
+              echo "::warning::No stream.jsonl at /tmp/claude-review/stream.jsonl"
+            fi
+
             exit 1
           fi
 
           echo "::group::review-result.json"
-          cat /tmp/review-result.json
+          cat "$RESULT"
           echo "::endgroup::"
 
-          CRIT=$(jq -r '.counts.critical // 0' /tmp/review-result.json)
-          MED=$(jq -r '.counts.medium // 0' /tmp/review-result.json)
-          LOW=$(jq -r '.counts.low // 0' /tmp/review-result.json)
-          NIT=$(jq -r '.counts.nit // 0' /tmp/review-result.json)
+          CRIT=$(jq -r '.counts.critical // 0' "$RESULT")
+          MED=$(jq -r '.counts.medium // 0' "$RESULT")
+          LOW=$(jq -r '.counts.low // 0' "$RESULT")
+          NIT=$(jq -r '.counts.nit // 0' "$RESULT")
 
           echo "Severity counts — critical: $CRIT, medium: $MED, low: $LOW, nit: $NIT"
 
