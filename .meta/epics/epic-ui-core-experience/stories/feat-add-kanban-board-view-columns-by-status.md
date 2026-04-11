@@ -2,7 +2,7 @@
 type: story
 id: NdHIAmE7OeDa
 title: "feat: add kanban board view (columns by status)"
-status: todo
+status: in_progress
 priority: high
 assignee: null
 labels:

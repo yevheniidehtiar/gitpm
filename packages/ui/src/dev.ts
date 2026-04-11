@@ -4,9 +4,10 @@ import { serve } from '@hono/node-server';
 import { createApp } from './server/index.js';
 
 // Parse --meta-dir argument
+const flagIdx = process.argv.indexOf('--meta-dir');
 const metaDirArg =
   process.argv.find((a) => a.startsWith('--meta-dir='))?.split('=')[1] ??
-  process.argv[process.argv.indexOf('--meta-dir') + 1] ??
+  (flagIdx !== -1 ? process.argv[flagIdx + 1] : undefined) ??
   process.env.META_DIR ??
   '.meta';
 
@@ -21,7 +22,11 @@ console.log(`[GitPM] Meta directory: ${metaDir}`);
 
 // Start Vite dev server
 const uiDir = new URL('..', import.meta.url).pathname;
-const vite = spawn('npx', ['vite', '--host'], {
+const viteArgs = ['vite', '--host'];
+if (process.env.VITE_PORT) {
+  viteArgs.push('--port', process.env.VITE_PORT, '--strictPort');
+}
+const vite = spawn('npx', viteArgs, {
   cwd: uiDir,
   stdio: 'inherit',
   env: { ...process.env },
