@@ -229,3 +229,14 @@ Tools and skills available in this repo, and when to use them:
 bun run build && node packages/cli/dist/index.js push --token "$GITHUB_TOKEN" --yes
 ```
 This ensures `.meta/` and GitHub Issues stay in sync. Never skip this step after modifying `.meta/` files.
+
+## Interactive Confirmations
+
+When asking the user a yes/no or small multiple-choice question — phrases like "Want me to…?", "Should I…?", "Shall I proceed with…?", "Do you want X or Y?" — always use the **AskUserQuestion** tool instead of plain-text prose. This renders an interactive button dialog, which is faster and less ambiguous than the user typing "yes"/"no" in chat.
+
+Guidelines:
+- Use AskUserQuestion whenever 2–4 discrete options cover the answer. Put the recommended option first and append "(Recommended)" to its label.
+- Keep option labels short (1–5 words); put trade-offs in the `description` field.
+- Do NOT use AskUserQuestion for open-ended questions that need freeform input (e.g. "What should the commit message be?") — plain text is fine there.
+- Do NOT use AskUserQuestion to announce progress or summarize work; it's for decisions only.
+- A single tool call can bundle 1–4 related questions if they all need answers at the same decision point.
