@@ -14,7 +14,7 @@
     },
     "packages/cli": {
       "name": "@gitpm/cli",
-      "version": "0.1.3",
+      "version": "0.1.5",
       "bin": {
         "gitpm": "./dist/index.js",
       },
@@ -30,7 +30,7 @@
     },
     "packages/core": {
       "name": "@gitpm/core",
-      "version": "0.1.3",
+      "version": "0.1.5",
       "dependencies": {
         "gray-matter": "^4.0.3",
         "nanoid": "^5.0.8",
@@ -43,7 +43,7 @@
     },
     "packages/sync-github": {
       "name": "@gitpm/sync-github",
-      "version": "0.1.3",
+      "version": "0.1.5",
       "dependencies": {
         "@gitpm/core": "workspace:*",
         "@octokit/rest": "^22.0.1",
@@ -53,7 +53,7 @@
     },
     "packages/sync-gitlab": {
       "name": "@gitpm/sync-gitlab",
-      "version": "0.1.3",
+      "version": "0.1.5",
       "dependencies": {
         "@gitpm/core": "workspace:*",
         "nanoid": "^5.0.8",
@@ -62,7 +62,7 @@
     },
     "packages/sync-jira": {
       "name": "@gitpm/sync-jira",
-      "version": "0.1.3",
+      "version": "0.1.5",
       "dependencies": {
         "@gitpm/core": "workspace:*",
         "nanoid": "^5.0.8",
@@ -71,7 +71,7 @@
     },
     "packages/ui": {
       "name": "@gitpm/ui",
-      "version": "0.1.3",
+      "version": "0.1.5",
       "dependencies": {
         "@gitpm/core": "workspace:*",
         "@gitpm/sync-github": "workspace:*",
@@ -84,6 +84,7 @@
         "react-dom": "^18.3.0",
       },
       "devDependencies": {
+        "@playwright/test": "1.59.1",
         "@tailwindcss/vite": "^4.0.0",
         "@types/dompurify": "^3.2.0",
         "@types/react": "^19.2.14",
@@ -257,6 +258,8 @@
     "@octokit/types": ["@octokit/types@16.0.0", "", { "dependencies": { "@octokit/openapi-types": "^27.0.0" } }, "sha512-sKq+9r1Mm4efXW1FCk7hFSeJo4QKreL/tTbR0rz/qx/r1Oa2VV83LTA/H/MuCOX7uCIJmQVRKBcbmWoySjAnSg=="],
 
     "@oxc-project/types": ["@oxc-project/types@0.122.0", "", {}, "sha512-oLAl5kBpV4w69UtFZ9xqcmTi+GENWOcPF7FCrczTiBbmC0ibXxCwyvZGbO39rCVEuLGAZM84DH0pUIyyv/YJzA=="],
+
+    "@playwright/test": ["@playwright/test@1.59.1", "", { "dependencies": { "playwright": "1.59.1" }, "bin": { "playwright": "cli.js" } }, "sha512-PG6q63nQg5c9rIi4/Z5lR5IVF7yU5MqmKaPOe0HSc0O2cX1fPi96sUQu5j7eo4gKCkB2AnNGoWt7y4/Xx3Kcqg=="],
 
     "@rolldown/binding-android-arm64": ["@rolldown/binding-android-arm64@1.0.0-rc.12", "", { "os": "android", "cpu": "arm64" }, "sha512-pv1y2Fv0JybcykuiiD3qBOBdz6RteYojRFY1d+b95WVuzx211CRh+ytI/+9iVyWQ6koTh5dawe4S/yRfOFjgaA=="],
 

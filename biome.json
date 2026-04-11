@@ -32,7 +32,14 @@
     }
   },
   "files": {
-    "includes": ["**", "!**/node_modules", "!**/dist", "!**/coverage"]
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/coverage",
+      "!**/playwright-report",
+      "!**/test-results"
+    ]
   },
   "overrides": [
     {
@@ -43,6 +50,16 @@
     },
     {
       "includes": ["**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "useArrowFunction": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/ui/e2e/**/*.ts"],
       "linter": {
         "rules": {
           "complexity": {

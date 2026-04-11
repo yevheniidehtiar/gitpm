@@ -64,6 +64,7 @@ function KanbanCard({
     <div
       draggable
       onDragStart={(e) => onDragStart(e, entity)}
+      data-testid={`kanban-card-${entity.id}`}
       className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
     >
       <div className="flex items-start gap-2 mb-1.5">
@@ -202,13 +203,14 @@ export function BoardView() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col" data-testid="kanban-board">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">Kanban Board</h2>
         <div className="flex items-center gap-3">
           <select
             value={epicFilter}
             onChange={(e) => setEpicFilter(e.target.value)}
+            data-testid="kanban-filter-epic"
             className="text-sm border border-gray-300 rounded px-2 py-1 bg-white"
           >
             <option value="">All Epics</option>
@@ -221,6 +223,7 @@ export function BoardView() {
           <select
             value={assigneeFilter}
             onChange={(e) => setAssigneeFilter(e.target.value)}
+            data-testid="kanban-filter-assignee"
             className="text-sm border border-gray-300 rounded px-2 py-1 bg-white"
           >
             <option value="">All Assignees</option>
@@ -241,6 +244,7 @@ export function BoardView() {
             // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useSemanticElements: drag-and-drop drop zone
             <div
               key={status}
+              data-testid={`kanban-column-${status}`}
               className={`flex-shrink-0 w-72 flex flex-col rounded-lg border-2 ${
                 isDragOver
                   ? 'border-blue-400 bg-blue-50'
@@ -254,7 +258,10 @@ export function BoardView() {
                 <h3 className="text-sm font-semibold text-gray-700">
                   {COLUMN_LABELS[status]}
                 </h3>
-                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 text-xs font-medium text-gray-600">
+                <span
+                  data-testid={`kanban-column-count-${status}`}
+                  className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 text-xs font-medium text-gray-600"
+                >
                   {items.length}
                 </span>
               </div>
