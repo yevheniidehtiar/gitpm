@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.6](https://github.com/yevheniidehtiar/gitpm/compare/cli-v0.1.5...cli-v0.1.6) (2026-04-11)
+
+
+### Features
+
+* **cli:** add 6 agent-optimized commands to reduce tool calls by ~80% ([55bac8b](https://github.com/yevheniidehtiar/gitpm/commit/55bac8b642b71e3e1ae6094e219ff5640d574638))
+* **cli:** scaffold Claude Code skill on gitpm init ([65369f1](https://github.com/yevheniidehtiar/gitpm/commit/65369f13d8b252beb6dd0cdbbeab9dc3b7a5d979))
+
+
+### Bug Fixes
+
+* **cli:** lazy resolveRefs and deduplicate epic/milestone lookup in show ([7733d4e](https://github.com/yevheniidehtiar/gitpm/commit/7733d4e81f84776d67bd80208c0f6dd460a4ec74))
+* **cli:** prevent shell injection in commit command ([d2d85f1](https://github.com/yevheniidehtiar/gitpm/commit/d2d85f101566874f4ac6cc309ef3dbbdac59ea11))
+
 ## [0.1.5](https://github.com/yevheniidehtiar/gitpm/compare/cli-v0.1.4...cli-v0.1.5) (2026-04-07)
 
 

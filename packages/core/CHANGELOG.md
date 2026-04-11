@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.6](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.5...core-v0.1.6) (2026-04-11)
+
+
+### Features
+
+* **cli:** add 6 agent-optimized commands to reduce tool calls by ~80% ([55bac8b](https://github.com/yevheniidehtiar/gitpm/commit/55bac8b642b71e3e1ae6094e219ff5640d574638))
+
+
+### Bug Fixes
+
+* **core:** guard against prototype pollution in setNestedField and applyAssignments ([02293ae](https://github.com/yevheniidehtiar/gitpm/commit/02293aeb8843213c6f1d722ed1c64521ddb6528f))
+* **core:** prevent prototype pollution in set-fields assignments ([1f08bb5](https://github.com/yevheniidehtiar/gitpm/commit/1f08bb5293669d911ad095054d111834145b9a28))
+* **core:** prevent silent overwrite on duplicate titles in create-entity ([1f81ea9](https://github.com/yevheniidehtiar/gitpm/commit/1f81ea92036c4178d2ecfa032fb5c26a4719efeb))
+* **core:** remove implicit number coercion in set-fields coerceValue ([76652b4](https://github.com/yevheniidehtiar/gitpm/commit/76652b42f5212f1ab7bfc9909a9c1f09e9761c0b))
+* **core:** remove unused cwd field from FormatOptions ([abc18e3](https://github.com/yevheniidehtiar/gitpm/commit/abc18e3fcd32d60ab04e0a1b213695add72ca5d8))
+
 ## [0.1.5](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.4...core-v0.1.5) (2026-04-07)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/yevheniidehtiar/gitpm/compare/sync-gitlab-v0.1.5...sync-gitlab-v0.1.6) (2026-04-11)
+
+
+### Bug Fixes
+
+* **sync-gitlab:** remove unused project destructure ([5c63240](https://github.com/yevheniidehtiar/gitpm/commit/5c6324074715201b1f81539472ff3efa97a10ac8))
+
 ## [0.1.5](https://github.com/yevheniidehtiar/gitpm/compare/sync-gitlab-v0.1.4...sync-gitlab-v0.1.5) (2026-04-07)
 
 
