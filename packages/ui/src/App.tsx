@@ -10,6 +10,7 @@ import {
   useRouterState,
 } from '@tanstack/react-router';
 import { useState } from 'react';
+import { DemoBanner } from './components/DemoBanner.js';
 import { Spinner } from './components/Spinner.js';
 import { ToastProvider } from './components/Toast.js';
 import { TypeIcon } from './components/TypeIcon.js';
@@ -24,6 +25,8 @@ import { EntityEditor } from './routes/entity-editor.js';
 import { RoadmapView } from './routes/roadmap.js';
 import { SyncDashboard } from './routes/sync-dashboard.js';
 import { TreeBrowser } from './routes/tree-browser.js';
+
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === '1';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5000 } },
@@ -44,7 +47,13 @@ function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 bg-gray-900 text-gray-200 flex flex-col h-screen fixed left-0 top-0">
+    <aside
+      className="w-64 bg-gray-900 text-gray-200 flex flex-col fixed left-0"
+      style={{
+        top: DEMO_MODE ? '2rem' : 0,
+        height: DEMO_MODE ? 'calc(100vh - 2rem)' : '100vh',
+      }}
+    >
       <div className="p-4 border-b border-gray-700">
         <h1 className="text-lg font-bold text-white">GitPM</h1>
         {tree && (
@@ -171,12 +180,14 @@ function TopBar() {
             </span>
           </div>
         )}
-        <Link
-          to="/sync"
-          className="px-2.5 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded font-medium"
-        >
-          Sync Now
-        </Link>
+        {!DEMO_MODE && (
+          <Link
+            to="/sync"
+            className="px-2.5 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded font-medium"
+          >
+            Sync Now
+          </Link>
+        )}
       </div>
     </header>
   );
@@ -185,6 +196,7 @@ function TopBar() {
 function Layout() {
   return (
     <div className="min-h-screen">
+      <DemoBanner />
       <Sidebar />
       <div className="ml-64 flex flex-col min-h-screen">
         <TopBar />

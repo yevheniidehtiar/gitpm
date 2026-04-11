@@ -38,7 +38,8 @@
       "!**/dist",
       "!**/coverage",
       "!**/playwright-report",
-      "!**/test-results"
+      "!**/test-results",
+      "!**/public-demo"
     ]
   },
   "overrides": [

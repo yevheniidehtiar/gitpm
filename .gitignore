@@ -8,3 +8,4 @@ coverage
 /.claude/settings.local.json
 packages/ui/playwright-report
 packages/ui/test-results
+packages/ui/public-demo/
