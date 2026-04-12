@@ -157,7 +157,7 @@ export function computeContentHash(entity: ParsedEntity): string {
 
 function buildCanonicalObject(entity: ParsedEntity): Record<string, unknown> {
   const base: Record<string, unknown> = {
-    title: entity.type === 'roadmap' ? entity.title : entity.title,
+    title: entity.title,
   };
 
   if (entity.type === 'story') {

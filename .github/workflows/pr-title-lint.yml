@@ -1,0 +1,46 @@
+name: PR Title Lint
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: [master]
+
+jobs:
+  lint:
+    name: Conventional Commit Title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+
+          # Conventional Commits pattern:
+          #   type(optional-scope): description
+          #   type!: description  (breaking change)
+          #
+          # Allowed types match the release-please + CLAUDE.md convention table.
+          PATTERN='^(feat|fix|chore|docs|refactor|test|ci|style|build|perf)(\([a-z0-9_-]+\))?!?: .+'
+
+          if echo "$PR_TITLE" | grep -Eq "$PATTERN"; then
+            echo "PR title is a valid conventional commit: $PR_TITLE"
+          else
+            echo "::error::PR title does not follow Conventional Commits format."
+            echo ""
+            echo "Expected: <type>(<optional scope>): <description>"
+            echo "Got:      $PR_TITLE"
+            echo ""
+            echo "Allowed types: feat, fix, chore, docs, refactor, test, ci, style, build, perf"
+            echo ""
+            echo "Examples:"
+            echo "  feat(ui): add assignee filter to tree browser"
+            echo "  fix(core): make last_sync_hash optional in sync schemas"
+            echo "  chore(deps): bump the actions group"
+            echo "  test(ui): add e2e coverage for roadmap view"
+            echo ""
+            echo "Why: release-please uses the squash-merge commit message (= PR title)"
+            echo "to determine version bumps. Without a conventional prefix, merged"
+            echo "code changes are invisible to the release pipeline."
+            exit 1
+          fi
