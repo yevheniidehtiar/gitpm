@@ -14,10 +14,10 @@ epic_ref:
 github:
   issue_number: 28
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:8735e807372b9db27bffcb5be956fcb20236dbca811d1087df8e3f5d3011e0f9
-  synced_at: 2026-04-05T17:24:12.493Z
-created_at: 2026-04-04T20:08:20Z
-updated_at: 2026-04-04T20:08:20Z
+  last_sync_hash: sha256:361515d502ca7badb373ddd9d828fcabda72ca20d193f3fb43b826f2a7a96a6b
+  synced_at: 2026-04-12T11:18:08.604Z
+created_at: 2026-04-04T20:08:20.000Z
+updated_at: 2026-04-04T20:08:20.000Z
 ---
 
 Allow users to extend entity schemas with custom fields:

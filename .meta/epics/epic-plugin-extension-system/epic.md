@@ -12,10 +12,10 @@ milestone_ref:
 github:
   issue_number: 13
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:b3c60a7ca9d7ac3a19b71b1837fd1173f5ba25aad99244922e7a7dfd90440646
-  synced_at: 2026-04-05T17:24:12.492Z
-created_at: 2026-04-04T20:07:29Z
-updated_at: 2026-04-04T20:07:29Z
+  last_sync_hash: sha256:f2574a91aae46e8e51667809780eea4d313084903e261903e42f6dc3ed9c1fad
+  synced_at: 2026-04-12T11:18:07.981Z
+created_at: 2026-04-04T20:07:29.000Z
+updated_at: 2026-04-04T20:07:29.000Z
 ---
 
 ## Overview
@@ -27,4 +27,3 @@ Design a plugin architecture that allows third-party sync adapters, custom schem
 - Custom field definitions via schema extensions
 - CLI plugin commands (e.g. `gitpm jira import`)
 - Hook system for pre/post sync events
-
