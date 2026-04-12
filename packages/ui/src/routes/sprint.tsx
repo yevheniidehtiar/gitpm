@@ -4,12 +4,13 @@ import { EmptyState } from '../components/EmptyState.js';
 import { PriorityBadge } from '../components/PriorityBadge.js';
 import { Spinner } from '../components/Spinner.js';
 import { StatusBadge } from '../components/StatusBadge.js';
-import { type Entity, type TreeResponse, useTree } from '../lib/api.js';
+import { type Entity, useTree } from '../lib/api.js';
 
 interface SprintEntity extends Entity {
   start_date?: string;
   end_date?: string;
   stories?: { id: string }[];
+  resolvedStories?: Entity[];
   capacity?: number;
 }
 
@@ -43,26 +44,17 @@ export function SprintView() {
 
   const sprints = useMemo(() => {
     if (!tree) return [];
-    return ((tree as TreeResponse).sprints as SprintEntity[]).sort((a, b) =>
+    return ((tree.sprints ?? []) as SprintEntity[]).sort((a, b) =>
       (a.start_date ?? '').localeCompare(b.start_date ?? ''),
     );
-  }, [tree]);
-
-  const storyMap = useMemo(() => {
-    if (!tree) return new Map<string, Entity>();
-    const map = new Map<string, Entity>();
-    for (const s of (tree as TreeResponse).stories) {
-      map.set(s.id, s);
-    }
-    return map;
   }, [tree]);
 
   const backlogStories = useMemo(() => {
     if (!tree) return [];
     const assignedIds = new Set(
-      sprints.flatMap((sp) => (sp.stories ?? []).map((s) => s.id)),
+      sprints.flatMap((sp) => (sp.resolvedStories ?? []).map((s) => s.id)),
     );
-    return (tree as TreeResponse).stories.filter(
+    return tree.stories.filter(
       (s) =>
         !assignedIds.has(s.id) &&
         s.status !== 'done' &&
@@ -93,9 +85,7 @@ export function SprintView() {
       <div className="flex gap-4 overflow-x-auto pb-4">
         {/* Sprint columns */}
         {sprints.map((sp) => {
-          const sprintStories = (sp.stories ?? [])
-            .map((ref) => storyMap.get(ref.id))
-            .filter(Boolean) as Entity[];
+          const sprintStories = sp.resolvedStories ?? [];
           const done = sprintStories.filter(
             (s) => s.status === 'done' || s.status === 'cancelled',
           ).length;
