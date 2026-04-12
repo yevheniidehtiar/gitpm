@@ -9,6 +9,8 @@ import { resolveMetaDir } from '../utils/config.js';
 import { promptConflictResolution } from '../utils/conflict-ui.js';
 import { printError, printSuccess } from '../utils/output.js';
 
+const VALID_STRATEGIES = ['local-wins', 'remote-wins', 'ask'] as const;
+
 export const pullCommand = new Command('pull')
   .description('Pull changes from remote platform into local .meta/')
   .option('--token <token>', 'Personal access token')
@@ -20,6 +22,12 @@ export const pullCommand = new Command('pull')
   .option('--adapter <name>', 'Force a specific adapter (e.g. github, gitlab)')
   .action(async (opts, cmd) => {
     const metaDir = resolveMetaDir(cmd.optsWithGlobals().metaDir);
+    if (!VALID_STRATEGIES.includes(opts.strategy)) {
+      printError(
+        `Invalid strategy "${opts.strategy}". Must be one of: ${VALID_STRATEGIES.join(', ')}`,
+      );
+      process.exit(1);
+    }
     const strategy = opts.strategy as ConflictStrategy;
     const { adapter, config } = await resolveAdapter(metaDir, opts.adapter);
 
@@ -45,7 +53,7 @@ export const pullCommand = new Command('pull')
     const result = await adapter.sync({
       token,
       metaDir,
-      strategy: strategy === 'ask' ? 'ask' : strategy,
+      strategy,
     });
 
     if (!result.ok) {

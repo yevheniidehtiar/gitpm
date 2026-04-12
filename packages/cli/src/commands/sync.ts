@@ -10,6 +10,8 @@ import { resolveMetaDir } from '../utils/config.js';
 import { promptConflictResolution } from '../utils/conflict-ui.js';
 import { printError, printSuccess } from '../utils/output.js';
 
+const VALID_STRATEGIES = ['local-wins', 'remote-wins', 'ask'] as const;
+
 export const syncCommand = new Command('sync')
   .description('Bidirectional sync between local .meta/ and remote platform')
   .option('--token <token>', 'Personal access token')
@@ -23,6 +25,12 @@ export const syncCommand = new Command('sync')
   .option('--adapter <name>', 'Force a specific adapter (e.g. github, gitlab)')
   .action(async (opts, cmd) => {
     const metaDir = resolveMetaDir(cmd.optsWithGlobals().metaDir);
+    if (!VALID_STRATEGIES.includes(opts.strategy)) {
+      printError(
+        `Invalid strategy "${opts.strategy}". Must be one of: ${VALID_STRATEGIES.join(', ')}`,
+      );
+      process.exit(1);
+    }
     const strategy = opts.strategy as ConflictStrategy;
     const { adapter, config } = await resolveAdapter(metaDir, opts.adapter);
 
@@ -31,17 +39,6 @@ export const syncCommand = new Command('sync')
       token = await resolveToken(opts.token);
     } catch {
       // Token resolution failed — adapter may use other credentials
-    }
-
-    // Run pre-sync hook
-    const preHook = await runHooks(config, 'pre-sync', {
-      metaDir,
-      event: 'pre-sync',
-      adapterName: adapter.name,
-    });
-    if (!preHook.ok) {
-      printError(`Pre-sync hook failed: ${preHook.error.message}`);
-      process.exit(1);
     }
 
     if (opts.dryRun) {
@@ -75,11 +72,22 @@ export const syncCommand = new Command('sync')
       }
     }
 
+    // Run pre-sync hook (after confirmation, before actual sync)
+    const preHook = await runHooks(config, 'pre-sync', {
+      metaDir,
+      event: 'pre-sync',
+      adapterName: adapter.name,
+    });
+    if (!preHook.ok) {
+      printError(`Pre-sync hook failed: ${preHook.error.message}`);
+      process.exit(1);
+    }
+
     const spinner = ora(`Syncing with ${adapter.displayName}...`).start();
     const result = await adapter.sync({
       token,
       metaDir,
-      strategy: strategy === 'ask' ? 'ask' : strategy,
+      strategy,
     });
 
     if (!result.ok) {
@@ -150,7 +158,7 @@ function printSyncSummary(
     `${chalk.bold('│')} Conflicts        │ ${String(`${result.resolved} resolved`).padEnd(17)} ${chalk.bold('│')}`,
   );
   console.log(
-    `${chalk.bold('│')} Errors           │ ${String(result.skipped).padEnd(17)} ${chalk.bold('│')}`,
+    `${chalk.bold('│')} Skipped          │ ${String(result.skipped).padEnd(17)} ${chalk.bold('│')}`,
   );
   console.log(chalk.bold('└──────────────────┴───────────────────┘'));
   console.log();

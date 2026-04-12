@@ -6,7 +6,7 @@ import {
   loadAdapters,
   loadGitpmConfig,
 } from '@gitpm/core';
-import { printError, printWarning } from './output.js';
+import { printError } from './output.js';
 
 export interface ResolvedAdapter {
   adapter: SyncAdapter;
@@ -36,9 +36,9 @@ export async function resolveAdapter(
     printError(adaptersResult.error.message);
     printError(
       'No sync adapters installed. Install at least one adapter package, e.g.:\n' +
-        '  npm install @gitpm/sync-github\n' +
-        '  npm install @gitpm/sync-gitlab\n' +
-        '  npm install @gitpm/sync-jira',
+        '  bun add @gitpm/sync-github\n' +
+        '  bun add @gitpm/sync-gitlab\n' +
+        '  bun add @gitpm/sync-jira',
     );
     process.exit(1);
   }
@@ -47,7 +47,7 @@ export async function resolveAdapter(
   if (adapters.length === 0) {
     printError(
       'No sync adapters installed. Install at least one adapter package, e.g.:\n' +
-        '  npm install @gitpm/sync-github',
+        '  bun add @gitpm/sync-github',
     );
     process.exit(1);
   }

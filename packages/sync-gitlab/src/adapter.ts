@@ -19,10 +19,23 @@ export const gitlabAdapter: SyncAdapter = {
   },
 
   async import(options: AdapterImportOptions) {
+    const token = options.token ?? options.credentials?.token;
+    if (!token) {
+      return {
+        ok: false as const,
+        error: new Error('GitLab token is required'),
+      };
+    }
+    const project = (options.project as string) ?? options.credentials?.project;
+    if (!project) {
+      return {
+        ok: false as const,
+        error: new Error('GitLab project is required (namespace/project)'),
+      };
+    }
     return importFromGitLab({
-      token: options.token ?? options.credentials?.token ?? '',
-      project:
-        (options.project as string) ?? options.credentials?.project ?? '',
+      token,
+      project,
       projectId: options.projectId as number | undefined,
       groupId: options.groupId as number | undefined,
       baseUrl: options.baseUrl as string | undefined,
@@ -38,14 +51,27 @@ export const gitlabAdapter: SyncAdapter = {
   },
 
   async export(options: AdapterExportOptions) {
+    const token = options.token ?? options.credentials?.token;
+    if (!token) {
+      return {
+        ok: false as const,
+        error: new Error('GitLab token is required'),
+      };
+    }
     const config = await loadConfig(options.metaDir);
     const project =
       (options.project as string) ??
       options.credentials?.project ??
-      (config.ok ? config.value.project : '');
+      (config.ok ? config.value.project : undefined);
+    if (!project) {
+      return {
+        ok: false as const,
+        error: new Error('GitLab project is required (namespace/project)'),
+      };
+    }
 
     return exportToGitLab({
-      token: options.token ?? options.credentials?.token ?? '',
+      token,
       project,
       projectId: config.ok ? config.value.project_id : undefined,
       groupId: config.ok ? config.value.group_id : undefined,
@@ -56,14 +82,27 @@ export const gitlabAdapter: SyncAdapter = {
   },
 
   async sync(options: AdapterSyncOptions) {
+    const token = options.token ?? options.credentials?.token;
+    if (!token) {
+      return {
+        ok: false as const,
+        error: new Error('GitLab token is required'),
+      };
+    }
     const config = await loadConfig(options.metaDir);
     const project =
       (options.project as string) ??
       options.credentials?.project ??
-      (config.ok ? config.value.project : '');
+      (config.ok ? config.value.project : undefined);
+    if (!project) {
+      return {
+        ok: false as const,
+        error: new Error('GitLab project is required (namespace/project)'),
+      };
+    }
 
     return syncWithGitLab({
-      token: options.token ?? options.credentials?.token ?? '',
+      token,
       project,
       projectId: config.ok ? config.value.project_id : undefined,
       groupId: config.ok ? config.value.group_id : undefined,

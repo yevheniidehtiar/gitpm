@@ -58,8 +58,22 @@ export async function loadGitpmConfig(
         };
       }
       return { ok: true, value: validated.data };
-    } catch {
-      // File doesn't exist or can't be loaded, try next
+    } catch (err) {
+      // Only skip file-not-found errors; surface other errors
+      if (
+        err instanceof Error &&
+        (err.message.includes('ENOENT') ||
+          err.message.includes('Cannot find module') ||
+          err.message.includes('ERR_MODULE_NOT_FOUND'))
+      ) {
+        continue;
+      }
+      return {
+        ok: false,
+        error: new Error(
+          `Failed to load config ${configPath}: ${err instanceof Error ? err.message : err}`,
+        ),
+      };
     }
   }
 
@@ -138,25 +152,31 @@ async function loadSingleAdapter(
   let mod: Record<string, unknown>;
 
   if (adapterPath.startsWith('.') || isAbsolute(adapterPath)) {
+    const base = resolve(rootDir ?? process.cwd());
     const resolvedPath = isAbsolute(adapterPath)
-      ? adapterPath
-      : resolve(rootDir ?? process.cwd(), adapterPath);
+      ? resolve(adapterPath)
+      : resolve(base, adapterPath);
+    if (!resolvedPath.startsWith(base)) {
+      throw new Error(
+        `Adapter path "${adapterPath}" resolves outside the project root`,
+      );
+    }
     const fileUrl = pathToFileURL(resolvedPath).href;
     mod = await import(fileUrl);
   } else {
     mod = await import(adapterPath);
   }
 
-  // Look for a named export that is a SyncAdapter
+  // Check default export first (canonical)
+  if (mod.default && isSyncAdapter(mod.default)) {
+    return mod.default;
+  }
+
+  // Fall back to scanning named exports
   for (const value of Object.values(mod)) {
     if (isSyncAdapter(value)) {
       return value;
     }
-  }
-
-  // Check default export
-  if (mod.default && isSyncAdapter(mod.default)) {
-    return mod.default;
   }
 
   return null;
@@ -213,9 +233,18 @@ export async function runHooks(
 
   for (const hookPath of paths) {
     try {
+      const base = resolve(rootDir ?? process.cwd());
       const resolvedPath = isAbsolute(hookPath)
-        ? hookPath
-        : resolve(rootDir ?? process.cwd(), hookPath);
+        ? resolve(hookPath)
+        : resolve(base, hookPath);
+      if (!resolvedPath.startsWith(base)) {
+        return {
+          ok: false,
+          error: new Error(
+            `Hook path "${hookPath}" resolves outside the project root`,
+          ),
+        };
+      }
       const fileUrl = pathToFileURL(resolvedPath).href;
       const mod = await import(fileUrl);
       const hookFn = mod.default ?? mod;

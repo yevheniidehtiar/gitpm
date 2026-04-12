@@ -80,7 +80,7 @@ export function buildExtensionFields(
   entityType: string,
 ): z.ZodRawShape | null {
   const entityExt = extensions[entityType];
-  if (!entityExt || !entityExt.fields) {
+  if (!entityExt?.fields) {
     return null;
   }
 
@@ -91,9 +91,15 @@ export function buildExtensionFields(
 
     switch (fieldDef.type) {
       case 'string': {
-        fieldSchema = fieldDef.enum
-          ? z.enum(fieldDef.enum.map(String) as [string, ...string[]])
-          : z.string();
+        if (fieldDef.enum) {
+          const members = fieldDef.enum.map(String);
+          if (members.length === 0) {
+            continue;
+          }
+          fieldSchema = z.enum(members as [string, ...string[]]);
+        } else {
+          fieldSchema = z.string();
+        }
         break;
       }
       case 'number': {
@@ -106,12 +112,12 @@ export function buildExtensionFields(
       }
     }
 
-    if (fieldDef.default !== undefined) {
-      fieldSchema = fieldSchema.default(fieldDef.default);
-    }
-
     if (!fieldDef.required) {
       fieldSchema = fieldSchema.optional();
+    }
+
+    if (fieldDef.default !== undefined) {
+      fieldSchema = fieldSchema.default(fieldDef.default);
     }
 
     shape[fieldName] = fieldSchema;

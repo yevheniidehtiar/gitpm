@@ -190,17 +190,22 @@ describe('gitpm push', () => {
   });
 
   it('runs pre-export and post-export hooks', async () => {
-    mockAdapterExport.mockResolvedValueOnce({
-      ok: true,
-      value: noChangesResult,
-    });
+    // Preview call returns changes, actual push call succeeds
+    mockAdapterExport
+      .mockResolvedValueOnce({ ok: true, value: exportResult })
+      .mockResolvedValueOnce({ ok: true, value: exportResult });
 
-    await run('--meta-dir', '/tmp/meta');
+    await run('--yes', '--meta-dir', '/tmp/meta');
 
     expect(mockRunHooks).toHaveBeenCalledWith(
       expect.anything(),
       'pre-export',
       expect.objectContaining({ event: 'pre-export' }),
+    );
+    expect(mockRunHooks).toHaveBeenCalledWith(
+      expect.anything(),
+      'post-export',
+      expect.objectContaining({ event: 'post-export' }),
     );
   });
 });

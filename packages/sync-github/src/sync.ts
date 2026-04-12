@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import type { Epic, Milestone, Result, Story } from '@gitpm/core';
 import { parseTree, writeFile } from '@gitpm/core';
@@ -19,14 +20,12 @@ import type { FieldConflict, SyncOptions, SyncResult } from './types.js';
 function computeRemoteIssueHash(gh: GhIssue): string {
   const fields = remoteIssueFields(gh);
   const json = JSON.stringify(fields);
-  const { createHash } = require('node:crypto');
   return `sha256:${createHash('sha256').update(json).digest('hex')}`;
 }
 
 function computeRemoteMilestoneHash(gh: GhMilestone): string {
   const fields = remoteMilestoneFields(gh);
   const json = JSON.stringify(fields);
-  const { createHash } = require('node:crypto');
   return `sha256:${createHash('sha256').update(json).digest('hex')}`;
 }
 

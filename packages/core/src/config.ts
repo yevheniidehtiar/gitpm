@@ -17,15 +17,12 @@ export const gitpmConfigSchema = z.object({
     .array(z.string())
     .default(['@gitpm/sync-github', '@gitpm/sync-gitlab', '@gitpm/sync-jira']),
   hooks: z
-    .record(z.string(), z.union([z.string(), z.array(z.string())]))
+    .record(hookEventSchema, z.union([z.string(), z.array(z.string())]))
     .default({}),
 });
 
 export type GitpmConfig = z.infer<typeof gitpmConfigSchema>;
 
 export function createDefaultGitpmConfig(): GitpmConfig {
-  return {
-    adapters: ['@gitpm/sync-github', '@gitpm/sync-gitlab', '@gitpm/sync-jira'],
-    hooks: {},
-  };
+  return gitpmConfigSchema.parse({});
 }

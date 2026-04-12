@@ -1,9 +1,4 @@
 export type {
-  ArchiveOptions,
-  ArchiveResult,
-} from './archiver/index.js';
-export { archiveOldEntities } from './archiver/index.js';
-export type {
   AdapterExportOptions,
   AdapterImportOptions,
   AdapterSyncOptions,
@@ -18,8 +13,12 @@ export type {
   SyncAdapter,
   SyncResult,
 } from './adapter.js';
-
 export { isSyncAdapter } from './adapter.js';
+export type {
+  ArchiveOptions,
+  ArchiveResult,
+} from './archiver/index.js';
+export { archiveOldEntities } from './archiver/index.js';
 export type { GitpmConfig, HookEvent } from './config.js';
 
 export {

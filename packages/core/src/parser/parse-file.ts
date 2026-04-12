@@ -120,7 +120,13 @@ function parseEntityData(
   filePath: string,
   extensions?: SchemaExtensions,
 ): Result<ParsedEntity> {
-  const type = data.type as string;
+  if (!data.type || typeof data.type !== 'string') {
+    return {
+      ok: false,
+      error: new Error(`Missing or invalid "type" field in ${filePath}`),
+    };
+  }
+  const type = data.type;
   const input = { ...data, body, filePath };
 
   const schema = getSchema(type, extensions);

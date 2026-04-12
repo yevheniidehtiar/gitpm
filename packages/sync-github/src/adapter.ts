@@ -19,9 +19,23 @@ export const githubAdapter: SyncAdapter = {
   },
 
   async import(options: AdapterImportOptions) {
+    const token = options.token ?? options.credentials?.token;
+    if (!token) {
+      return {
+        ok: false as const,
+        error: new Error('GitHub token is required'),
+      };
+    }
+    const repo = (options.repo as string) ?? options.credentials?.repo;
+    if (!repo) {
+      return {
+        ok: false as const,
+        error: new Error('GitHub repo is required (owner/repo)'),
+      };
+    }
     return importFromGitHub({
-      token: options.token ?? options.credentials?.token ?? '',
-      repo: (options.repo as string) ?? options.credentials?.repo ?? '',
+      token,
+      repo,
       projectNumber: options.projectNumber as number | undefined,
       metaDir: options.metaDir,
       linkStrategy: options.linkStrategy as
@@ -29,20 +43,34 @@ export const githubAdapter: SyncAdapter = {
         | 'sub-issues'
         | 'milestone'
         | 'labels'
+        | 'score'
         | 'all'
         | undefined,
     });
   },
 
   async export(options: AdapterExportOptions) {
+    const token = options.token ?? options.credentials?.token;
+    if (!token) {
+      return {
+        ok: false as const,
+        error: new Error('GitHub token is required'),
+      };
+    }
     const config = await loadConfig(options.metaDir);
     const repo =
       (options.repo as string) ??
       options.credentials?.repo ??
-      (config.ok ? config.value.repo : '');
+      (config.ok ? config.value.repo : undefined);
+    if (!repo) {
+      return {
+        ok: false as const,
+        error: new Error('GitHub repo is required (owner/repo)'),
+      };
+    }
 
     return exportToGitHub({
-      token: options.token ?? options.credentials?.token ?? '',
+      token,
       repo,
       metaDir: options.metaDir,
       dryRun: options.dryRun,
@@ -50,14 +78,27 @@ export const githubAdapter: SyncAdapter = {
   },
 
   async sync(options: AdapterSyncOptions) {
+    const token = options.token ?? options.credentials?.token;
+    if (!token) {
+      return {
+        ok: false as const,
+        error: new Error('GitHub token is required'),
+      };
+    }
     const config = await loadConfig(options.metaDir);
     const repo =
       (options.repo as string) ??
       options.credentials?.repo ??
-      (config.ok ? config.value.repo : '');
+      (config.ok ? config.value.repo : undefined);
+    if (!repo) {
+      return {
+        ok: false as const,
+        error: new Error('GitHub repo is required (owner/repo)'),
+      };
+    }
 
     return syncWithGitHub({
-      token: options.token ?? options.credentials?.token ?? '',
+      token,
       repo,
       metaDir: options.metaDir,
       strategy: options.strategy,

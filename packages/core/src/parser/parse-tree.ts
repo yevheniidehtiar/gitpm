@@ -55,6 +55,13 @@ export async function parseTree(metaDir: string): Promise<Result<MetaTree>> {
       errors: [],
     };
 
+    if (!extResult.ok) {
+      tree.errors.push({
+        filePath: join(metaDir, '.gitpm/schema-extensions.yaml'),
+        message: extResult.error.message,
+      });
+    }
+
     for (const filePath of files) {
       const result = await parseFile(filePath, extensions);
       if (!result.ok) {

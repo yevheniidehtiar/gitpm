@@ -1,5 +1,4 @@
 import { dirname } from 'node:path';
-import type { GitpmConfig, SyncAdapter } from '@gitpm/core';
 import {
   findAdapterByName,
   loadAdapters,
@@ -66,12 +65,12 @@ export const importCommand = new Command('import')
       const available = adaptersResult.value.map((a) => a.name);
       if (available.length === 0) {
         printError(
-          `Adapter "${source}" is not installed. Install it with:\n  npm install @gitpm/sync-${source}`,
+          `Adapter "${source}" is not installed. Install it with:\n  bun add @gitpm/sync-${source}`,
         );
       } else {
         printError(
           `Adapter "${source}" not found. Available: ${available.join(', ')}\n` +
-            `Install it with: npm install @gitpm/sync-${source}`,
+            `Install it with: bun add @gitpm/sync-${source}`,
         );
       }
       process.exit(1);
@@ -116,9 +115,10 @@ export const importCommand = new Command('import')
       token,
       repo: opts.repo,
       project: opts.project ?? opts.repo,
-      projectNumber: opts.project
-        ? Number.parseInt(opts.project, 10)
-        : undefined,
+      projectNumber:
+        opts.project && !Number.isNaN(Number.parseInt(opts.project, 10))
+          ? Number.parseInt(opts.project, 10)
+          : undefined,
       baseUrl: opts.baseUrl,
       metaDir,
       linkStrategy,

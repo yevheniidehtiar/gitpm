@@ -1,4 +1,3 @@
-import type { ConflictStrategy } from '@gitpm/core';
 import { runHooks } from '@gitpm/core';
 import { confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
@@ -24,17 +23,6 @@ export const pushCommand = new Command('push')
       token = await resolveToken(opts.token);
     } catch {
       // Token resolution failed — adapter may use other credentials
-    }
-
-    // Run pre-export hook
-    const preHook = await runHooks(config, 'pre-export', {
-      metaDir,
-      event: 'pre-export',
-      adapterName: adapter.name,
-    });
-    if (!preHook.ok) {
-      printError(`Pre-export hook failed: ${preHook.error.message}`);
-      process.exit(1);
     }
 
     if (opts.dryRun) {
@@ -86,6 +74,17 @@ export const pushCommand = new Command('push')
         console.log(chalk.dim('Push cancelled.'));
         return;
       }
+    }
+
+    // Run pre-export hook (after confirmation, before actual push)
+    const preHook = await runHooks(config, 'pre-export', {
+      metaDir,
+      event: 'pre-export',
+      adapterName: adapter.name,
+    });
+    if (!preHook.ok) {
+      printError(`Pre-export hook failed: ${preHook.error.message}`);
+      process.exit(1);
     }
 
     const pushSpinner = ora(`Pushing to ${adapter.displayName}...`).start();

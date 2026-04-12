@@ -1,4 +1,4 @@
-import type { FieldConflict, Resolution } from '@gitpm/sync-github';
+import type { FieldConflict, Resolution } from '@gitpm/core';
 import { select } from '@inquirer/prompts';
 import chalk from 'chalk';
 
