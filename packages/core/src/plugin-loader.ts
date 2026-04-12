@@ -1,5 +1,6 @@
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { isAbsolute, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { SyncAdapter } from './adapter.js';
 import { isSyncAdapter } from './adapter.js';
@@ -164,7 +165,25 @@ async function loadSingleAdapter(
     const fileUrl = pathToFileURL(resolvedPath).href;
     mod = await import(fileUrl);
   } else {
-    mod = await import(adapterPath);
+    // Try the standard bare import first (works when packages are in a
+    // standard node_modules tree reachable from this module's location).
+    try {
+      mod = await import(adapterPath);
+    } catch {
+      // Bare import failed — search for the package in node_modules trees
+      // under the project root. In workspace monorepos (especially Bun),
+      // packages are symlinked into consuming packages' node_modules
+      // (e.g. packages/cli/node_modules/@gitpm/sync-github) rather than
+      // the root node_modules, so Node can't find them from core's location.
+      const base = resolve(rootDir ?? process.cwd());
+      const entryPath = findPackageEntry(adapterPath, base);
+      if (entryPath) {
+        mod = await import(pathToFileURL(entryPath).href);
+      } else {
+        // Re-throw the original import error for proper error reporting
+        throw new Error(`Cannot find package '${adapterPath}'`);
+      }
+    }
   }
 
   // Check default export first (canonical)
@@ -180,6 +199,64 @@ async function loadSingleAdapter(
   }
 
   return null;
+}
+
+/**
+ * Search for an npm package's ESM entry point in node_modules directories.
+ * Handles workspace monorepos where packages may be symlinked into nested
+ * node_modules (e.g. packages/cli/node_modules/@scope/pkg).
+ */
+function findPackageEntry(packageName: string, rootDir: string): string | null {
+  const checked = new Set<string>();
+
+  // 1. Walk up from rootDir checking node_modules at each level
+  let dir = rootDir;
+  while (true) {
+    const candidate = join(dir, 'node_modules', packageName);
+    if (!checked.has(candidate)) {
+      checked.add(candidate);
+      const entry = getPackageEntry(candidate);
+      if (entry) return entry;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+
+  // 2. Scan workspace packages (packages/*/node_modules/<pkg>)
+  const packagesDir = join(rootDir, 'packages');
+  if (existsSync(packagesDir)) {
+    try {
+      for (const child of readdirSync(packagesDir)) {
+        const candidate = join(packagesDir, child, 'node_modules', packageName);
+        if (!checked.has(candidate)) {
+          checked.add(candidate);
+          const entry = getPackageEntry(candidate);
+          if (entry) return entry;
+        }
+      }
+    } catch {
+      // packages dir not readable — skip
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Read a package directory's package.json and return the resolved ESM entry path.
+ */
+function getPackageEntry(packageDir: string): string | null {
+  const pkgJsonPath = join(packageDir, 'package.json');
+  if (!existsSync(pkgJsonPath)) return null;
+  try {
+    const pkg = JSON.parse(readFileSync(pkgJsonPath, 'utf-8'));
+    const entry =
+      pkg.exports?.['.']?.import || pkg.module || pkg.main || 'index.js';
+    return resolve(packageDir, entry);
+  } catch {
+    return null;
+  }
 }
 
 /**
