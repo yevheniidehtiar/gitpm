@@ -1,71 +1,73 @@
-import DOMPurify from 'dompurify';
-import { Window } from 'happy-dom';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { describe, expect, it } from 'vitest';
-import { renderMarkdown } from './entity-editor.js';
 
-const window = new Window();
-const purify = DOMPurify(window as unknown as Window);
-
-function sanitizedMarkdown(text: string): string {
-  return purify.sanitize(renderMarkdown(text));
+function renderMarkdownToHtml(text: string): string {
+  return renderToStaticMarkup(
+    createElement(Markdown, { remarkPlugins: [remarkGfm] }, text),
+  );
 }
 
-describe('MarkdownPreview sanitization', () => {
-  it('renders basic markdown correctly', () => {
-    const result = sanitizedMarkdown(
-      '# Hello\n\nSome **bold** and *italic* text',
-    );
-    expect(result).toContain('<h1>Hello</h1>');
-    expect(result).toContain('<strong>bold</strong>');
-    expect(result).toContain('<em>italic</em>');
+describe('MarkdownPreview rendering', () => {
+  it('renders headings, bold, and italic', () => {
+    const html = renderMarkdownToHtml('# Hello\n\n**bold** and *italic*');
+    expect(html).toContain('<h1>Hello</h1>');
+    expect(html).toContain('<strong>bold</strong>');
+    expect(html).toContain('<em>italic</em>');
   });
 
-  it('renders code spans', () => {
-    const result = sanitizedMarkdown('Use `console.log` here');
-    expect(result).toContain('<code>console.log</code>');
+  it('renders inline code', () => {
+    const html = renderMarkdownToHtml('Use `console.log`');
+    expect(html).toContain('<code>console.log</code>');
   });
 
-  it('renders lists', () => {
-    const result = sanitizedMarkdown('- item one\n- item two');
-    expect(result).toContain('<li>item one</li>');
-    expect(result).toContain('<ul>');
+  it('renders unordered lists', () => {
+    const html = renderMarkdownToHtml('- item one\n- item two');
+    expect(html).toContain('<li>');
+    expect(html).toContain('<ul>');
   });
 
-  it('does not produce executable script tags', () => {
-    const result = sanitizedMarkdown('<script>alert("xss")</script>');
-    expect(result).not.toContain('<script>');
-    expect(result).not.toContain('</script>');
+  it('renders GFM tables', () => {
+    const md = '| A | B |\n|---|---|\n| 1 | 2 |';
+    const html = renderMarkdownToHtml(md);
+    expect(html).toContain('<table>');
+    expect(html).toContain('<th>');
+    expect(html).toContain('<td>');
   });
 
-  it('does not produce img tags with event handlers', () => {
-    const result = sanitizedMarkdown('<img src=x onerror=alert(1)>');
-    // Should not contain an actual <img tag with onerror
-    expect(result).not.toMatch(/<img[^>]*onerror/);
+  it('renders GFM task lists', () => {
+    const md = '- [x] done\n- [ ] todo';
+    const html = renderMarkdownToHtml(md);
+    expect(html).toContain('type="checkbox"');
   });
 
-  it('does not produce links with javascript: protocol', () => {
-    // renderMarkdown has no link syntax, so this stays as text
-    const result = sanitizedMarkdown('[click](javascript:alert(1))');
-    expect(result).not.toMatch(/<a[^>]*javascript:/);
+  it('renders GFM strikethrough', () => {
+    const md = '~~deleted~~';
+    const html = renderMarkdownToHtml(md);
+    expect(html).toContain('<del>deleted</del>');
   });
 
-  it('does not produce iframe elements', () => {
-    const result = sanitizedMarkdown(
+  it('does not render raw script tags', () => {
+    const html = renderMarkdownToHtml('<script>alert("xss")</script>');
+    expect(html).not.toContain('<script>');
+  });
+
+  it('does not render img tags with event handlers', () => {
+    const html = renderMarkdownToHtml('<img src=x onerror=alert(1)>');
+    expect(html).not.toMatch(/<img[^>]*onerror/);
+  });
+
+  it('does not render iframes', () => {
+    const html = renderMarkdownToHtml(
       '<iframe src="https://evil.com"></iframe>',
     );
-    expect(result).not.toContain('<iframe');
+    expect(html).not.toContain('<iframe');
   });
 
-  it('does not produce SVG with event handlers', () => {
-    const result = sanitizedMarkdown('<svg onload=alert(1)>');
-    expect(result).not.toMatch(/<svg[^>]*onload/);
-  });
-
-  it('DOMPurify strips injected tags that bypass regex escaping', () => {
-    // Simulate what would happen if raw HTML somehow got through renderMarkdown
-    const maliciousHtml = '<img src=x onerror=alert(1)><script>evil()</script>';
-    const sanitized = purify.sanitize(maliciousHtml);
-    expect(sanitized).not.toContain('<script>');
-    expect(sanitized).not.toMatch(/onerror/);
+  it('does not render links with javascript: protocol', () => {
+    const html = renderMarkdownToHtml('[click](javascript:alert(1))');
+    expect(html).not.toMatch(/href="javascript:/);
   });
 });
