@@ -70,7 +70,15 @@ export async function syncWithGitHub(
     let checkpoint: SyncCheckpoint | null = null;
     let resumedFromCheckpoint = false;
     const hasExisting = await hasCheckpoint(metaDir);
-    if (hasExisting.ok && hasExisting.value) {
+    if (!hasExisting.ok) {
+      return {
+        ok: false,
+        error: new Error(
+          `Failed to check for sync checkpoint: ${hasExisting.error.message}`,
+        ),
+      };
+    }
+    if (hasExisting.value) {
       const cpResult = await loadCheckpoint(metaDir);
       if (cpResult.ok && cpResult.value.repo === repo) {
         checkpoint = cpResult.value;
