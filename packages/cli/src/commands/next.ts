@@ -18,7 +18,10 @@ const PICKABLE_STATUSES = new Set(['backlog', 'todo']);
 export const nextCommand = new Command('next')
   .description('Show the next stories ready to be picked up')
   .option('-n, --count <number>', 'Number of stories to show', '5')
-  .option('-a, --assignee <name>', 'Filter by assignee')
+  .option(
+    '-a, --assignee <name>',
+    'Filter by assignee (case-insensitive match)',
+  )
   .action(async (opts, cmd) => {
     const metaDir = resolveMetaDir(cmd.optsWithGlobals().metaDir);
     const count = Number.parseInt(opts.count, 10);

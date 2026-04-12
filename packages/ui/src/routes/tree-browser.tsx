@@ -242,6 +242,7 @@ export function TreeBrowser() {
         </select>
         <select
           multiple
+          aria-label="Filter by assignee"
           value={assigneeFilter}
           onChange={(e) =>
             setAssigneeFilter(

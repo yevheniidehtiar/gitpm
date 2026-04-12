@@ -27,6 +27,7 @@ export const gitHubSyncSchema = z.object({
   project_item_id: z.string().optional(),
   milestone_id: z.number().int().optional(),
   repo: z.string(),
+  /** Optional for pre-sync entities (imported or hand-written before first push). */
   last_sync_hash: z.string().optional(),
   synced_at: z.string(),
 });
@@ -37,6 +38,7 @@ export const jiraSyncSchema = z.object({
   project_key: z.string(),
   sprint_id: z.number().int().optional(),
   site: z.string(),
+  /** Optional for pre-sync entities (imported or hand-written before first push). */
   last_sync_hash: z.string().optional(),
   synced_at: z.string(),
 });
@@ -48,6 +50,7 @@ export const gitLabSyncSchema = z.object({
   milestone_id: z.number().int().optional(),
   project_id: z.number().int(),
   base_url: z.string(),
+  /** Optional for pre-sync entities (imported or hand-written before first push). */
   last_sync_hash: z.string().optional(),
   synced_at: z.string(),
 });
