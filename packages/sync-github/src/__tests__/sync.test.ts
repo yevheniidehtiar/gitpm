@@ -5,9 +5,11 @@ import { writeFile as coreWriteFile, parseTree } from '@gitpm/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fixtureIssues from '../__fixtures__/github-issues.json';
 import fixtureMilestones from '../__fixtures__/github-milestones.json';
+import { hasCheckpoint, saveCheckpoint } from '../checkpoint.js';
 import type { GhIssue, GhMilestone } from '../client.js';
 import { importFromGitHub } from '../import.js';
 import { syncWithGitHub } from '../sync.js';
+import type { SyncCheckpoint } from '../types.js';
 
 const mockUpdateIssue = vi.fn().mockImplementation(async () => ({
   number: 1,
@@ -228,5 +230,110 @@ describe('syncWithGitHub', () => {
       strategy: 'ask',
     });
     expect(result.ok).toBe(true);
+  });
+
+  it('records failedEntities and saves checkpoint when an API call throws', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+
+    // Make getIssue throw for all calls to trigger per-entity catch
+    mockGetIssue.mockRejectedValue(new Error('API rate limit exceeded'));
+    mockGetMilestone.mockRejectedValue(new Error('API rate limit exceeded'));
+
+    const result = await syncWithGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+      strategy: 'local-wins',
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.failedEntities.length).toBeGreaterThan(0);
+      expect(result.value.failedEntities[0].error).toContain(
+        'API rate limit exceeded',
+      );
+    }
+
+    // Checkpoint should have been saved
+    const cpExists = await hasCheckpoint(metaDir);
+    expect(cpExists.ok).toBe(true);
+    if (cpExists.ok) {
+      expect(cpExists.value).toBe(true);
+    }
+  });
+
+  it('resumes from checkpoint and skips already-processed entities', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+
+    // Parse tree to get entity IDs
+    const treeResult = await parseTree(metaDir);
+    expect(treeResult.ok).toBe(true);
+    if (!treeResult.ok) return;
+
+    const allIds = [
+      ...treeResult.value.milestones.map((m) => m.id),
+      ...treeResult.value.epics.map((e) => e.id),
+      ...treeResult.value.stories.map((s) => s.id),
+    ];
+
+    // Create a checkpoint that marks some entities as already processed
+    const cp: SyncCheckpoint = {
+      startedAt: '2026-04-07T10:00:00Z',
+      repo: 'test-org/test-repo',
+      processedEntityIds: allIds.slice(0, 2),
+      lastError: {
+        entityId: allIds[2] ?? 'unknown',
+        message: 'Previous failure',
+      },
+    };
+    await saveCheckpoint(metaDir, cp);
+
+    const result = await syncWithGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+      strategy: 'local-wins',
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.resumedFromCheckpoint).toBe(true);
+    }
+  });
+
+  it('does not write checkpoint during dry run even on failure', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+
+    mockGetIssue.mockRejectedValue(new Error('API error'));
+    mockGetMilestone.mockRejectedValue(new Error('API error'));
+
+    const result = await syncWithGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+      strategy: 'local-wins',
+      dryRun: true,
+    });
+
+    expect(result.ok).toBe(true);
+
+    // No checkpoint should be written during dry run
+    const cpExists = await hasCheckpoint(metaDir);
+    expect(cpExists.ok).toBe(true);
+    if (cpExists.ok) {
+      expect(cpExists.value).toBe(false);
+    }
   });
 });
