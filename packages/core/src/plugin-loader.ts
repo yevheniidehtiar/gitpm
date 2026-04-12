@@ -1,5 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { access, readdir, readFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { SyncAdapter } from './adapter.js';
@@ -176,11 +175,11 @@ async function loadSingleAdapter(
       // (e.g. packages/cli/node_modules/@gitpm/sync-github) rather than
       // the root node_modules, so Node can't find them from core's location.
       const base = resolve(rootDir ?? process.cwd());
-      const entryPath = findPackageEntry(adapterPath, base);
+      const entryPath = await findPackageEntry(adapterPath, base);
       if (entryPath) {
         mod = await import(pathToFileURL(entryPath).href);
       } else {
-        // Re-throw the original import error for proper error reporting
+        // Throw a module-not-found error for proper error reporting
         throw new Error(`Cannot find package '${adapterPath}'`);
       }
     }
@@ -206,7 +205,10 @@ async function loadSingleAdapter(
  * Handles workspace monorepos where packages may be symlinked into nested
  * node_modules (e.g. packages/cli/node_modules/@scope/pkg).
  */
-function findPackageEntry(packageName: string, rootDir: string): string | null {
+export async function findPackageEntry(
+  packageName: string,
+  rootDir: string,
+): Promise<string | null> {
   const checked = new Set<string>();
 
   // 1. Walk up from rootDir checking node_modules at each level
@@ -215,7 +217,7 @@ function findPackageEntry(packageName: string, rootDir: string): string | null {
     const candidate = join(dir, 'node_modules', packageName);
     if (!checked.has(candidate)) {
       checked.add(candidate);
-      const entry = getPackageEntry(candidate);
+      const entry = await getPackageEntry(candidate);
       if (entry) return entry;
     }
     const parent = dirname(dir);
@@ -225,19 +227,18 @@ function findPackageEntry(packageName: string, rootDir: string): string | null {
 
   // 2. Scan workspace packages (packages/*/node_modules/<pkg>)
   const packagesDir = join(rootDir, 'packages');
-  if (existsSync(packagesDir)) {
-    try {
-      for (const child of readdirSync(packagesDir)) {
-        const candidate = join(packagesDir, child, 'node_modules', packageName);
-        if (!checked.has(candidate)) {
-          checked.add(candidate);
-          const entry = getPackageEntry(candidate);
-          if (entry) return entry;
-        }
+  try {
+    const children = await readdir(packagesDir);
+    for (const child of children) {
+      const candidate = join(packagesDir, child, 'node_modules', packageName);
+      if (!checked.has(candidate)) {
+        checked.add(candidate);
+        const entry = await getPackageEntry(candidate);
+        if (entry) return entry;
       }
-    } catch {
-      // packages dir not readable — skip
     }
+  } catch {
+    // packages dir missing or not readable — skip
   }
 
   return null;
@@ -245,18 +246,43 @@ function findPackageEntry(packageName: string, rootDir: string): string | null {
 
 /**
  * Read a package directory's package.json and return the resolved ESM entry path.
+ * Handles both object-form and string-form exports, plus the 'default' condition.
  */
-function getPackageEntry(packageDir: string): string | null {
+export async function getPackageEntry(
+  packageDir: string,
+): Promise<string | null> {
   const pkgJsonPath = join(packageDir, 'package.json');
-  if (!existsSync(pkgJsonPath)) return null;
   try {
-    const pkg = JSON.parse(readFileSync(pkgJsonPath, 'utf-8'));
+    await access(pkgJsonPath);
+  } catch {
+    return null;
+  }
+  try {
+    const raw = await readFile(pkgJsonPath, 'utf-8');
+    const pkg = JSON.parse(raw);
     const entry =
-      pkg.exports?.['.']?.import || pkg.module || pkg.main || 'index.js';
+      resolveExportsEntry(pkg.exports) || pkg.module || pkg.main || 'index.js';
     return resolve(packageDir, entry);
   } catch {
     return null;
   }
+}
+
+/**
+ * Resolve the ESM entry point from a package.json exports field.
+ * Handles object-form ({".": {"import": "..."}}) and string-form ({".": "..."})
+ * as well as the 'default' condition key.
+ */
+export function resolveExportsEntry(exports: unknown): string | undefined {
+  if (!exports || typeof exports !== 'object') return undefined;
+  const dot = (exports as Record<string, unknown>)['.'];
+  if (typeof dot === 'string') return dot;
+  if (dot && typeof dot === 'object') {
+    const conditions = dot as Record<string, unknown>;
+    if (typeof conditions.import === 'string') return conditions.import;
+    if (typeof conditions.default === 'string') return conditions.default;
+  }
+  return undefined;
 }
 
 /**
