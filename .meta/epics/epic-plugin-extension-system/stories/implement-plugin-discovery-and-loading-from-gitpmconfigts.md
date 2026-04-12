@@ -2,7 +2,7 @@
 type: story
 id: HBphXVPZZxd_
 title: Implement plugin discovery and loading from gitpm.config.ts
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:

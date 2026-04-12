@@ -3,25 +3,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // --- Mocks ---
 
-const mockLoadGitHubConfig = vi.fn();
-const mockExportToGitHub = vi.fn();
-const mockLoadGitLabConfig = vi.fn();
-const mockExportToGitLab = vi.fn();
+const mockAdapterExport = vi.fn();
+const mockResolveAdapter = vi.fn();
 const mockResolveToken = vi.fn();
 const mockConfirm = vi.fn();
+const mockRunHooks = vi.fn();
 
-vi.mock('@gitpm/sync-github', () => ({
-  loadConfig: (...args: unknown[]) => mockLoadGitHubConfig(...args),
-  exportToGitHub: (...args: unknown[]) => mockExportToGitHub(...args),
-}));
-
-vi.mock('@gitpm/sync-gitlab', () => ({
-  loadConfig: (...args: unknown[]) => mockLoadGitLabConfig(...args),
-  exportToGitLab: (...args: unknown[]) => mockExportToGitLab(...args),
+vi.mock('../utils/adapters.js', () => ({
+  resolveAdapter: (...args: unknown[]) => mockResolveAdapter(...args),
 }));
 
 vi.mock('../utils/auth.js', () => ({
   resolveToken: (...args: unknown[]) => mockResolveToken(...args),
+}));
+
+vi.mock('@gitpm/core', () => ({
+  runHooks: (...args: unknown[]) => mockRunHooks(...args),
 }));
 
 vi.mock('@inquirer/prompts', () => ({
@@ -61,6 +58,22 @@ const noChangesResult = {
   totalChanges: 0,
 };
 
+function setupMockAdapter(name = 'github', displayName = 'GitHub') {
+  const adapter = {
+    name,
+    displayName,
+    detect: vi.fn().mockResolvedValue(true),
+    import: vi.fn(),
+    export: mockAdapterExport,
+    sync: vi.fn(),
+  };
+  mockResolveAdapter.mockResolvedValue({
+    adapter,
+    config: { adapters: [], hooks: {} },
+  });
+  return adapter;
+}
+
 // --- Tests ---
 
 describe('gitpm push', () => {
@@ -73,15 +86,8 @@ describe('gitpm push', () => {
       throw new Error('process.exit');
     }) as never);
     mockResolveToken.mockResolvedValue('mock-token');
-    // Default: GitHub config found, GitLab not
-    mockLoadGitHubConfig.mockResolvedValue({
-      ok: true,
-      value: { repo: 'owner/repo' },
-    });
-    mockLoadGitLabConfig.mockResolvedValue({
-      ok: false,
-      error: { message: 'not found' },
-    });
+    mockRunHooks.mockResolvedValue({ ok: true, value: undefined });
+    setupMockAdapter();
   });
 
   afterEach(() => {
@@ -89,11 +95,11 @@ describe('gitpm push', () => {
   });
 
   it('prints preview in dry-run mode', async () => {
-    mockExportToGitHub.mockResolvedValue({ ok: true, value: exportResult });
+    mockAdapterExport.mockResolvedValue({ ok: true, value: exportResult });
 
     await run('--dry-run', '--meta-dir', '/tmp/meta');
 
-    expect(mockExportToGitHub).toHaveBeenCalledWith(
+    expect(mockAdapterExport).toHaveBeenCalledWith(
       expect.objectContaining({ dryRun: true }),
     );
     expect(mockConfirm).not.toHaveBeenCalled();
@@ -103,43 +109,43 @@ describe('gitpm push', () => {
   });
 
   it('pushes when user confirms', async () => {
-    mockExportToGitHub
+    mockAdapterExport
       .mockResolvedValueOnce({ ok: true, value: exportResult }) // preview
       .mockResolvedValueOnce({ ok: true, value: exportResult }); // actual push
     mockConfirm.mockResolvedValue(true);
 
     await run('--meta-dir', '/tmp/meta');
 
-    expect(mockExportToGitHub).toHaveBeenCalledTimes(2);
+    expect(mockAdapterExport).toHaveBeenCalledTimes(2);
     expect(mockConfirm).toHaveBeenCalled();
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
   it('cancels push when user declines', async () => {
-    mockExportToGitHub.mockResolvedValue({ ok: true, value: exportResult });
+    mockAdapterExport.mockResolvedValue({ ok: true, value: exportResult });
     mockConfirm.mockResolvedValue(false);
 
     await run('--meta-dir', '/tmp/meta');
 
     // Only called once for preview, not for actual push
-    expect(mockExportToGitHub).toHaveBeenCalledTimes(1);
+    expect(mockAdapterExport).toHaveBeenCalledTimes(1);
     const allOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
     expect(allOutput).toContain('Push cancelled');
   });
 
   it('skips confirmation with --yes', async () => {
-    mockExportToGitHub
+    mockAdapterExport
       .mockResolvedValueOnce({ ok: true, value: exportResult })
       .mockResolvedValueOnce({ ok: true, value: exportResult });
 
     await run('--yes', '--meta-dir', '/tmp/meta');
 
     expect(mockConfirm).not.toHaveBeenCalled();
-    expect(mockExportToGitHub).toHaveBeenCalledTimes(2);
+    expect(mockAdapterExport).toHaveBeenCalledTimes(2);
   });
 
   it('prints nothing-to-push when totalChanges is 0', async () => {
-    mockExportToGitHub.mockResolvedValue({ ok: true, value: noChangesResult });
+    mockAdapterExport.mockResolvedValue({ ok: true, value: noChangesResult });
 
     await run('--meta-dir', '/tmp/meta');
 
@@ -149,7 +155,7 @@ describe('gitpm push', () => {
   });
 
   it('exits with code 1 when push fails', async () => {
-    mockExportToGitHub
+    mockAdapterExport
       .mockResolvedValueOnce({ ok: true, value: exportResult }) // preview ok
       .mockResolvedValueOnce({ ok: false, error: { message: 'push error' } });
     mockConfirm.mockResolvedValue(true);
@@ -161,25 +167,9 @@ describe('gitpm push', () => {
   });
 
   it('exits with code 1 when no sync config found', async () => {
-    mockLoadGitHubConfig.mockResolvedValue({
-      ok: false,
-      error: { message: 'not found' },
+    mockResolveAdapter.mockImplementation(() => {
+      process.exit(1);
     });
-    mockLoadGitLabConfig.mockResolvedValue({
-      ok: false,
-      error: { message: 'not found' },
-    });
-
-    await expect(run('--meta-dir', '/tmp/meta')).rejects.toThrow(
-      'process.exit',
-    );
-    expect(exitSpy).toHaveBeenCalledWith(1);
-    const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
-    expect(errOutput).toContain('No sync config found');
-  });
-
-  it('exits with code 1 when token resolution fails', async () => {
-    mockResolveToken.mockRejectedValue(new Error('No GitHub token found'));
 
     await expect(run('--meta-dir', '/tmp/meta')).rejects.toThrow(
       'process.exit',
@@ -187,55 +177,35 @@ describe('gitpm push', () => {
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
-  it('pushes to GitLab when GitLab config is found', async () => {
-    mockLoadGitHubConfig.mockResolvedValue({
-      ok: false,
-      error: { message: 'not found' },
-    });
-    mockLoadGitLabConfig.mockResolvedValue({
-      ok: true,
-      value: {
-        project: 'group/proj',
-        project_id: 42,
-        base_url: 'https://gitlab.com',
-      },
-    });
-    mockExportToGitLab.mockResolvedValue({ ok: true, value: exportResult });
+  it('pushes to GitLab when GitLab adapter detects', async () => {
+    setupMockAdapter('gitlab', 'GitLab');
+    mockAdapterExport.mockResolvedValue({ ok: true, value: exportResult });
 
     await run('--dry-run', '--token', 'gl-tok', '--meta-dir', '/tmp/meta');
 
-    expect(mockExportToGitLab).toHaveBeenCalledWith(
-      expect.objectContaining({
-        token: 'gl-tok',
-        project: 'group/proj',
-        dryRun: true,
-      }),
+    expect(mockAdapterExport).toHaveBeenCalledWith(
+      expect.objectContaining({ dryRun: true }),
     );
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
-  it('exits with code 1 when GitLab token is missing', async () => {
-    const originalEnv = process.env.GITLAB_TOKEN;
-    delete process.env.GITLAB_TOKEN;
+  it('runs pre-export and post-export hooks', async () => {
+    // Preview call returns changes, actual push call succeeds
+    mockAdapterExport
+      .mockResolvedValueOnce({ ok: true, value: exportResult })
+      .mockResolvedValueOnce({ ok: true, value: exportResult });
 
-    mockLoadGitHubConfig.mockResolvedValue({
-      ok: false,
-      error: { message: 'not found' },
-    });
-    mockLoadGitLabConfig.mockResolvedValue({
-      ok: true,
-      value: {
-        project: 'group/proj',
-        project_id: 42,
-        base_url: 'https://gitlab.com',
-      },
-    });
+    await run('--yes', '--meta-dir', '/tmp/meta');
 
-    await expect(run('--meta-dir', '/tmp/meta')).rejects.toThrow(
-      'process.exit',
+    expect(mockRunHooks).toHaveBeenCalledWith(
+      expect.anything(),
+      'pre-export',
+      expect.objectContaining({ event: 'pre-export' }),
     );
-    expect(exitSpy).toHaveBeenCalledWith(1);
-
-    process.env.GITLAB_TOKEN = originalEnv;
+    expect(mockRunHooks).toHaveBeenCalledWith(
+      expect.anything(),
+      'post-export',
+      expect.objectContaining({ event: 'post-export' }),
+    );
   });
 });

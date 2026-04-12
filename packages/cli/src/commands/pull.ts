@@ -1,113 +1,77 @@
-import type { ConflictStrategy } from '@gitpm/sync-github';
-import {
-  loadConfig as loadGitHubConfig,
-  syncWithGitHub,
-} from '@gitpm/sync-github';
-import {
-  loadConfig as loadGitLabConfig,
-  syncWithGitLab,
-} from '@gitpm/sync-gitlab';
+import type { ConflictStrategy } from '@gitpm/core';
+import { runHooks } from '@gitpm/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import ora from 'ora';
+import { resolveAdapter } from '../utils/adapters.js';
 import { resolveToken } from '../utils/auth.js';
 import { resolveMetaDir } from '../utils/config.js';
 import { promptConflictResolution } from '../utils/conflict-ui.js';
 import { printError, printSuccess } from '../utils/output.js';
 
+const VALID_STRATEGIES = ['local-wins', 'remote-wins', 'ask'] as const;
+
 export const pullCommand = new Command('pull')
-  .description('Pull changes from GitHub or GitLab into local .meta/')
+  .description('Pull changes from remote platform into local .meta/')
   .option('--token <token>', 'Personal access token')
   .option(
     '--strategy <strategy>',
     'Conflict resolution strategy (local-wins, remote-wins, ask)',
     'remote-wins',
   )
+  .option('--adapter <name>', 'Force a specific adapter (e.g. github, gitlab)')
   .action(async (opts, cmd) => {
     const metaDir = resolveMetaDir(cmd.optsWithGlobals().metaDir);
-    const strategy = opts.strategy as ConflictStrategy;
-
-    // Detect platform
-    const ghConfig = await loadGitHubConfig(metaDir);
-    const glConfig = await loadGitLabConfig(metaDir);
-
-    if (glConfig.ok) {
-      await pullFromGitLab(opts, metaDir, glConfig.value, strategy);
-    } else if (ghConfig.ok) {
-      await pullFromGitHub(opts, metaDir, ghConfig.value.repo, strategy);
-    } else {
+    if (!VALID_STRATEGIES.includes(opts.strategy)) {
       printError(
-        'No sync config found. Run `gitpm import` first to set up sync.',
+        `Invalid strategy "${opts.strategy}". Must be one of: ${VALID_STRATEGIES.join(', ')}`,
       );
       process.exit(1);
     }
+    const strategy = opts.strategy as ConflictStrategy;
+    const { adapter, config } = await resolveAdapter(metaDir, opts.adapter);
+
+    let token: string | undefined;
+    try {
+      token = await resolveToken(opts.token);
+    } catch {
+      // Token resolution failed — adapter may use other credentials
+    }
+
+    // Run pre-sync hook (pull is a sync operation with remote-wins bias)
+    const preHook = await runHooks(config, 'pre-sync', {
+      metaDir,
+      event: 'pre-sync',
+      adapterName: adapter.name,
+    });
+    if (!preHook.ok) {
+      printError(`Pre-sync hook failed: ${preHook.error.message}`);
+      process.exit(1);
+    }
+
+    const spinner = ora(`Pulling from ${adapter.displayName}...`).start();
+    const result = await adapter.sync({
+      token,
+      metaDir,
+      strategy,
+    });
+
+    if (!result.ok) {
+      spinner.fail('Pull failed.');
+      printError(result.error.message);
+      process.exit(1);
+    }
+
+    spinner.succeed('Pull complete.');
+    await handleConflictsAndPrint(result.value, strategy);
+
+    // Run post-sync hook
+    await runHooks(config, 'post-sync', {
+      metaDir,
+      event: 'post-sync',
+      adapterName: adapter.name,
+    });
   });
-
-async function pullFromGitHub(
-  opts: Record<string, string | undefined>,
-  metaDir: string,
-  repo: string,
-  strategy: ConflictStrategy,
-): Promise<void> {
-  let token: string;
-  try {
-    token = await resolveToken(opts.token);
-  } catch (err) {
-    printError(err instanceof Error ? err.message : 'Failed to resolve token.');
-    process.exit(1);
-  }
-
-  const spinner = ora('Pulling from GitHub...').start();
-  const result = await syncWithGitHub({
-    token,
-    repo,
-    metaDir,
-    strategy: strategy === 'ask' ? 'ask' : strategy,
-  });
-
-  if (!result.ok) {
-    spinner.fail('Pull failed.');
-    printError(result.error.message);
-    process.exit(1);
-  }
-
-  spinner.succeed('Pull complete.');
-  await handleConflictsAndPrint(result.value, strategy);
-}
-
-async function pullFromGitLab(
-  opts: Record<string, string | undefined>,
-  metaDir: string,
-  config: { project: string; project_id: number; base_url: string },
-  strategy: ConflictStrategy,
-): Promise<void> {
-  const token = opts.token ?? process.env.GITLAB_TOKEN;
-  if (!token) {
-    printError(
-      'No GitLab token found. Provide via --token flag or GITLAB_TOKEN env var.',
-    );
-    process.exit(1);
-  }
-
-  const spinner = ora('Pulling from GitLab...').start();
-  const result = await syncWithGitLab({
-    token,
-    project: config.project,
-    projectId: config.project_id,
-    baseUrl: config.base_url,
-    metaDir,
-    strategy: strategy === 'ask' ? 'ask' : strategy,
-  });
-
-  if (!result.ok) {
-    spinner.fail('Pull failed.');
-    printError(result.error.message);
-    process.exit(1);
-  }
-
-  spinner.succeed('Pull complete.');
-  await handleConflictsAndPrint(result.value, strategy);
-}
 
 async function handleConflictsAndPrint(
   result: {

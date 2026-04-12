@@ -1,7 +1,10 @@
-import type { LinkStrategy } from '@gitpm/sync-github';
-import { importFromGitHub } from '@gitpm/sync-github';
-import type { LinkStrategy as GitLabLinkStrategy } from '@gitpm/sync-gitlab';
-import { importFromGitLab } from '@gitpm/sync-gitlab';
+import { dirname } from 'node:path';
+import {
+  findAdapterByName,
+  loadAdapters,
+  loadGitpmConfig,
+  runHooks,
+} from '@gitpm/core';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import ora from 'ora';
@@ -16,21 +19,14 @@ const VALID_LINK_STRATEGIES = [
   'labels',
   'score',
   'all',
-] as const;
-
-const VALID_GITLAB_LINK_STRATEGIES = [
-  'body-refs',
   'native-epics',
-  'milestone',
-  'labels',
-  'all',
 ] as const;
 
 export const importCommand = new Command('import')
-  .description('Import project data from GitHub or GitLab into .meta/')
+  .description('Import project data from a remote platform into .meta/')
   .option(
     '--source <source>',
-    'Source platform: github or gitlab (default: github)',
+    'Source platform: github, gitlab, or jira (default: github)',
     'github',
   )
   .option('--repo <owner/repo>', 'GitHub repository (owner/repo)')
@@ -44,125 +40,106 @@ export const importCommand = new Command('import')
     '--link-strategy <strategy>',
     'Epic-story linkage strategy (default: all)',
   )
+  .option('--adapter <name>', 'Force a specific adapter by name')
   .action(async (opts, cmd) => {
     const metaDir = resolveMetaDir(cmd.optsWithGlobals().metaDir);
-    const source: string = opts.source;
+    const source: string = opts.adapter ?? opts.source;
 
-    if (source === 'gitlab') {
-      await importGitLab(opts, metaDir);
-    } else if (source === 'github') {
-      await importGitHub(opts, metaDir);
-    } else {
-      printError(`Unknown source "${source}". Use "github" or "gitlab".`);
+    // Load config and adapters
+    const rootDir = dirname(metaDir);
+    const configResult = await loadGitpmConfig(rootDir);
+    if (!configResult.ok) {
+      printError(`Failed to load config: ${configResult.error.message}`);
       process.exit(1);
     }
+    const config = configResult.value;
+
+    const adaptersResult = await loadAdapters(config, rootDir);
+    if (!adaptersResult.ok) {
+      printError(`Failed to load adapters: ${adaptersResult.error.message}`);
+      process.exit(1);
+    }
+
+    const adapter = findAdapterByName(adaptersResult.value, source);
+    if (!adapter) {
+      const available = adaptersResult.value.map((a) => a.name);
+      if (available.length === 0) {
+        printError(
+          `Adapter "${source}" is not installed. Install it with:\n  bun add @gitpm/sync-${source}`,
+        );
+      } else {
+        printError(
+          `Adapter "${source}" not found. Available: ${available.join(', ')}\n` +
+            `Install it with: bun add @gitpm/sync-${source}`,
+        );
+      }
+      process.exit(1);
+    }
+
+    // Validate link strategy
+    const linkStrategy = opts.linkStrategy;
+    if (
+      linkStrategy &&
+      !VALID_LINK_STRATEGIES.includes(
+        linkStrategy as (typeof VALID_LINK_STRATEGIES)[number],
+      )
+    ) {
+      printError(
+        `Invalid link strategy "${linkStrategy}". Must be one of: ${VALID_LINK_STRATEGIES.join(', ')}`,
+      );
+      process.exit(1);
+    }
+
+    // Resolve token
+    let token: string | undefined;
+    try {
+      token = await resolveToken(opts.token);
+    } catch {
+      // Token resolution failed — adapter may use other credentials
+    }
+
+    // Run pre-import hook
+    const preHook = await runHooks(config, 'pre-import', {
+      metaDir,
+      event: 'pre-import',
+      adapterName: adapter.name,
+    });
+    if (!preHook.ok) {
+      printError(`Pre-import hook failed: ${preHook.error.message}`);
+      process.exit(1);
+    }
+
+    const spinner = ora(`Importing from ${adapter.displayName}...`).start();
+
+    const result = await adapter.import({
+      token,
+      repo: opts.repo,
+      project: opts.project ?? opts.repo,
+      projectNumber:
+        opts.project && !Number.isNaN(Number.parseInt(opts.project, 10))
+          ? Number.parseInt(opts.project, 10)
+          : undefined,
+      baseUrl: opts.baseUrl,
+      metaDir,
+      linkStrategy,
+    });
+
+    if (!result.ok) {
+      spinner.fail('Import failed.');
+      printError(result.error.message);
+      process.exit(1);
+    }
+
+    spinner.succeed('Import complete.');
+    printImportSummary(result.value);
+
+    // Run post-import hook
+    await runHooks(config, 'post-import', {
+      metaDir,
+      event: 'post-import',
+      adapterName: adapter.name,
+    });
   });
-
-async function importGitHub(
-  opts: Record<string, string | undefined>,
-  metaDir: string,
-): Promise<void> {
-  const repo = opts.repo;
-  if (!repo?.includes('/') || repo.split('/').length !== 2) {
-    printError('--repo is required for GitHub import. Expected "owner/repo".');
-    process.exit(1);
-  }
-
-  let token: string;
-  try {
-    token = await resolveToken(opts.token);
-  } catch (err) {
-    printError(err instanceof Error ? err.message : 'Failed to resolve token.');
-    process.exit(1);
-  }
-
-  const linkStrategy: LinkStrategy | undefined = opts.linkStrategy as
-    | LinkStrategy
-    | undefined;
-  if (
-    linkStrategy &&
-    !VALID_LINK_STRATEGIES.includes(
-      linkStrategy as (typeof VALID_LINK_STRATEGIES)[number],
-    )
-  ) {
-    printError(
-      `Invalid link strategy "${linkStrategy}". Must be one of: ${VALID_LINK_STRATEGIES.join(', ')}`,
-    );
-    process.exit(1);
-  }
-
-  const spinner = ora('Importing from GitHub...').start();
-
-  const result = await importFromGitHub({
-    token,
-    repo,
-    projectNumber: opts.project ? Number.parseInt(opts.project, 10) : undefined,
-    metaDir,
-    linkStrategy,
-  });
-
-  if (!result.ok) {
-    spinner.fail('Import failed.');
-    printError(result.error.message);
-    process.exit(1);
-  }
-
-  spinner.succeed('Import complete.');
-  printImportSummary(result.value);
-}
-
-async function importGitLab(
-  opts: Record<string, string | undefined>,
-  metaDir: string,
-): Promise<void> {
-  const project = opts.project ?? opts.repo;
-  if (!project) {
-    printError('--project (namespace/project) is required for GitLab import.');
-    process.exit(1);
-  }
-
-  const token = opts.token ?? process.env.GITLAB_TOKEN;
-  if (!token) {
-    printError(
-      'No GitLab token found. Provide via --token flag or GITLAB_TOKEN env var.',
-    );
-    process.exit(1);
-  }
-
-  const linkStrategy: GitLabLinkStrategy | undefined = opts.linkStrategy as
-    | GitLabLinkStrategy
-    | undefined;
-  if (
-    linkStrategy &&
-    !VALID_GITLAB_LINK_STRATEGIES.includes(
-      linkStrategy as (typeof VALID_GITLAB_LINK_STRATEGIES)[number],
-    )
-  ) {
-    printError(
-      `Invalid link strategy "${linkStrategy}". Must be one of: ${VALID_GITLAB_LINK_STRATEGIES.join(', ')}`,
-    );
-    process.exit(1);
-  }
-
-  const spinner = ora('Importing from GitLab...').start();
-
-  const result = await importFromGitLab({
-    token,
-    project,
-    baseUrl: opts.baseUrl,
-    metaDir,
-    linkStrategy,
-  });
-
-  if (!result.ok) {
-    spinner.fail('Import failed.');
-    printError(result.error.message);
-    process.exit(1);
-  }
-
-  spinner.succeed('Import complete.');
-  printImportSummary(result.value);
-}
 
 function printImportSummary(value: {
   milestones: number;

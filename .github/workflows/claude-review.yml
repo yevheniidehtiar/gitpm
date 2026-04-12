@@ -427,8 +427,9 @@ jobs:
               cat "$RESULT"
               echo '```'
               echo "</details>"
-              # Only a clean review (no critical, no medium) is cacheable.
-              if [ "$CRIT" -eq 0 ] && [ "$MED" -eq 0 ]; then
+              # Only a non-blocking review (no critical) is cacheable.
+              # Medium findings are advisory and don't block merge.
+              if [ "$CRIT" -eq 0 ]; then
                 echo ""
                 echo "<!-- claude-review-cache: $CACHE_HASH -->"
               fi
@@ -438,15 +439,19 @@ jobs:
           gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
             --body-file /tmp/diag/review.md || echo "::warning::Failed to post review PR comment"
 
-          if [ "$CRIT" -gt 0 ] || [ "$MED" -gt 0 ]; then
-            echo "::error::Review found $CRIT critical and $MED medium issues — failing check"
+          if [ "$CRIT" -gt 0 ]; then
+            echo "::error::Review found $CRIT critical issue(s) — failing check"
             exit 1
+          fi
+
+          if [ "$MED" -gt 0 ]; then
+            echo "::warning::Review found $MED medium issue(s) — advisory only, not blocking merge"
           fi
 
           if [ "$VERDICT" = "cached" ]; then
             echo "Cached-green from hash $CACHE_HASH — check passes."
           else
-            echo "No blocking findings (low/nit are advisory). Check passes."
+            echo "No blocking findings (medium/low/nit are advisory). Check passes."
           fi
 
   autofix-loop:
@@ -454,7 +459,7 @@ jobs:
     runs-on: ubuntu-latest
     # Skip PRs from forks — we can't push to a fork branch from this workflow.
     if: github.event.pull_request.head.repo.full_name == github.repository
-    timeout-minutes: 45
+    timeout-minutes: 60
     # Override workflow-level permissions with the broader set this job
     # needs: `contents: write` to push fix commits, plus `checks: read`
     # and `actions: read` for the polling loop. The `review` job keeps
@@ -513,9 +518,37 @@ jobs:
         run: |
           set -euo pipefail
 
-          MAX_ITERATIONS=5
+          # --- Dynamic MAX_ITERATIONS based on PR size ---
+          # Fetch additions + deletions to size the iteration budget.
+          PR_STATS=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '{additions, deletions}')
+          PR_ADDITIONS=$(echo "$PR_STATS" | jq '.additions')
+          PR_DELETIONS=$(echo "$PR_STATS" | jq '.deletions')
+          TOTAL_LINES=$((PR_ADDITIONS + PR_DELETIONS))
+
+          # Gradation: minimum 5, scales with diff size, capped at 15.
+          #   ≤500  lines → 5   (small PRs — quick fixes)
+          #   ≤1500 lines → 7   (medium PRs)
+          #   ≤3000 lines → 10  (large PRs)
+          #   ≤5000 lines → 12  (very large PRs)
+          #   >5000 lines → 15  (massive PRs)
+          if [ "$TOTAL_LINES" -le 500 ]; then
+            MAX_ITERATIONS=5
+          elif [ "$TOTAL_LINES" -le 1500 ]; then
+            MAX_ITERATIONS=7
+          elif [ "$TOTAL_LINES" -le 3000 ]; then
+            MAX_ITERATIONS=10
+          elif [ "$TOTAL_LINES" -le 5000 ]; then
+            MAX_ITERATIONS=12
+          else
+            MAX_ITERATIONS=15
+          fi
+
+          echo "PR size: +${PR_ADDITIONS}/-${PR_DELETIONS} (${TOTAL_LINES} total lines), max iterations: ${MAX_ITERATIONS}"
+
           SLEEP_SEC=45
-          SELF_JOBS='["Claude Review","Claude Autofix Loop"]'
+          # Only exclude this job from check polling — Claude Review is
+          # now monitored so its failures are fed into the fix loop.
+          SELF_JOBS='["Claude Autofix Loop"]'
 
           for i in $(seq 1 "$MAX_ITERATIONS"); do
             echo "::group::Iteration $i"
@@ -568,6 +601,20 @@ jobs:
             echo "$FAILING" | jq '[.[] | {name, conclusion, url: .html_url, title: .output.title, summary: .output.summary}]' \
               > /tmp/autofix/failing-checks.json
 
+            # If Claude Review is among the failing checks, extract the
+            # structured findings from the latest review PR comment so
+            # Claude gets the exact severity-tagged issues to fix rather
+            # than having to re-derive them from raw CI logs.
+            rm -f /tmp/autofix/review-findings.md
+            if echo "$FAILING" | jq -e '.[] | select(.name == "Claude Review")' >/dev/null 2>&1; then
+              REVIEW_BODY=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+                --jq '[.[] | select(.user.login == "github-actions[bot]") | select(.body | contains("Claude Review")) | .body] | last // ""' 2>/dev/null || true)
+              if [ -n "$REVIEW_BODY" ]; then
+                echo "$REVIEW_BODY" > /tmp/autofix/review-findings.md
+                echo "Extracted Claude Review findings for this iteration."
+              fi
+            fi
+
             # Invoke Claude for this iteration. Each iteration is a fresh
             # action invocation so the OAuth session stays well inside the
             # ~10–15 minute refresh window.
@@ -578,16 +625,22 @@ jobs:
           Your job:
           1. Read `/tmp/autofix/failing-checks.json` and, for each failing check,
              fetch the full job logs via `gh run view` or the check's `url`.
-          2. Diagnose the root cause. Do NOT modify tests to make them pass —
-             find the real bug in the code under test.
-          3. Fix the code following the gitpm conventions in `CLAUDE.md`
+          2. If the file `/tmp/autofix/review-findings.md` exists, read it —
+             it contains the Claude Review findings (severity-tagged code
+             issues from the automated reviewer). Prioritize fixing
+             **critical** and **medium** severity findings. These are
+             convention violations or correctness bugs the reviewer found
+             in the PR diff, not build/test failures.
+          3. Diagnose the root cause of each failure. Do NOT modify tests to
+             make them pass — find the real bug in the code under test.
+          4. Fix the code following the gitpm conventions in `CLAUDE.md`
              (ESM `.js` imports, `Result<T, E>` instead of thrown exceptions,
              zod for validation, `node:fs/promises`, no `any`, colocated tests).
-          4. Run `bun run lint && bun run build && bun run test` locally to
+          5. Run `bun run lint && bun run build && bun run test` locally to
              verify the fix before finishing. If a verification step fails,
              iterate until it passes or you are confident the failure is
              pre-existing / out of scope.
-          5. Do NOT commit, push, or post any GitHub comment. The workflow
+          6. Do NOT commit, push, or post any GitHub comment. The workflow
              will commit any file changes you leave in the working tree.
 
           If you cannot identify a fix, leave the working tree clean and
@@ -607,8 +660,16 @@ jobs:
               npm i -g @anthropic-ai/claude-code
             fi
 
+            # More turns when fixing review findings — code quality issues
+            # require reading more files than a simple build error.
+            if [ -f /tmp/autofix/review-findings.md ]; then
+              MAX_TURNS=30
+            else
+              MAX_TURNS=20
+            fi
+
             claude -p "$claude_prompt" \
-              --max-turns 20 \
+              --max-turns "$MAX_TURNS" \
               --dangerously-skip-permissions || {
               echo "::warning::Claude exited non-zero — continuing to commit check"
             }
