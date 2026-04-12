@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/yevheniidehtiar/gitpm/compare/sync-github-v0.1.5...sync-github-v0.1.6) (2026-04-12)
+
+
+### Bug Fixes
+
+* clean up unreleased changes from PRs [#141](https://github.com/yevheniidehtiar/gitpm/issues/141) and [#144](https://github.com/yevheniidehtiar/gitpm/issues/144) ([d7a9b54](https://github.com/yevheniidehtiar/gitpm/commit/d7a9b54ffbab29ddd5e66fe334afc98e359ea0ae))
+
 ## [0.1.5](https://github.com/yevheniidehtiar/gitpm/compare/sync-github-v0.1.4...sync-github-v0.1.5) (2026-04-07)
 
 
