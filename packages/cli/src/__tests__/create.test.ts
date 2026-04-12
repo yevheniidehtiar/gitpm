@@ -110,6 +110,7 @@ describe('gitpm create story', () => {
         milestones: [],
         roadmaps: [],
         prds: [],
+        sprints: [],
         errors: [],
       },
     });

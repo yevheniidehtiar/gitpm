@@ -119,6 +119,70 @@ export function useDeleteEntity() {
   });
 }
 
+// --- Progress ---
+
+export interface EpicProgress {
+  epicId: string;
+  title: string;
+  status: string;
+  total: number;
+  done: number;
+  inProgress: number;
+  blocked: number;
+  progress: number;
+}
+
+export interface MilestoneProgress {
+  milestoneId: string;
+  title: string;
+  targetDate?: string;
+  epics: EpicProgress[];
+  total: number;
+  done: number;
+  progress: number;
+}
+
+export interface ProjectProgress {
+  milestones: MilestoneProgress[];
+  orphanEpics: EpicProgress[];
+  overall: { total: number; done: number; progress: number };
+}
+
+export function useProgress() {
+  return useQuery<ProjectProgress>({
+    queryKey: ['progress'],
+    queryFn: () => fetchJson('/progress'),
+    refetchOnWindowFocus: true,
+  });
+}
+
+// --- Graph ---
+
+export interface GraphNode {
+  id: string;
+  title: string;
+  type: string;
+  status: string;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  label: string;
+}
+
+export interface GraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
+export function useGraphData() {
+  return useQuery<GraphData>({
+    queryKey: ['graph'],
+    queryFn: () => fetchJson('/graph'),
+  });
+}
+
 // --- Validation ---
 
 export interface ValidationResponse {

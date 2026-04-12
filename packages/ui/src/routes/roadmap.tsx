@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { EmptyState } from '../components/EmptyState.js';
 import { Spinner } from '../components/Spinner.js';
 import { StatusBadge } from '../components/StatusBadge.js';
-import { type Entity, useTree } from '../lib/api.js';
+import { type Entity, useProgress, useTree } from '../lib/api.js';
 
 const STATUS_COLORS: Record<string, string> = {
   backlog: '#9CA3AF',
@@ -15,6 +15,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function RoadmapView() {
   const { data: tree, isLoading } = useTree();
+  const { data: progress } = useProgress();
 
   const milestones = useMemo(() => {
     if (!tree) return [];
@@ -157,6 +158,10 @@ export function RoadmapView() {
                   const epColor =
                     STATUS_COLORS[ep.status ?? 'backlog'] ?? '#9CA3AF';
                   const barWidth = 120;
+                  const epProgress = progress?.milestones
+                    .flatMap((m) => m.epics)
+                    .find((p) => p.epicId === ep.id);
+                  const ratio = epProgress?.progress ?? 0;
 
                   return (
                     <g key={ep.id}>
@@ -167,8 +172,19 @@ export function RoadmapView() {
                         height={24}
                         rx={4}
                         fill={epColor}
-                        opacity={0.3}
+                        opacity={0.15}
                       />
+                      {ratio > 0 && (
+                        <rect
+                          x={x - 20}
+                          y={epY}
+                          width={barWidth * ratio}
+                          height={24}
+                          rx={4}
+                          fill={epColor}
+                          opacity={0.4}
+                        />
+                      )}
                       <rect
                         x={x - 20}
                         y={epY}
@@ -190,6 +206,16 @@ export function RoadmapView() {
                           ? `${ep.title.slice(0, 18)}...`
                           : ep.title}
                       </text>
+                      {ratio > 0 && (
+                        <text
+                          x={x - 20 + barWidth + 6}
+                          y={epY + 16}
+                          fill="#6b7280"
+                          fontSize="10"
+                        >
+                          {Math.round(ratio * 100)}%
+                        </text>
+                      )}
                     </g>
                   );
                 })}

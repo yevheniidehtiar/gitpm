@@ -32,6 +32,7 @@ function makeTree() {
     milestones: [],
     roadmaps: [],
     prds: [],
+    sprints: [],
     errors: [],
   };
 }

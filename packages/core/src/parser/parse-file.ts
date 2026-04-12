@@ -10,6 +10,7 @@ import {
   milestoneSchema,
   prdSchema,
   roadmapSchema,
+  sprintSchema,
   storySchema,
 } from '../schemas/index.js';
 
@@ -109,6 +110,10 @@ function getSchema(type: string, extensions?: SchemaExtensions) {
       return extensions
         ? extendEntitySchema(prdSchema, extensions, 'prd')
         : prdSchema;
+    case 'sprint':
+      return extensions
+        ? extendEntitySchema(sprintSchema, extensions, 'sprint')
+        : sprintSchema;
     default:
       return null;
   }

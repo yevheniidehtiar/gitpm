@@ -153,6 +153,7 @@ describe('buildDependencyGraph', () => {
       milestones: [],
       roadmaps: [],
       prds: [],
+      sprints: [],
       errors: [],
     };
     const resolved = resolveRefs(tree);

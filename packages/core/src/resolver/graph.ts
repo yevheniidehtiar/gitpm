@@ -10,6 +10,7 @@ export function buildDependencyGraph(tree: ResolvedTree): DependencyGraph {
   for (const m of tree.milestones) adjacency.set(m.id, []);
   for (const r of tree.roadmaps) adjacency.set(r.id, []);
   for (const p of tree.prds) adjacency.set(p.id, []);
+  for (const sp of tree.sprints ?? []) adjacency.set(sp.id, []);
 
   // Add edges: child → parent (story → epic, epic → milestone, etc.)
   for (const s of tree.stories) {

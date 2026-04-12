@@ -4,6 +4,7 @@ import type {
   ParsedEntity,
   Prd,
   Roadmap,
+  Sprint,
   Story,
 } from '../schemas/index.js';
 
@@ -13,6 +14,7 @@ export interface MetaTree {
   milestones: Milestone[];
   roadmaps: Roadmap[];
   prds: Prd[];
+  sprints: Sprint[];
   errors: ParseError[];
 }
 

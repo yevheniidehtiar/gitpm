@@ -85,6 +85,7 @@ describe('validateTree', () => {
       milestones: [],
       roadmaps: [],
       prds: [],
+      sprints: [],
       errors: [],
     };
 
@@ -131,6 +132,7 @@ describe('validateTree', () => {
       milestones: [],
       roadmaps: [],
       prds: [],
+      sprints: [],
       errors: [],
     };
 
@@ -173,6 +175,7 @@ describe('validateTree', () => {
       milestones: [],
       roadmaps: [],
       prds: [],
+      sprints: [],
       errors: [],
     };
 

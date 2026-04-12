@@ -16,13 +16,16 @@ import { ToastProvider } from './components/Toast.js';
 import { TypeIcon } from './components/TypeIcon.js';
 import {
   type TreeResponse,
+  useProgress,
   useSyncStatus,
   useTree,
   useValidation,
 } from './lib/api.js';
 import { BoardView } from './routes/board.js';
 import { EntityEditor } from './routes/entity-editor.js';
+import { GraphView } from './routes/graph.js';
 import { RoadmapView } from './routes/roadmap.js';
+import { SprintView } from './routes/sprint.js';
 import { SyncDashboard } from './routes/sync-dashboard.js';
 import { TreeBrowser } from './routes/tree-browser.js';
 
@@ -34,8 +37,30 @@ const queryClient = new QueryClient({
 
 // --- Layout ---
 
+function MiniProgress({ ratio }: { ratio: number }) {
+  const pct = Math.round(ratio * 100);
+  const color =
+    ratio >= 0.75
+      ? 'bg-emerald-400'
+      : ratio >= 0.25
+        ? 'bg-yellow-400'
+        : 'bg-red-400';
+  return (
+    <span className="inline-flex items-center gap-1 ml-auto shrink-0">
+      <span className="w-12 h-1 bg-gray-700 rounded-full overflow-hidden">
+        <span
+          className={`block h-full rounded-full ${color}`}
+          style={{ width: `${pct}%` }}
+        />
+      </span>
+      <span className="text-[10px] text-gray-500 w-7 text-right">{pct}%</span>
+    </span>
+  );
+}
+
 function Sidebar() {
   const { data: tree } = useTree();
+  const { data: progress } = useProgress();
   const validation = useValidation();
   const [validating, setValidating] = useState(false);
 
@@ -43,6 +68,8 @@ function Sidebar() {
     { to: '/', label: 'Tree Browser', icon: '🌳' },
     { to: '/board', label: 'Board', icon: '📋' },
     { to: '/roadmap', label: 'Roadmap', icon: '🗺️' },
+    { to: '/sprint', label: 'Sprints', icon: '🏃' },
+    { to: '/graph', label: 'Graph', icon: '🔗' },
     { to: '/sync', label: 'Sync Dashboard', icon: '🔄' },
   ];
 
@@ -92,17 +119,38 @@ function Sidebar() {
                 if (!items?.length) return null;
                 return (
                   <div key={key} className="mb-2">
-                    {items.map((e) => (
-                      <Link
-                        key={e.id}
-                        to="/entity/$id"
-                        params={{ id: e.id }}
-                        className="flex items-center gap-1.5 px-3 py-1 rounded text-xs hover:bg-gray-800 truncate [&.active]:bg-gray-700"
-                      >
-                        <TypeIcon type={e.type} />
-                        <span className="truncate">{e.title}</span>
-                      </Link>
-                    ))}
+                    {items.map((e) => {
+                      const ep =
+                        e.type === 'epic'
+                          ? (progress?.milestones
+                              .flatMap((m) => m.epics)
+                              .find((p) => p.epicId === e.id) ??
+                            progress?.orphanEpics.find(
+                              (p) => p.epicId === e.id,
+                            ))
+                          : undefined;
+                      const ms =
+                        e.type === 'milestone'
+                          ? progress?.milestones.find(
+                              (m) => m.milestoneId === e.id,
+                            )
+                          : undefined;
+                      const ratio = ep?.progress ?? ms?.progress;
+                      return (
+                        <Link
+                          key={e.id}
+                          to="/entity/$id"
+                          params={{ id: e.id }}
+                          className="flex items-center gap-1.5 px-3 py-1 rounded text-xs hover:bg-gray-800 [&.active]:bg-gray-700"
+                        >
+                          <TypeIcon type={e.type} />
+                          <span className="truncate">{e.title}</span>
+                          {ratio != null && ratio > 0 && (
+                            <MiniProgress ratio={ratio} />
+                          )}
+                        </Link>
+                      );
+                    })}
                   </div>
                 );
               },
@@ -149,9 +197,13 @@ function TopBar() {
         ? [{ label: 'Roadmap', to: '/roadmap' }]
         : path === '/board'
           ? [{ label: 'Board', to: '/board' }]
-          : path === '/sync'
-            ? [{ label: 'Sync', to: '/sync' }]
-            : [{ label: 'Tree', to: '/' }]),
+          : path === '/sprint'
+            ? [{ label: 'Sprints', to: '/sprint' }]
+            : path === '/graph'
+              ? [{ label: 'Graph', to: '/graph' }]
+              : path === '/sync'
+                ? [{ label: 'Sync', to: '/sync' }]
+                : [{ label: 'Tree', to: '/' }]),
   ];
 
   const lastSync = syncStatus?.lastSync;
@@ -246,6 +298,18 @@ const boardRoute = createRoute({
   component: BoardView,
 });
 
+const sprintRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sprint',
+  component: SprintView,
+});
+
+const graphRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/graph',
+  component: GraphView,
+});
+
 const syncRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/sync',
@@ -257,6 +321,8 @@ const routeTree = rootRoute.addChildren([
   entityRoute,
   roadmapRoute,
   boardRoute,
+  sprintRoute,
+  graphRoute,
   syncRoute,
 ]);
 
