@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { EmptyState } from '../components/EmptyState.js';
 import { PriorityBadge } from '../components/PriorityBadge.js';
 import { Spinner } from '../components/Spinner.js';
@@ -7,6 +8,8 @@ import { StatusBadge } from '../components/StatusBadge.js';
 import { useToast } from '../components/Toast.js';
 import { TypeIcon } from '../components/TypeIcon.js';
 import { type Entity, useCreateEntity, useTree } from '../lib/api.js';
+
+const ROW_HEIGHT = 36;
 
 type SortKey = 'title' | 'type' | 'status' | 'priority';
 type SortDir = 'asc' | 'desc';
@@ -151,6 +154,20 @@ export function TreeBrowser() {
     ? hierarchical
     : filtered.map((e) => ({ entity: e, depth: 0 }));
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: displayRows.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 20,
+  });
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset scroll when dataset changes
+  useEffect(() => {
+    scrollContainerRef.current?.scrollTo({ top: 0 });
+  }, [displayRows]);
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -193,9 +210,9 @@ export function TreeBrowser() {
   };
 
   return (
-    <div>
+    <div className="flex flex-col h-[calc(100vh-6rem)]">
       {/* Filter Bar */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
+      <div className="flex items-center gap-3 mb-4 flex-wrap flex-shrink-0">
         <input
           type="text"
           placeholder="Search entities..."
@@ -270,7 +287,7 @@ export function TreeBrowser() {
 
       {/* Create Form */}
       {showCreate && (
-        <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200 flex items-end gap-3">
+        <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200 flex items-end gap-3 flex-shrink-0">
           <div>
             <span className="block text-xs text-gray-500 mb-1">Type</span>
             <select
@@ -307,96 +324,116 @@ export function TreeBrowser() {
       )}
 
       {/* Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div
+        ref={scrollContainerRef}
+        className="bg-white rounded-lg border border-gray-200 overflow-y-auto flex-1 min-h-0"
+      >
         <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-200 text-left text-xs text-gray-500 uppercase tracking-wide">
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-gray-50 border-b border-gray-200 text-left text-xs text-gray-500 uppercase tracking-wide flex items-center">
               <th
-                className="px-4 py-2 cursor-pointer hover:text-gray-700"
+                className="px-4 py-2 w-20 flex-shrink-0 cursor-pointer hover:text-gray-700"
                 onClick={() => toggleSort('type')}
                 onKeyDown={(e) => e.key === 'Enter' && toggleSort('type')}
               >
                 Type {sortKey === 'type' && (sortDir === 'asc' ? '↑' : '↓')}
               </th>
               <th
-                className="px-4 py-2 cursor-pointer hover:text-gray-700"
+                className="px-4 py-2 flex-1 min-w-0 cursor-pointer hover:text-gray-700"
                 onClick={() => toggleSort('title')}
                 onKeyDown={(e) => e.key === 'Enter' && toggleSort('title')}
               >
                 Title {sortKey === 'title' && (sortDir === 'asc' ? '↑' : '↓')}
               </th>
               <th
-                className="px-4 py-2 cursor-pointer hover:text-gray-700"
+                className="px-4 py-2 w-28 flex-shrink-0 cursor-pointer hover:text-gray-700"
                 onClick={() => toggleSort('status')}
                 onKeyDown={(e) => e.key === 'Enter' && toggleSort('status')}
               >
                 Status {sortKey === 'status' && (sortDir === 'asc' ? '↑' : '↓')}
               </th>
               <th
-                className="px-4 py-2 cursor-pointer hover:text-gray-700"
+                className="px-4 py-2 w-24 flex-shrink-0 cursor-pointer hover:text-gray-700"
                 onClick={() => toggleSort('priority')}
                 onKeyDown={(e) => e.key === 'Enter' && toggleSort('priority')}
               >
                 Priority{' '}
                 {sortKey === 'priority' && (sortDir === 'asc' ? '↑' : '↓')}
               </th>
-              <th className="px-4 py-2">Assignee</th>
-              <th className="px-4 py-2 w-8" />
+              <th className="px-4 py-2 w-32 flex-shrink-0">Assignee</th>
+              <th className="px-4 py-2 w-8 flex-shrink-0" />
             </tr>
           </thead>
-          <tbody>
-            {displayRows.map(({ entity: e, depth }) => (
-              <tr
-                key={e.id}
-                className="border-b border-gray-100 hover:bg-gray-50"
-              >
-                <td className="px-4 py-2">
-                  <span style={{ paddingLeft: `${depth * 1.25}rem` }}>
-                    <TypeIcon type={e.type} />
-                  </span>
-                </td>
-                <td
-                  className="px-4 py-2"
-                  style={{ paddingLeft: `${1 + depth * 1.25}rem` }}
+          <tbody
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              position: 'relative',
+              display: 'block',
+            }}
+          >
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const { entity: e, depth } = displayRows[virtualRow.index];
+              return (
+                <tr
+                  key={e.id}
+                  className="border-b border-gray-100 hover:bg-gray-50 flex items-center"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
                 >
-                  <Link
-                    to="/entity/$id"
-                    params={{ id: e.id }}
-                    className="text-blue-600 hover:underline font-medium"
+                  <td className="px-4 py-2 w-20 flex-shrink-0">
+                    <span style={{ paddingLeft: `${depth * 1.25}rem` }}>
+                      <TypeIcon type={e.type} />
+                    </span>
+                  </td>
+                  <td
+                    className="px-4 py-2 flex-1 min-w-0 truncate"
+                    style={{ paddingLeft: `${1 + depth * 1.25}rem` }}
                   >
-                    {e.title}
-                  </Link>
-                </td>
-                <td className="px-4 py-2">
-                  {e.status && <StatusBadge status={e.status} />}
-                </td>
-                <td className="px-4 py-2">
-                  {e.priority && <PriorityBadge priority={e.priority} />}
-                </td>
-                <td className="px-4 py-2 text-gray-500 text-xs">
-                  {(e.assignee || e.owner) ?? ''}
-                </td>
-                <td className="px-4 py-2">
-                  {e.github?.issue_number && (
-                    <a
-                      href={`https://github.com/${e.github.repo}/issues/${e.github.issue_number}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-gray-400 hover:text-gray-600"
-                      title="Open in GitHub"
+                    <Link
+                      to="/entity/$id"
+                      params={{ id: e.id }}
+                      className="text-blue-600 hover:underline font-medium"
                     >
-                      ↗
-                    </a>
-                  )}
-                </td>
-              </tr>
-            ))}
+                      {e.title}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 w-28 flex-shrink-0">
+                    {e.status && <StatusBadge status={e.status} />}
+                  </td>
+                  <td className="px-4 py-2 w-24 flex-shrink-0">
+                    {e.priority && <PriorityBadge priority={e.priority} />}
+                  </td>
+                  <td className="px-4 py-2 w-32 flex-shrink-0 text-gray-500 text-xs truncate">
+                    {(e.assignee || e.owner) ?? ''}
+                  </td>
+                  <td className="px-4 py-2 w-8 flex-shrink-0">
+                    {e.github?.issue_number && (
+                      <a
+                        href={`https://github.com/${e.github.repo}/issues/${e.github.issue_number}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-gray-400 hover:text-gray-600"
+                        title="Open in GitHub"
+                      >
+                        ↗
+                      </a>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       {tree.errors.length > 0 && (
-        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-sm">
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-sm flex-shrink-0">
           <p className="font-medium text-red-700 mb-1">
             Parse Errors ({tree.errors.length})
           </p>
