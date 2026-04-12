@@ -43,9 +43,9 @@ export function SprintView() {
 
   const sprints = useMemo(() => {
     if (!tree) return [];
-    return (
-      (tree as TreeResponse & { sprints?: SprintEntity[] }).sprints ?? []
-    ).sort((a, b) => (a.start_date ?? '').localeCompare(b.start_date ?? ''));
+    return ((tree as TreeResponse).sprints as SprintEntity[]).sort((a, b) =>
+      (a.start_date ?? '').localeCompare(b.start_date ?? ''),
+    );
   }, [tree]);
 
   const storyMap = useMemo(() => {

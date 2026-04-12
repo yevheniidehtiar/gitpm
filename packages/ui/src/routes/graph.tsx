@@ -162,7 +162,8 @@ export function GraphView() {
           {simLinks.map((link) => {
             const s = link.source as SimNode;
             const t = link.target as SimNode;
-            if (!s.x || !s.y || !t.x || !t.y) return null;
+            if (s.x == null || s.y == null || t.x == null || t.y == null)
+              return null;
             return (
               <line
                 key={`${s.id}-${t.id}-${link.label}`}
