@@ -2,7 +2,7 @@
 type: story
 id: 3s7ljxxGGxnC
 title: "feat: improve epic-story linkage during import (sub-issues, milestones, labels)"
-status: in_progress
+status: done
 priority: high
 assignee: null
 labels:
@@ -16,8 +16,8 @@ github:
   repo: yevheniidehtiar/gitpm
   last_sync_hash: sha256:db4d09f78ea35f161233c8e5411c6a6d0865e91519ac8cf2b4618f29a56f8617
   synced_at: 2026-04-05T17:24:12.493Z
-created_at: 2026-04-05T09:48:50Z
-updated_at: 2026-04-05T09:48:50Z
+created_at: 2026-04-05T09:48:50.000Z
+updated_at: 2026-04-12T10:52:35.894Z
 ---
 
 ## Problem

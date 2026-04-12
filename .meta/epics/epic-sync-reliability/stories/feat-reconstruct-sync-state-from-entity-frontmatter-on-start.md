@@ -2,7 +2,7 @@
 type: story
 id: uSwxALv1JDgu
 title: "feat: reconstruct sync state from entity frontmatter on startup"
-status: in_progress
+status: done
 priority: high
 assignee: null
 labels:
@@ -16,8 +16,8 @@ github:
   repo: yevheniidehtiar/gitpm
   last_sync_hash: sha256:d5ff9ad4fa373a6406bdfaa6c5bddb3226f18bda674495fe2ab9cd1182bccaef
   synced_at: 2026-04-05T17:24:12.493Z
-created_at: 2026-04-05T09:48:50Z
-updated_at: 2026-04-05T09:48:50Z
+created_at: 2026-04-05T09:48:50.000Z
+updated_at: 2026-04-12T10:52:38.098Z
 ---
 
 ## Problem
