@@ -2,7 +2,7 @@
 type: story
 id: DZS1X4xTJkZj
 title: "feat: add virtual scrolling to Tree Browser for large projects (1000+ entities)"
-status: todo
+status: in_review
 priority: high
 assignee: null
 labels:
@@ -17,7 +17,7 @@ github:
   last_sync_hash: sha256:0b7df3f466d1b46defdbd1ad3f131e69541d64507c92b72ef438eada7ad0998f
   synced_at: 2026-04-12T11:18:13.708Z
 created_at: 2026-04-05T09:48:51.000Z
-updated_at: 2026-04-05T09:48:51.000Z
+updated_at: 2026-04-12T14:04:02.403Z
 ---
 
 ## Problem
