@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.9](https://github.com/yevheniidehtiar/gitpm/compare/ui-v0.1.8...ui-v0.1.9) (2026-04-12)
+
+
+### Features
+
+* **ui:** add markdown preview/split view in entity editor ([0eb48b3](https://github.com/yevheniidehtiar/gitpm/commit/0eb48b3ee8af53b25ca1a09f1e619965beb4ee49)), closes [#40](https://github.com/yevheniidehtiar/gitpm/issues/40)
+* **ui:** add virtual scrolling to Tree Browser for large projects ([b0af72d](https://github.com/yevheniidehtiar/gitpm/commit/b0af72d5d086dfcd27a83647dcdf1d7eb649466f))
+
+
+### Bug Fixes
+
+* **ui:** memoize displayRows and reduce virtualizer overscan ([404235e](https://github.com/yevheniidehtiar/gitpm/commit/404235ea3fe68733611111aa9fc8e9dc1191c73a))
+
 ## [0.1.8](https://github.com/yevheniidehtiar/gitpm/compare/ui-v0.1.7...ui-v0.1.8) (2026-04-12)
 
 
