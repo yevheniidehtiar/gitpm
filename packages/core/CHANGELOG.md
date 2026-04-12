@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.9](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.8...core-v0.1.9) (2026-04-12)
+
+
+### Bug Fixes
+
+* **core:** address review findings for workspace adapter resolution ([fc2ed99](https://github.com/yevheniidehtiar/gitpm/commit/fc2ed99b17a714a0aeb54e231dc669703d7fb9f0))
+* **core:** resolve adapter packages from workspace node_modules in Node.js ([2187cb4](https://github.com/yevheniidehtiar/gitpm/commit/2187cb439b9d927da09c316dc495fe170b44eaeb))
+
 ## [0.1.8](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.7...core-v0.1.8) (2026-04-12)
 
 
