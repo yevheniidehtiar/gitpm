@@ -94,7 +94,9 @@ export function buildExtensionFields(
         if (fieldDef.enum) {
           const members = fieldDef.enum.map(String);
           if (members.length === 0) {
-            continue;
+            throw new Error(
+              `Enum field "${fieldName}" in ${entityType} extensions must have at least one value`,
+            );
           }
           fieldSchema = z.enum(members as [string, ...string[]]);
         } else {

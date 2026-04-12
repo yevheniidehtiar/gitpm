@@ -1,13 +1,14 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SyncAdapter } from './adapter.js';
 import type { GitpmConfig } from './config.js';
 import { createDefaultGitpmConfig, gitpmConfigSchema } from './config.js';
 import {
   detectAdapter,
   findAdapterByName,
+  loadAdapters,
   loadGitpmConfig,
   runHooks,
 } from './plugin-loader.js';
@@ -279,5 +280,112 @@ describe('runHooks', () => {
       tmpDir,
     );
     expect(result.ok).toBe(true);
+  });
+});
+
+describe('loadAdapters', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = join(tmpdir(), `gitpm-test-adapters-${Date.now()}`);
+    await mkdir(tmpDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+    vi.restoreAllMocks();
+  });
+
+  it('returns empty array when all npm adapters are not installed', async () => {
+    const config: GitpmConfig = {
+      adapters: ['@gitpm/nonexistent-adapter'],
+      hooks: {},
+    };
+    const result = await loadAdapters(config, tmpDir);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toHaveLength(0);
+    }
+  });
+
+  it('loads a valid adapter from a local file path', async () => {
+    const adapterPath = join(tmpDir, 'my-adapter.mjs');
+    await writeFile(
+      adapterPath,
+      `export default {
+        name: 'test',
+        displayName: 'Test',
+        detect: async () => false,
+        import: async () => ({ ok: true, value: {} }),
+        export: async () => ({ ok: true, value: {} }),
+        sync: async () => ({ ok: true, value: {} }),
+      };`,
+    );
+
+    const config: GitpmConfig = {
+      adapters: [adapterPath],
+      hooks: {},
+    };
+    const result = await loadAdapters(config, tmpDir);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0].name).toBe('test');
+    }
+  });
+
+  it('returns error when all adapters fail to load', async () => {
+    const badPath = join(tmpDir, 'nonexistent.mjs');
+    const config: GitpmConfig = {
+      adapters: [badPath],
+      hooks: {},
+    };
+    const result = await loadAdapters(config, tmpDir);
+    expect(result.ok).toBe(false);
+  });
+
+  it('warns when some adapters fail but others succeed', async () => {
+    const goodPath = join(tmpDir, 'good.mjs');
+    await writeFile(
+      goodPath,
+      `export default {
+        name: 'good',
+        displayName: 'Good',
+        detect: async () => false,
+        import: async () => ({ ok: true, value: {} }),
+        export: async () => ({ ok: true, value: {} }),
+        sync: async () => ({ ok: true, value: {} }),
+      };`,
+    );
+    const badPath = join(tmpDir, 'bad.mjs');
+    await writeFile(badPath, 'throw new Error("broken");');
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const config: GitpmConfig = {
+      adapters: [goodPath, badPath],
+      hooks: {},
+    };
+    const result = await loadAdapters(config, tmpDir);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0].name).toBe('good');
+    }
+    expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it('reports error for module that does not export a SyncAdapter', async () => {
+    const modulePath = join(tmpDir, 'not-adapter.mjs');
+    await writeFile(modulePath, 'export default { foo: "bar" };');
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const config: GitpmConfig = {
+      adapters: [modulePath],
+      hooks: {},
+    };
+    const result = await loadAdapters(config, tmpDir);
+    // No valid adapters and there are errors → should fail
+    expect(result.ok).toBe(false);
+    warnSpy.mockRestore();
   });
 });

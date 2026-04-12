@@ -129,6 +129,13 @@ export async function loadAdapters(
     };
   }
 
+  // Warn about partial failures so misconfigured adapters are not invisible
+  if (errors.length > 0) {
+    for (const msg of errors) {
+      console.warn(`[gitpm] adapter warning: ${msg}`);
+    }
+  }
+
   return { ok: true, value: adapters };
 }
 
@@ -156,7 +163,7 @@ async function loadSingleAdapter(
     const resolvedPath = isAbsolute(adapterPath)
       ? resolve(adapterPath)
       : resolve(base, adapterPath);
-    if (!resolvedPath.startsWith(base)) {
+    if (resolvedPath !== base && !resolvedPath.startsWith(`${base}/`)) {
       throw new Error(
         `Adapter path "${adapterPath}" resolves outside the project root`,
       );
@@ -237,7 +244,7 @@ export async function runHooks(
       const resolvedPath = isAbsolute(hookPath)
         ? resolve(hookPath)
         : resolve(base, hookPath);
-      if (!resolvedPath.startsWith(base)) {
+      if (resolvedPath !== base && !resolvedPath.startsWith(`${base}/`)) {
         return {
           ok: false,
           error: new Error(
