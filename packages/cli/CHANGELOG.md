@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.8](https://github.com/yevheniidehtiar/gitpm/compare/cli-v0.1.7...cli-v0.1.8) (2026-04-12)
+
+
+### Features
+
+* implement Plugin & Extension System epic ([#151](https://github.com/yevheniidehtiar/gitpm/issues/151)) ([86df984](https://github.com/yevheniidehtiar/gitpm/commit/86df9844d5b995527aa036989f305d35f515c36c))
+
+
+### Bug Fixes
+
+* **sync-github:** validate checkpoint data and surface sync failures in CLI ([23a08ae](https://github.com/yevheniidehtiar/gitpm/commit/23a08aeba581e1b374e04d48ffbb9b0cba09bd21))
+
 ## [0.1.7](https://github.com/yevheniidehtiar/gitpm/compare/cli-v0.1.6...cli-v0.1.7) (2026-04-12)
 
 

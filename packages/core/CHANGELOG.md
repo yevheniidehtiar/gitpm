@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.8](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.7...core-v0.1.8) (2026-04-12)
+
+
+### Features
+
+* implement Plugin & Extension System epic ([#151](https://github.com/yevheniidehtiar/gitpm/issues/151)) ([86df984](https://github.com/yevheniidehtiar/gitpm/commit/86df9844d5b995527aa036989f305d35f515c36c))
+
 ## [0.1.7](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.6...core-v0.1.7) (2026-04-12)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "@gitpm/cli",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "license": "MIT",
   "description": "Git-native project management CLI — manage roadmaps, epics, and stories from a .meta/ tree synced with GitHub, GitLab, and Jira",
   "keywords": [
