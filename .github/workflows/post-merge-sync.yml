@@ -1,5 +1,12 @@
 name: Post-Merge Sync
 
+# Final stage of the story lifecycle chain (see "Task Lifecycle & PR Linkage"
+# in CLAUDE.md). Fires on any push to master that touches `.meta/**` — in
+# particular when a release PR merges carrying the `chore(pm): mark shipped
+# stories as done` commit written by `release-please.yml`. `gitpm push` then
+# closes every GitHub issue whose story is now `status: done` (mapper at
+# packages/sync-github/src/mapper.ts:232-235 maps done/cancelled → closed).
+
 on:
   push:
     branches: [master]

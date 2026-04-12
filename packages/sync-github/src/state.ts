@@ -1,12 +1,25 @@
 import { createHash } from 'node:crypto';
-import { writeFile as fsWriteFile, mkdir, readFile } from 'node:fs/promises';
+import {
+  access,
+  writeFile as fsWriteFile,
+  mkdir,
+  readFile,
+} from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { ParsedEntity, Result } from '@gitpm/core';
+import { parseTree } from '@gitpm/core';
 import type { SyncState, SyncStateEntry } from './types.js';
 
 export async function loadState(metaDir: string): Promise<Result<SyncState>> {
+  const statePath = join(metaDir, 'sync', 'github-state.json');
   try {
-    const statePath = join(metaDir, 'sync', 'github-state.json');
+    await access(statePath);
+  } catch {
+    // JSON file doesn't exist — try to reconstruct from entity frontmatter
+    return reconstructState(metaDir);
+  }
+
+  try {
     const raw = await readFile(statePath, 'utf-8');
     const state = JSON.parse(raw) as SyncState;
     return { ok: true, value: state };
@@ -16,6 +29,100 @@ export async function loadState(metaDir: string): Promise<Result<SyncState>> {
       error: new Error(`Failed to load sync state: ${err}`),
     };
   }
+}
+
+/**
+ * Reconstruct sync state from entity `github:` frontmatter blocks.
+ * Called when `github-state.json` is missing but entities may already
+ * contain sync metadata from a previous export/import cycle.
+ */
+export async function reconstructState(
+  metaDir: string,
+): Promise<Result<SyncState>> {
+  const treeResult = await parseTree(metaDir);
+  if (!treeResult.ok) {
+    return {
+      ok: false,
+      error: new Error(
+        `Failed to reconstruct sync state: ${treeResult.error.message}`,
+      ),
+    };
+  }
+
+  const tree = treeResult.value;
+  const allEntities: ParsedEntity[] = [
+    ...tree.stories,
+    ...tree.epics,
+    ...tree.milestones,
+    ...tree.prds,
+  ];
+
+  // Find repo from any entity with github metadata
+  let repo = '';
+  for (const entity of allEntities) {
+    if ('github' in entity && entity.github?.repo) {
+      repo = entity.github.repo;
+      break;
+    }
+  }
+
+  // If no entity has github metadata, return an empty state
+  if (!repo) {
+    const emptyState: SyncState = {
+      repo: '',
+      last_sync: new Date().toISOString(),
+      entities: {},
+    };
+    return { ok: true, value: emptyState };
+  }
+
+  const entries: Record<string, SyncStateEntry> = {};
+
+  for (const entity of allEntities) {
+    if (entity.type === 'roadmap') continue;
+
+    const id = 'id' in entity ? (entity as { id: string }).id : '';
+    if (!id) continue;
+
+    const gh = 'github' in entity ? entity.github : undefined;
+    if (!gh) continue;
+
+    // Pre-sync entities (imported or hand-written) may have no `last_sync_hash`
+    // yet; treat absence as an empty baseline hash so diffByHash still works —
+    // any local/remote change will compare unequal and be flagged as changed.
+    const entry: SyncStateEntry = {
+      local_hash: gh.last_sync_hash ?? '',
+      remote_hash: gh.last_sync_hash ?? '',
+      synced_at: gh.synced_at,
+    };
+
+    if (entity.type === 'milestone' && gh.milestone_id) {
+      entry.github_milestone_number = gh.milestone_id;
+    }
+    if (
+      (entity.type === 'story' || entity.type === 'epic') &&
+      gh.issue_number
+    ) {
+      entry.github_issue_number = gh.issue_number;
+    }
+    if (entity.type !== 'prd' && gh.project_item_id) {
+      entry.github_project_item_id = gh.project_item_id;
+    }
+
+    entries[id] = entry;
+  }
+
+  const now = new Date().toISOString();
+  const state: SyncState = {
+    repo,
+    last_sync: now,
+    entities: entries,
+  };
+
+  // Persist the reconstructed state so future loads are fast
+  await saveState(metaDir, state);
+
+  return { ok: true, value: state };
 }
 
 export async function saveState(

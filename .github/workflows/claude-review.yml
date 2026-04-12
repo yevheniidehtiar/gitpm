@@ -1,0 +1,664 @@
+name: Claude Code Review
+
+# Runs the `/review-pr` slash command against every PR push and gates the
+# check on finding severity. A second job waits in a sleep loop and invokes
+# Claude to auto-fix failing CI jobs until they turn green (or a safety cap
+# is hit). Both jobs authenticate via an OAuth token generated with
+# `claude setup-token` on a trusted machine and stored as the
+# CLAUDE_CODE_OAUTH_TOKEN repository secret.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [master]
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  review:
+    name: Claude Review
+    runs-on: ubuntu-latest
+    # Cap the review job well below the default 360-minute slot. Claude
+    # Review historically finishes in 5–6 min; 20 min leaves headroom
+    # for a slow run while preventing a hung session from tying up CI.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      # Skip the (expensive) full review pass when the PR's effective diff
+      # relative to master is byte-identical to a previously-reviewed-green
+      # state on this same PR. This handles the common agent-driven case
+      # where a branch is rebased onto a newer master or re-pushed with the
+      # same content — no new user code was introduced, so re-running the
+      # review is wasted work. The check is content-hash-based: any real
+      # byte-level change naturally invalidates the cache.
+      - name: Check review cache
+        id: cache
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          git fetch origin master --no-tags --depth=50 || {
+            echo "::warning::Could not fetch master — failing open (cache miss)."
+            echo "hit=false" >> "$GITHUB_OUTPUT"
+            echo "new_hash=unknown" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          # Three-dot diff gives the PR's contribution relative to the merge
+          # base with master — invariant under rebase onto newer master.
+          # Exclude lock files and built `dist/` output because they can
+          # shift without representing review-worthy code changes.
+          NEW_HASH=$(git diff origin/master...HEAD -- \
+              . ':(exclude)*.lock' ':(exclude)**/dist/**' \
+            | sha256sum | cut -c1-16)
+          echo "new_hash=$NEW_HASH" >> "$GITHUB_OUTPUT"
+          echo "Current PR diff hash: $NEW_HASH"
+
+          # Look for any prior PR comment carrying a matching cache sentinel.
+          # Using grep for exact-match (not "latest and compare") correctly
+          # handles the revert scenario where the current hash matches a
+          # sentinel from two runs ago. Pipeline is wrapped in `|| true`
+          # so network/API errors fail open to a cache miss.
+          #
+          # SECURITY: the jq filter restricts sentinels to comments from
+          # `github-actions[bot]` — the identity this workflow posts under
+          # via the default GITHUB_TOKEN. Without this filter, any user
+          # who can comment on the PR could post a forged sentinel with a
+          # hash matching their own (unreviewed) diff and skip the gate.
+          # Match the full HTML-comment wrapper (not just the inner text)
+          # so Claude finding text that incidentally mentions
+          # `claude-review-cache: <some-hash>` in prose can never cause a
+          # spurious hit.
+          if gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+              --jq '.[] | select(.user.login == "github-actions[bot]") | .body' 2>/dev/null \
+              | grep -Fq "<!-- claude-review-cache: $NEW_HASH -->"; then
+            echo "hit=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Cache hit — PR diff unchanged since last green review ($NEW_HASH). Short-circuiting."
+            cat > /tmp/review-result.json <<JSON
+          {"counts":{"critical":0,"medium":0,"low":0,"nit":0},"findings":[],"verdict":"cached","cached_hash":"$NEW_HASH"}
+          JSON
+          else
+            echo "hit=false" >> "$GITHUB_OUTPUT"
+            echo "Cache miss — running full review."
+          fi
+
+      - uses: oven-sh/setup-bun@v2
+        if: steps.cache.outputs.hit != 'true'
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        if: steps.cache.outputs.hit != 'true'
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        if: steps.cache.outputs.hit != 'true'
+        run: bun install
+
+      - name: Build packages
+        if: steps.cache.outputs.hit != 'true'
+        # Claude needs a built workspace to reason about type/import errors.
+        run: bun run build
+
+      - name: Install Claude Code CLI
+        if: steps.cache.outputs.hit != 'true'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run /review-pr via Claude Code CLI
+        if: steps.cache.outputs.hit != 'true'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # Claude CLI in -p mode doesn't natively dispatch repo slash commands,
+          # so we inline the instructions and tell Claude to read and follow
+          # `.claude/commands/review-pr.md`.
+          cat > /tmp/review-prompt.md <<'EOF'
+          You are running as a PR reviewer inside a GitHub Actions job.
+          Repository: yevheniidehtiar/gitpm. PR number: in `$PR_NUMBER`.
+
+          ## YOUR PRIMARY DELIVERABLE (must complete before ending the session)
+
+          You MUST write a file at the absolute path `/tmp/review-result.json`
+          using the Write tool. This is non-negotiable. If you do not write
+          this file, the CI check fails. Write it even if the PR has no
+          findings at all (in which case `counts` are all 0 and `findings`
+          is `[]`). Use this exact JSON shape:
+
+          ```json
+          {
+            "counts": {"critical": 0, "medium": 0, "low": 0, "nit": 0},
+            "findings": [
+              {
+                "severity": "critical|medium|low|nit",
+                "file": "path/to/file.ts",
+                "line": 42,
+                "message": "short description"
+              }
+            ],
+            "verdict": "approve|request_changes|comment"
+          }
+          ```
+
+          `counts` MUST sum to `findings.length`.
+
+          ## Review process
+
+          1. Read `.claude/commands/review-pr.md` and apply its "Steps"
+             section. For GitHub data use the `gh` CLI: `gh pr view
+             $PR_NUMBER`, `gh pr diff $PR_NUMBER`, `gh pr checks $PR_NUMBER`.
+          2. Read the changed files at HEAD. Skip lockfiles and `dist/`.
+          3. Classify every finding. **Judge severity against how the rest
+             of the repository is already written.** If a pattern is
+             consistent with existing files in the repo, the PR is following
+             the house convention — that alone CANNOT be `medium`. Only
+             genuine divergence from CLAUDE.md or from observable repo
+             patterns qualifies as a convention violation.
+             - **critical**: correctness bugs, security issues, broken
+               build/logic, thrown exceptions in library code where
+               `Result<T, E>` is required, data loss, regressions.
+             - **medium**: CLAUDE.md convention violations the diff
+               introduces or files that diverge from the pattern every
+               other file in the same area already follows (ESM `.js`
+               import suffix, `type` imports, zod instead of manual type
+               guards, `node:fs/promises`, no `any`, colocated `*.test.ts`,
+               conventional commit subjects), missing tests for new
+               behavior, sloppy or absent error handling.
+             - **low**: reuse opportunities, minor simplifications, dead
+               code, AND security-hardening suggestions that would require
+               a repo-wide policy change (e.g. pinning all action SHAs
+               when the rest of the repo uses floating tags) — those are
+               valid but out of scope for a single-file PR.
+             - **nit**: naming/whitespace/style not caught by Biome.
+
+          ## Outputs (in this order)
+
+          STEP A — Write `/tmp/review-result.json` (the JSON above). Use the
+          Write tool with the absolute path `/tmp/review-result.json`.
+
+          STEP B — Append a markdown report to the file at
+          `$GITHUB_STEP_SUMMARY` (read the env var, then use Bash
+          `cat >> "$GITHUB_STEP_SUMMARY" <<'END'` to append). Structure:
+
+          ```
+          ## Claude Review — PR #<n>
+
+          **Verdict:** <verdict>
+
+          **Counts:** critical: N · medium: N · low: N · nit: N
+
+          ### Critical
+          - `path/file.ts:LINE` — message
+
+          ### Medium / Low / Nit (same shape, `_None_` if empty)
+
+          ### Summary
+          <normal review-pr Summary / Correctness / Conventions / Tests /
+          Reuse / CI sections>
+          ```
+
+          ## Hard rules
+
+          - DO NOT post any GitHub comment, review, or approval. Output
+            stays in the Actions logs and artifact.
+          - DO NOT exit early. Always complete STEP A before ending.
+          - DO NOT use relative paths for the JSON file. It must be
+            `/tmp/review-result.json` exactly.
+          EOF
+
+          prompt=$(cat /tmp/review-prompt.md)
+
+          # --verbose prints every turn / tool call to stdout so the CI log
+          # shows what Claude is actually doing. --output-format stream-json
+          # gives us a parseable transcript, which we also save to disk for
+          # upload as an artifact. tee mirrors the stream into the live CI
+          # log so it's visible while the job is running.
+          mkdir -p /tmp/claude-review
+          set +e
+          claude -p "$prompt" \
+            --max-turns 40 \
+            --verbose \
+            --dangerously-skip-permissions \
+            --output-format stream-json \
+            2>/tmp/claude-review/stderr.log \
+            | tee /tmp/claude-review/stream.jsonl
+          CLAUDE_EXIT=$?
+          set -e
+
+          # If Claude wrote the result file into the repo root instead of
+          # /tmp (which happens when it uses a relative path), move it.
+          if [ -f "$GITHUB_WORKSPACE/review-result.json" ] && [ ! -f /tmp/review-result.json ]; then
+            echo "Claude wrote review-result.json into the workspace; moving to /tmp"
+            mv "$GITHUB_WORKSPACE/review-result.json" /tmp/review-result.json
+          fi
+
+          echo "::group::Claude stderr"
+          cat /tmp/claude-review/stderr.log || true
+          echo "::endgroup::"
+
+          echo "claude exited with code $CLAUDE_EXIT"
+          # Don't propagate claude's exit code — the gate step decides pass/fail
+          # based on the JSON output. Artifact upload below runs `if: always()`.
+
+      - name: Upload review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-review-pr-${{ github.event.pull_request.number }}
+          path: |
+            /tmp/claude-review/
+            /tmp/review-prompt.md
+            /tmp/review-result.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Gate on severity
+        id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CACHE_HIT: ${{ steps.cache.outputs.hit }}
+          CACHE_HASH: ${{ steps.cache.outputs.new_hash }}
+        run: |
+          set -euo pipefail
+
+          # Claude's Write tool requires absolute paths, but it may also drop
+          # files into the repo working directory. Look in both spots and
+          # also inside /tmp/claude-review in case the stream writer took
+          # a detour.
+          RESULT=""
+          for candidate in \
+            /tmp/review-result.json \
+            "$GITHUB_WORKSPACE/review-result.json" \
+            /tmp/claude-review/review-result.json; do
+            if [ -f "$candidate" ]; then
+              RESULT="$candidate"
+              echo "Found review result at: $candidate"
+              break
+            fi
+          done
+
+          if [ -z "$RESULT" ]; then
+            echo "::error::Claude did not produce review-result.json in any expected location"
+
+            # Build a diagnostic report and post it as a PR comment so it's
+            # visible via the public API without needing to download the
+            # artifact or the workflow log.
+            mkdir -p /tmp/diag
+            {
+              echo "## Claude Review diagnostic — run $GITHUB_RUN_ID"
+              echo ""
+              echo "\`review-result.json\` was not found at \`/tmp\`, \`$GITHUB_WORKSPACE\`, or \`/tmp/claude-review\`."
+              echo ""
+              echo "### Files under /tmp"
+              echo '```'
+              ls -la /tmp/ 2>&1 | head -60 || true
+              echo '```'
+              echo ""
+              echo "### Files under /tmp/claude-review"
+              echo '```'
+              ls -la /tmp/claude-review/ 2>&1 || true
+              echo '```'
+              echo ""
+              echo "### Files in workspace root"
+              echo '```'
+              ls -la "$GITHUB_WORKSPACE" 2>&1 | head -40 || true
+              echo '```'
+            } > /tmp/diag/report.md
+
+            if [ -f /tmp/claude-review/stream.jsonl ]; then
+              LINES=$(wc -l < /tmp/claude-review/stream.jsonl)
+              {
+                echo ""
+                echo "### stream.jsonl (\`$LINES\` events)"
+                echo ""
+                echo "#### Assistant text messages"
+                echo '```'
+                jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text' \
+                  /tmp/claude-review/stream.jsonl 2>&1 | head -200 || echo "(parse failed)"
+                echo '```'
+                echo ""
+                echo "#### Tool calls made"
+                echo '```'
+                jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | "→ \(.name) \(.input | tostring | .[0:400])"' \
+                  /tmp/claude-review/stream.jsonl 2>&1 | head -80 || echo "(parse failed)"
+                echo '```'
+                echo ""
+                echo "#### Final result event"
+                echo '```json'
+                jq -c 'select(.type == "result")' /tmp/claude-review/stream.jsonl 2>&1 | tail -5 || echo "(none)"
+                echo '```'
+                echo ""
+                echo "#### Stderr (last 50 lines)"
+                echo '```'
+                tail -50 /tmp/claude-review/stderr.log 2>&1 || echo "(none)"
+                echo '```'
+              } >> /tmp/diag/report.md
+            else
+              echo "" >> /tmp/diag/report.md
+              echo "**No \`stream.jsonl\` found — Claude CLI may have failed before it could write events.**" >> /tmp/diag/report.md
+            fi
+
+            # Echo the report to the step log too so it's there if anyone
+            # has log-read access.
+            echo "::group::Diagnostic report (also posted as PR comment)"
+            cat /tmp/diag/report.md
+            echo "::endgroup::"
+
+            # Post to PR. `|| true` so a failure to post doesn't swallow
+            # the root-cause exit 1.
+            gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+              --body-file /tmp/diag/report.md || echo "::warning::Failed to post diagnostic PR comment"
+
+            exit 1
+          fi
+
+          echo "::group::review-result.json"
+          cat "$RESULT"
+          echo "::endgroup::"
+
+          CRIT=$(jq -r '.counts.critical // 0' "$RESULT")
+          MED=$(jq -r '.counts.medium // 0' "$RESULT")
+          LOW=$(jq -r '.counts.low // 0' "$RESULT")
+          NIT=$(jq -r '.counts.nit // 0' "$RESULT")
+
+          echo "Severity counts — critical: $CRIT, medium: $MED, low: $LOW, nit: $NIT"
+
+          # Post the review result as a PR comment so the author (and
+          # automation polling the PR) can see what Claude found without
+          # downloading the artifact. Two body shapes:
+          #   - `verdict: cached` → short "cached, no changes since HASH" note
+          #   - otherwise → full findings dump
+          # On a clean review (critical=0 && medium=0) we also embed an
+          # HTML-comment sentinel that future `Check review cache` runs
+          # grep for. Red reviews MUST NOT write the sentinel or we would
+          # cache a failing result.
+          mkdir -p /tmp/diag
+          VERDICT=$(jq -r '.verdict // "comment"' "$RESULT")
+          if [ "$VERDICT" = "cached" ]; then
+            {
+              echo "## Claude Review — run $GITHUB_RUN_ID (cached)"
+              echo ""
+              echo "Skipped: PR effective diff unchanged since last green review."
+              echo ""
+              echo "Hash: \`$CACHE_HASH\`"
+              echo ""
+              # Re-emit the sentinel so the cache lineage chains forward
+              # on every push even after a short-circuit.
+              echo "<!-- claude-review-cache: $CACHE_HASH -->"
+            } > /tmp/diag/review.md
+          else
+            {
+              echo "## Claude Review — run $GITHUB_RUN_ID"
+              echo ""
+              echo "**Counts:** critical: $CRIT · medium: $MED · low: $LOW · nit: $NIT"
+              echo ""
+              echo "### Findings"
+              echo ""
+              jq -r '.findings[]? | "- **\(.severity)** `\(.file):\(.line)` — \(.message)"' "$RESULT" \
+                || echo "_no findings_"
+              echo ""
+              echo "### Verdict"
+              echo ""
+              jq -r '.verdict // "(none)"' "$RESULT"
+              echo ""
+              echo "<details><summary>Raw JSON</summary>"
+              echo ""
+              echo '```json'
+              cat "$RESULT"
+              echo '```'
+              echo "</details>"
+              # Only a clean review (no critical, no medium) is cacheable.
+              if [ "$CRIT" -eq 0 ] && [ "$MED" -eq 0 ]; then
+                echo ""
+                echo "<!-- claude-review-cache: $CACHE_HASH -->"
+              fi
+            } > /tmp/diag/review.md
+          fi
+
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+            --body-file /tmp/diag/review.md || echo "::warning::Failed to post review PR comment"
+
+          if [ "$CRIT" -gt 0 ] || [ "$MED" -gt 0 ]; then
+            echo "::error::Review found $CRIT critical and $MED medium issues — failing check"
+            exit 1
+          fi
+
+          if [ "$VERDICT" = "cached" ]; then
+            echo "Cached-green from hash $CACHE_HASH — check passes."
+          else
+            echo "No blocking findings (low/nit are advisory). Check passes."
+          fi
+
+  autofix-loop:
+    name: Claude Autofix Loop
+    runs-on: ubuntu-latest
+    # Skip PRs from forks — we can't push to a fork branch from this workflow.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    timeout-minutes: 45
+    # Override workflow-level permissions with the broader set this job
+    # needs: `contents: write` to push fix commits, plus `checks: read`
+    # and `actions: read` for the polling loop. The `review` job keeps
+    # the minimal `contents: read` inherited from the workflow block.
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      checks: read
+      actions: read
+    steps:
+      # Generate a GitHub App token so autofix commits trigger new workflow
+      # runs. The default GITHUB_TOKEN is subject to anti-loop protection —
+      # pushes made with it do NOT dispatch new `pull_request` events, which
+      # means the next iteration of this loop would see 0 check runs on the
+      # new SHA and spin uselessly. The RELEASE_APP_ID / RELEASE_APP_PRIVATE_KEY
+      # secrets are the same GitHub App release-please.yml uses for its own
+      # post-merge commits.
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Configure git identity
+        run: |
+          git config user.name "claude-autofix[bot]"
+          git config user.email "claude-autofix@users.noreply.github.com"
+
+      - name: Wait-and-fix loop
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Use the App token so `git push` below triggers new workflow runs
+          # on the PR and the next-iteration poll sees fresh check-runs.
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          MAX_ITERATIONS=5
+          SLEEP_SEC=45
+          SELF_JOBS='["Claude Review","Claude Autofix Loop"]'
+
+          for i in $(seq 1 "$MAX_ITERATIONS"); do
+            echo "::group::Iteration $i"
+            echo "Sleeping ${SLEEP_SEC}s for other CI jobs to progress…"
+            sleep "$SLEEP_SEC"
+
+            HEAD_SHA=$(git rev-parse HEAD)
+            echo "Current HEAD: $HEAD_SHA"
+
+            # Fetch all check runs for this commit, excluding this workflow's
+            # own jobs so we don't wait on ourselves.
+            CHECK_RUNS=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" --paginate \
+              | jq --argjson self "$SELF_JOBS" \
+                  '[.check_runs[] | select(.name as $n | $self | index($n) | not)]')
+
+            TOTAL=$(echo "$CHECK_RUNS" | jq 'length')
+            if [ "$TOTAL" -eq 0 ]; then
+              echo "No external check runs yet — looping."
+              echo "::endgroup::"
+              continue
+            fi
+
+            # Any still queued/in_progress? Keep waiting.
+            PENDING=$(echo "$CHECK_RUNS" | jq '[.[] | select(.status != "completed")] | length')
+            if [ "$PENDING" -gt 0 ]; then
+              echo "$PENDING check runs still in progress — looping."
+              echo "::endgroup::"
+              continue
+            fi
+
+            # All completed — check for failures.
+            FAILING=$(echo "$CHECK_RUNS" | jq '[.[] | select(.conclusion == "failure" or .conclusion == "timed_out" or .conclusion == "cancelled")]')
+            FAIL_COUNT=$(echo "$FAILING" | jq 'length')
+
+            if [ "$FAIL_COUNT" -eq 0 ]; then
+              echo "All external checks are green — autofix loop done."
+              {
+                echo "## Claude Autofix Loop"
+                echo ""
+                echo "All external checks green after $((i - 1)) fix iteration(s)."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+
+            echo "$FAIL_COUNT check(s) failing — asking Claude to fix."
+            echo "$FAILING" | jq -r '.[] | "  - \(.name): \(.output.title // "no title")"'
+
+            # Write failing-job context to a file Claude can read.
+            mkdir -p /tmp/autofix
+            echo "$FAILING" | jq '[.[] | {name, conclusion, url: .html_url, title: .output.title, summary: .output.summary}]' \
+              > /tmp/autofix/failing-checks.json
+
+            # Invoke Claude for this iteration. Each iteration is a fresh
+            # action invocation so the OAuth session stays well inside the
+            # ~10–15 minute refresh window.
+            cat > /tmp/autofix/prompt.md <<'EOF'
+          You are running inside a GitHub Actions autofix loop for a gitpm PR.
+          Failing CI check context is in `/tmp/autofix/failing-checks.json`.
+
+          Your job:
+          1. Read `/tmp/autofix/failing-checks.json` and, for each failing check,
+             fetch the full job logs via `gh run view` or the check's `url`.
+          2. Diagnose the root cause. Do NOT modify tests to make them pass —
+             find the real bug in the code under test.
+          3. Fix the code following the gitpm conventions in `CLAUDE.md`
+             (ESM `.js` imports, `Result<T, E>` instead of thrown exceptions,
+             zod for validation, `node:fs/promises`, no `any`, colocated tests).
+          4. Run `bun run lint && bun run build && bun run test` locally to
+             verify the fix before finishing. If a verification step fails,
+             iterate until it passes or you are confident the failure is
+             pre-existing / out of scope.
+          5. Do NOT commit, push, or post any GitHub comment. The workflow
+             will commit any file changes you leave in the working tree.
+
+          If you cannot identify a fix, leave the working tree clean and
+          explain why in your final message — the workflow will detect the
+          clean tree and break the loop.
+          EOF
+
+            claude_prompt=$(cat /tmp/autofix/prompt.md)
+
+            echo "::endgroup::"
+            echo "::group::Iteration $i — Claude autofix invocation"
+
+            # Install the CLI on the first iteration; subsequent iterations
+            # reuse it. OAuth token is inherited from the step env block.
+            if ! command -v claude >/dev/null 2>&1; then
+              echo "Installing @anthropic-ai/claude-code…"
+              npm i -g @anthropic-ai/claude-code
+            fi
+
+            claude -p "$claude_prompt" \
+              --max-turns 20 \
+              --dangerously-skip-permissions || {
+              echo "::warning::Claude exited non-zero — continuing to commit check"
+            }
+
+            echo "::endgroup::"
+            echo "::group::Iteration $i — commit & push"
+
+            if [ -z "$(git status --porcelain)" ]; then
+              echo "Claude produced no file changes — breaking loop."
+              {
+                echo "## Claude Autofix Loop"
+                echo ""
+                echo "Stopped at iteration $i: Claude could not produce a fix"
+                echo "for the failing checks. Manual intervention required."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+
+            # Stage only files Claude actually modified (tracked files).
+            # Using `-u` instead of `-A` avoids staging build artifacts,
+            # temp files, or any secret accidentally written to the working
+            # tree. Claude's autofix prompt is scoped to fixing bugs in
+            # existing code, so it should not need to stage untracked files.
+            git add -u
+            git commit -m "fix: autofix failing checks (iteration $i)
+
+          Automated fix by claude-autofix[bot] in response to failing CI.
+          See workflow run $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+            # Retry push up to 4 times on transient network errors.
+            for attempt in 1 2 3 4 5; do
+              if git push origin "HEAD:${GITHUB_HEAD_REF}"; then
+                break
+              fi
+              backoff=$((2 ** (attempt - 1) * 2))
+              echo "push failed, retrying in ${backoff}s…"
+              sleep "$backoff"
+              if [ "$attempt" -eq 5 ]; then
+                echo "::error::Failed to push autofix commit after 5 attempts"
+                exit 1
+              fi
+            done
+
+            echo "Pushed autofix iteration $i. Loop will re-poll on next iteration."
+            echo "::endgroup::"
+          done
+
+          {
+            echo "## Claude Autofix Loop"
+            echo ""
+            echo "Reached max iterations ($MAX_ITERATIONS) without turning checks green."
+            echo "Manual intervention required."
+          } >> "$GITHUB_STEP_SUMMARY"

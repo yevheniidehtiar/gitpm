@@ -2,6 +2,24 @@
   "name": "@gitpm/sync-github",
   "version": "0.1.5",
   "license": "MIT",
+  "description": "GitHub sync adapter for gitpm — bidirectional sync between .meta/ and GitHub Issues/Milestones",
+  "keywords": [
+    "gitpm",
+    "github",
+    "sync",
+    "issues",
+    "milestones",
+    "project-management"
+  ],
+  "homepage": "https://github.com/yevheniidehtiar/gitpm#readme",
+  "bugs": {
+    "url": "https://github.com/yevheniidehtiar/gitpm/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yevheniidehtiar/gitpm.git",
+    "directory": "packages/sync-github"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

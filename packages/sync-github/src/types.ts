@@ -5,6 +5,7 @@ export type LinkStrategy =
   | 'sub-issues'
   | 'milestone'
   | 'labels'
+  | 'score'
   | 'all';
 
 export interface ImportOptions {

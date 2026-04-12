@@ -41,6 +41,16 @@ describe('Common schemas', () => {
     expect(gitHubSyncSchema.parse(valid)).toMatchObject(valid);
     expect(() => gitHubSyncSchema.parse({})).toThrow();
   });
+
+  it('accepts github sync without last_sync_hash (pre-sync baseline)', () => {
+    const preSync = {
+      repo: 'org/repo',
+      synced_at: '2026-01-01T00:00:00Z',
+    };
+    const parsed = gitHubSyncSchema.parse(preSync);
+    expect(parsed.repo).toBe('org/repo');
+    expect(parsed.last_sync_hash).toBeUndefined();
+  });
 });
 
 describe('Story schema', () => {

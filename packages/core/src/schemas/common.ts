@@ -27,7 +27,7 @@ export const gitHubSyncSchema = z.object({
   project_item_id: z.string().optional(),
   milestone_id: z.number().int().optional(),
   repo: z.string(),
-  last_sync_hash: z.string(),
+  last_sync_hash: z.string().optional(),
   synced_at: z.string(),
 });
 export type GitHubSync = z.infer<typeof gitHubSyncSchema>;
@@ -37,7 +37,7 @@ export const jiraSyncSchema = z.object({
   project_key: z.string(),
   sprint_id: z.number().int().optional(),
   site: z.string(),
-  last_sync_hash: z.string(),
+  last_sync_hash: z.string().optional(),
   synced_at: z.string(),
 });
 export type JiraSync = z.infer<typeof jiraSyncSchema>;
@@ -48,7 +48,7 @@ export const gitLabSyncSchema = z.object({
   milestone_id: z.number().int().optional(),
   project_id: z.number().int(),
   base_url: z.string(),
-  last_sync_hash: z.string(),
+  last_sync_hash: z.string().optional(),
   synced_at: z.string(),
 });
 export type GitLabSync = z.infer<typeof gitLabSyncSchema>;
