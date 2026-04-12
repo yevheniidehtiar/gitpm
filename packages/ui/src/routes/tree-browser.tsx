@@ -150,9 +150,13 @@ export function TreeBrowser() {
     !statusFilter.length &&
     !typeFilter.length &&
     !assigneeFilter.length;
-  const displayRows = useHierarchy
-    ? hierarchical
-    : filtered.map((e) => ({ entity: e, depth: 0 }));
+  const displayRows = useMemo(
+    () =>
+      useHierarchy
+        ? hierarchical
+        : filtered.map((e) => ({ entity: e, depth: 0 })),
+    [useHierarchy, hierarchical, filtered],
+  );
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -160,7 +164,7 @@ export function TreeBrowser() {
     count: displayRows.length,
     getScrollElement: () => scrollContainerRef.current,
     estimateSize: () => ROW_HEIGHT,
-    overscan: 20,
+    overscan: 10,
   });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset scroll when dataset changes
