@@ -2,7 +2,7 @@
 type: epic
 id: 9_EjGg7jTN0Y
 title: "[Epic] Sync Reliability & Resilience"
-status: todo
+status: done
 priority: high
 owner: null
 labels:
@@ -14,8 +14,8 @@ github:
   issue_number: 65
   repo: yevheniidehtiar/gitpm
   synced_at: 2026-04-06T12:53:26.000Z
-created_at: 2026-04-06T00:00:00Z
-updated_at: 2026-04-06T00:00:00Z
+created_at: 2026-04-06T00:00:00.000Z
+updated_at: 2026-04-12T10:53:13.523Z
 ---
 
 ## Overview

@@ -2,7 +2,7 @@
 type: story
 id: e6Mnoo3iNwiv
 title: "feat: add assignee filter to Tree Browser"
-status: in_progress
+status: done
 priority: high
 assignee: null
 labels:
@@ -16,8 +16,8 @@ github:
   repo: yevheniidehtiar/gitpm
   last_sync_hash: sha256:aa8cf89f0ba8f04ef22ec598d0f41fbbbda67844ff5d4f3cb2a184c0fc0ad313
   synced_at: 2026-04-05T17:24:12.493Z
-created_at: 2026-04-05T09:48:52Z
-updated_at: 2026-04-05T09:48:52Z
+created_at: 2026-04-05T09:48:52.000Z
+updated_at: 2026-04-12T10:52:42.502Z
 ---
 
 ## Problem
