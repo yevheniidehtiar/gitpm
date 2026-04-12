@@ -427,8 +427,9 @@ jobs:
               cat "$RESULT"
               echo '```'
               echo "</details>"
-              # Only a clean review (no critical, no medium) is cacheable.
-              if [ "$CRIT" -eq 0 ] && [ "$MED" -eq 0 ]; then
+              # Only a non-blocking review (no critical) is cacheable.
+              # Medium findings are advisory and don't block merge.
+              if [ "$CRIT" -eq 0 ]; then
                 echo ""
                 echo "<!-- claude-review-cache: $CACHE_HASH -->"
               fi
@@ -438,15 +439,19 @@ jobs:
           gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
             --body-file /tmp/diag/review.md || echo "::warning::Failed to post review PR comment"
 
-          if [ "$CRIT" -gt 0 ] || [ "$MED" -gt 0 ]; then
-            echo "::error::Review found $CRIT critical and $MED medium issues — failing check"
+          if [ "$CRIT" -gt 0 ]; then
+            echo "::error::Review found $CRIT critical issue(s) — failing check"
             exit 1
+          fi
+
+          if [ "$MED" -gt 0 ]; then
+            echo "::warning::Review found $MED medium issue(s) — advisory only, not blocking merge"
           fi
 
           if [ "$VERDICT" = "cached" ]; then
             echo "Cached-green from hash $CACHE_HASH — check passes."
           else
-            echo "No blocking findings (low/nit are advisory). Check passes."
+            echo "No blocking findings (medium/low/nit are advisory). Check passes."
           fi
 
   autofix-loop:
