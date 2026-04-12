@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.7](https://github.com/yevheniidehtiar/gitpm/compare/sync-github-v0.1.6...sync-github-v0.1.7) (2026-04-12)
+
+
+### Features
+
+* implement Plugin & Extension System epic ([#151](https://github.com/yevheniidehtiar/gitpm/issues/151)) ([86df984](https://github.com/yevheniidehtiar/gitpm/commit/86df9844d5b995527aa036989f305d35f515c36c))
+
+
+### Bug Fixes
+
+* resolve Biome formatting issues in checkpoint and sync modules ([0f26944](https://github.com/yevheniidehtiar/gitpm/commit/0f2694414649b19f580f9e4d450383db8bcb2f58))
+* **sync-github:** address Claude Review findings — Zod schema, dryRun guard, checkpoint error surfacing ([380b467](https://github.com/yevheniidehtiar/gitpm/commit/380b467893b5a8711112ae8ae8d53c70d7232807))
+* **sync-github:** gate saveProgress behind dryRun and prevent duplicate failedEntities ([72536aa](https://github.com/yevheniidehtiar/gitpm/commit/72536aac10d49a35a7f54ef4d1a75ac12a9b1609))
+* **sync-github:** surface checkpoint errors and add error-recovery tests ([99b2b7f](https://github.com/yevheniidehtiar/gitpm/commit/99b2b7f892fa93eadd9f34a6a0cf25e28435f295))
+* **sync-github:** validate checkpoint data and surface sync failures in CLI ([23a08ae](https://github.com/yevheniidehtiar/gitpm/commit/23a08aeba581e1b374e04d48ffbb9b0cba09bd21))
+
 ## [0.1.6](https://github.com/yevheniidehtiar/gitpm/compare/sync-github-v0.1.5...sync-github-v0.1.6) (2026-04-12)
 
 
