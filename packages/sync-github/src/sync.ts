@@ -109,7 +109,13 @@ export async function syncWithGitHub(
         processedEntityIds: [...processedEntityIds],
         lastError: { entityId: failedEntityId, message: errorMessage },
       };
-      await saveCheckpoint(metaDir, cp);
+      const saveResult = await saveCheckpoint(metaDir, cp);
+      if (!saveResult.ok) {
+        result.failedEntities.push({
+          entityId: failedEntityId,
+          error: `${errorMessage} (checkpoint save also failed: ${saveResult.error.message})`,
+        });
+      }
     };
 
     // 4. Build entity lookup maps
@@ -528,8 +534,8 @@ export async function syncWithGitHub(
       await saveState(metaDir, state);
     }
 
-    // Only clear checkpoint if there were no failures
-    if (result.failedEntities.length === 0) {
+    // Only clear checkpoint if there were no failures and this is not a dry run
+    if (!dryRun && result.failedEntities.length === 0) {
       await clearCheckpoint(metaDir);
     }
 

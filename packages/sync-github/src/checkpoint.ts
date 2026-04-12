@@ -7,7 +7,15 @@ import {
 } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { Result } from '@gitpm/core';
+import { z } from 'zod';
 import type { SyncCheckpoint } from './types.js';
+
+const syncCheckpointSchema = z.object({
+  startedAt: z.string(),
+  repo: z.string(),
+  processedEntityIds: z.array(z.string()),
+  lastError: z.object({ entityId: z.string(), message: z.string() }).optional(),
+});
 
 const CHECKPOINT_PATH = '.gitpm/sync-checkpoint.json';
 
@@ -35,31 +43,20 @@ export async function hasCheckpoint(metaDir: string): Promise<Result<boolean>> {
   }
 }
 
-function validateCheckpoint(data: unknown): data is SyncCheckpoint {
-  if (typeof data !== 'object' || data === null) return false;
-  const obj = data as Record<string, unknown>;
-  return (
-    typeof obj.startedAt === 'string' &&
-    typeof obj.repo === 'string' &&
-    Array.isArray(obj.processedEntityIds) &&
-    obj.processedEntityIds.every((id: unknown) => typeof id === 'string')
-  );
-}
-
 export async function loadCheckpoint(
   metaDir: string,
 ): Promise<Result<SyncCheckpoint>> {
   try {
     const filePath = checkpointFilePath(metaDir);
     const raw = await readFile(filePath, 'utf-8');
-    const data: unknown = JSON.parse(raw);
-    if (!validateCheckpoint(data)) {
+    const parsed = syncCheckpointSchema.safeParse(JSON.parse(raw));
+    if (!parsed.success) {
       return {
         ok: false,
-        error: new Error('Invalid checkpoint format'),
+        error: new Error(`Invalid checkpoint format: ${parsed.error.message}`),
       };
     }
-    return { ok: true, value: data };
+    return { ok: true, value: parsed.data };
   } catch (err) {
     return {
       ok: false,
