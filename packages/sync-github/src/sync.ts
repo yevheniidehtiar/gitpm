@@ -98,11 +98,12 @@ export async function syncWithGitHub(
       failedEntities: [],
     };
 
-    // Helper to save checkpoint on failure
+    // Helper to save checkpoint on failure (skipped during dry runs)
     const saveProgress = async (
       failedEntityId: string,
       errorMessage: string,
-    ): Promise<void> => {
+    ): Promise<string> => {
+      if (dryRun) return errorMessage;
       const cp: SyncCheckpoint = {
         startedAt: checkpoint?.startedAt ?? new Date().toISOString(),
         repo,
@@ -111,11 +112,9 @@ export async function syncWithGitHub(
       };
       const saveResult = await saveCheckpoint(metaDir, cp);
       if (!saveResult.ok) {
-        result.failedEntities.push({
-          entityId: failedEntityId,
-          error: `${errorMessage} (checkpoint save also failed: ${saveResult.error.message})`,
-        });
+        return `${errorMessage} (checkpoint save also failed: ${saveResult.error.message})`;
       }
+      return errorMessage;
     };
 
     // 4. Build entity lookup maps
@@ -436,8 +435,8 @@ export async function syncWithGitHub(
           entityErr instanceof Error
             ? entityErr.message
             : `Failed to sync entity: ${entityErr}`;
-        result.failedEntities.push({ entityId, error: errorMessage });
-        await saveProgress(entityId, errorMessage);
+        const finalError = await saveProgress(entityId, errorMessage);
+        result.failedEntities.push({ entityId, error: finalError });
       }
     }
 
@@ -520,11 +519,11 @@ export async function syncWithGitHub(
           entityErr instanceof Error
             ? entityErr.message
             : `Failed to sync entity: ${entityErr}`;
+        const finalError = await saveProgress(entity.id, errorMessage);
         result.failedEntities.push({
           entityId: entity.id,
-          error: errorMessage,
+          error: finalError,
         });
-        await saveProgress(entity.id, errorMessage);
       }
     }
 
