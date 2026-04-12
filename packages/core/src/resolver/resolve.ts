@@ -6,6 +6,7 @@ import type {
   ResolvedMilestone,
   ResolvedPrd,
   ResolvedRoadmap,
+  ResolvedSprint,
   ResolvedStory,
   ResolvedTree,
 } from './types.js';
@@ -108,6 +109,26 @@ export function resolveRefs(tree: MetaTree): Result<ResolvedTree> {
     return { ...prd, resolvedEpics: resolvedEpicsList };
   });
 
+  // Resolve sprints
+  const storyMap = new Map(tree.stories.map((s) => [s.id, s]));
+  const resolvedSprints: ResolvedSprint[] = (tree.sprints ?? []).map(
+    (sprint) => {
+      const resolvedStoriesList: typeof tree.stories = [];
+      for (const ref of sprint.stories) {
+        const story = storyMap.get(ref.id);
+        if (story) {
+          resolvedStoriesList.push(story);
+        } else {
+          errors.push({
+            filePath: sprint.filePath,
+            message: `Sprint "${sprint.title}" references non-existent story "${ref.id}"`,
+          });
+        }
+      }
+      return { ...sprint, resolvedStories: resolvedStoriesList };
+    },
+  );
+
   return {
     ok: true,
     value: {
@@ -116,6 +137,7 @@ export function resolveRefs(tree: MetaTree): Result<ResolvedTree> {
       milestones: resolvedMilestones,
       roadmaps: resolvedRoadmaps,
       prds: resolvedPrds,
+      sprints: resolvedSprints,
       errors,
     },
   };

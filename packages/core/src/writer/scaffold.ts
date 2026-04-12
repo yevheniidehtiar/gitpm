@@ -82,6 +82,7 @@ export async function scaffoldMeta(
         },
       ],
       prds: [],
+      sprints: [],
       errors: [],
     };
 

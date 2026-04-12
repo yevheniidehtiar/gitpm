@@ -52,6 +52,7 @@ function makeTree() {
     milestones: [],
     roadmaps: [],
     prds: [],
+    sprints: [],
     errors: [],
   };
 }
@@ -104,6 +105,7 @@ function makeResolvedTree() {
     ],
     roadmaps: [],
     prds: [],
+    sprints: [],
     errors: [],
   };
 }

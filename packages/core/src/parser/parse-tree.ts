@@ -52,6 +52,7 @@ export async function parseTree(metaDir: string): Promise<Result<MetaTree>> {
       milestones: [],
       roadmaps: [],
       prds: [],
+      sprints: [],
       errors: [],
     };
 
@@ -88,6 +89,9 @@ export async function parseTree(metaDir: string): Promise<Result<MetaTree>> {
           break;
         case 'prd':
           tree.prds.push(entity);
+          break;
+        case 'sprint':
+          tree.sprints.push(entity);
           break;
       }
     }

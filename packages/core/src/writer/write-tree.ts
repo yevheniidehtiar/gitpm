@@ -13,6 +13,7 @@ export async function writeTree(
       ...tree.milestones,
       ...tree.roadmaps,
       ...tree.prds,
+      ...(tree.sprints ?? []),
     ];
 
     for (const entity of allEntities) {

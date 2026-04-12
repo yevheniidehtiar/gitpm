@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { archiveCommand } from './commands/archive.js';
+import { auditCommand } from './commands/audit.js';
 import { commitCommand } from './commands/commit.js';
 import { createCommand } from './commands/create.js';
 import { importCommand } from './commands/import.js';
@@ -15,6 +16,8 @@ import { qualityCommand } from './commands/quality.js';
 import { queryCommand } from './commands/query.js';
 import { setCommand } from './commands/set.js';
 import { showCommand } from './commands/show.js';
+import { sprintCommand } from './commands/sprint.js';
+import { statusCommand } from './commands/status.js';
 import { syncCommand } from './commands/sync.js';
 import { validateCommand } from './commands/validate.js';
 
@@ -46,6 +49,9 @@ program.addCommand(importCommand);
 program.addCommand(pushCommand);
 program.addCommand(pullCommand);
 program.addCommand(syncCommand);
+program.addCommand(statusCommand);
+program.addCommand(sprintCommand);
+program.addCommand(auditCommand);
 program.addCommand(archiveCommand);
 
 program.parse();
