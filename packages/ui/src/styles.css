@@ -67,3 +67,47 @@ body {
   padding-left: 0.75rem;
   color: #6b7280;
 }
+.markdown-preview table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.75rem 0;
+}
+.markdown-preview th,
+.markdown-preview td {
+  border: 1px solid #d1d5db;
+  padding: 0.375rem 0.75rem;
+  text-align: left;
+}
+.markdown-preview th {
+  background: #f3f4f6;
+  font-weight: 600;
+}
+.markdown-preview ul.contains-task-list {
+  list-style: none;
+  padding-left: 0;
+}
+.markdown-preview li.task-list-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+}
+.markdown-preview del {
+  text-decoration: line-through;
+  color: #6b7280;
+}
+.markdown-preview hr {
+  border: none;
+  border-top: 1px solid #d1d5db;
+  margin: 1rem 0;
+}
+.markdown-preview a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.markdown-preview a:hover {
+  color: #1d4ed8;
+}
+.markdown-preview img {
+  max-width: 100%;
+  border-radius: 0.375rem;
+}

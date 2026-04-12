@@ -2,7 +2,7 @@
 type: story
 id: eb-9Va_neAdh
 title: "feat: add markdown preview/split view in entity editor"
-status: todo
+status: in_review
 priority: high
 assignee: null
 labels:
@@ -17,7 +17,7 @@ github:
   last_sync_hash: sha256:16f5cd41e90e8749ddd20a436c2d851a75fc05f82a7a826a3c9411815c956a6b
   synced_at: 2026-04-12T11:18:13.347Z
 created_at: 2026-04-05T09:48:53.000Z
-updated_at: 2026-04-05T09:48:53.000Z
+updated_at: 2026-04-12T12:16:26.062Z
 ---
 
 ## Problem

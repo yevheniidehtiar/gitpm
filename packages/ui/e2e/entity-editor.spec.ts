@@ -187,6 +187,33 @@ test.describe('Entity Editor', () => {
     }
   });
 
+  test('Split mode shows editor and preview side by side', async ({
+    page,
+    request,
+  }) => {
+    const created = await createStory(request, 'Editor Split View');
+    try {
+      await openEditor(page, created.id);
+
+      const bodyTextarea = page.locator('textarea');
+      await bodyTextarea.fill(
+        '# Split Test\n\n| A | B |\n|---|---|\n| 1 | 2 |',
+      );
+
+      // Switch to split mode.
+      await page.getByRole('button', { name: 'Split' }).click();
+
+      // Both textarea and preview should be visible simultaneously.
+      await expect(page.locator('textarea')).toBeVisible();
+      const preview = page.locator('.markdown-preview');
+      await expect(preview).toBeVisible();
+      await expect(preview.locator('h1')).toHaveText('Split Test');
+      await expect(preview.locator('table')).toBeVisible();
+    } finally {
+      await deleteEntity(request, created.id);
+    }
+  });
+
   test('Delete opens a confirm dialog that can be cancelled', async ({
     page,
     request,
