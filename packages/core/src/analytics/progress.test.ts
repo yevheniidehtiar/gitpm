@@ -160,6 +160,7 @@ describe('computeProjectProgress', () => {
       ],
       roadmaps: [],
       prds: [],
+      sprints: [],
       errors: [],
     };
 
@@ -180,6 +181,7 @@ describe('computeProjectProgress', () => {
       milestones: [],
       roadmaps: [],
       prds: [],
+      sprints: [],
       errors: [],
     };
     const result = computeProjectProgress(tree);

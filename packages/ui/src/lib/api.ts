@@ -25,6 +25,7 @@ export interface TreeResponse {
   milestones: Entity[];
   roadmaps: Entity[];
   prds: Entity[];
+  sprints: Entity[];
   errors: { filePath: string; message: string }[];
   counts: Record<string, number>;
 }

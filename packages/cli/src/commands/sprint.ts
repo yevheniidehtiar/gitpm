@@ -8,16 +8,7 @@ import {
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { resolveMetaDir } from '../utils/config.js';
-import { printError, printSuccess } from '../utils/output.js';
-
-function progressBar(ratio: number, width = 16): string {
-  const filled = Math.round(ratio * width);
-  const empty = width - filled;
-  const bar = '█'.repeat(filled) + '░'.repeat(empty);
-  if (ratio >= 0.75) return chalk.green(bar);
-  if (ratio >= 0.25) return chalk.yellow(bar);
-  return chalk.red(bar);
-}
+import { printError, printSuccess, progressBar } from '../utils/output.js';
 
 function sprintProgress(sprint: ResolvedSprint): {
   done: number;
@@ -114,7 +105,7 @@ const sprintListCommand = new Command('list')
       const cap = sp.capacity ? chalk.dim(` (cap: ${sp.capacity}pts)`) : '';
 
       console.log(
-        `  ${progressBar(ratio)} ${pct}% ${sp.title} ${dateRange}${cap}`,
+        `  ${progressBar(ratio, 16)} ${pct}% ${sp.title} ${dateRange}${cap}`,
       );
       console.log(
         `  ${' '.repeat(16)}  ${chalk.dim(`${done}/${total} stories`)} ${chalk.cyan(sp.status)}`,
@@ -158,7 +149,9 @@ const sprintShowCommand = new Command('show')
       `  Period: ${sprint.start_date.slice(0, 10)} → ${sprint.end_date.slice(0, 10)}`,
     );
     if (sprint.capacity) console.log(`  Capacity: ${sprint.capacity} pts`);
-    console.log(`  Progress: ${progressBar(ratio)} ${pct}% (${done}/${total})`);
+    console.log(
+      `  Progress: ${progressBar(ratio, 16)} ${pct}% (${done}/${total})`,
+    );
     console.log();
 
     if (sprint.resolvedStories.length > 0) {

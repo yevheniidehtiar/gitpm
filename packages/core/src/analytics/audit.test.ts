@@ -51,6 +51,7 @@ function makeTree(overrides: Partial<ResolvedTree> = {}): ResolvedTree {
     milestones: [],
     roadmaps: [],
     prds: [],
+    sprints: [],
     errors: [],
     ...overrides,
   };

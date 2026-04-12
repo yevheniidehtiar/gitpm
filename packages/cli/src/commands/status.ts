@@ -7,16 +7,7 @@ import {
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { resolveMetaDir } from '../utils/config.js';
-import { printError } from '../utils/output.js';
-
-function progressBar(ratio: number, width = 20): string {
-  const filled = Math.round(ratio * width);
-  const empty = width - filled;
-  const bar = '█'.repeat(filled) + '░'.repeat(empty);
-  if (ratio >= 0.75) return chalk.green(bar);
-  if (ratio >= 0.25) return chalk.yellow(bar);
-  return chalk.red(bar);
-}
+import { printError, progressBar } from '../utils/output.js';
 
 function pct(ratio: number): string {
   return `${Math.round(ratio * 100)}%`;
@@ -29,7 +20,7 @@ function printProjectProgress(progress: ProjectProgress): void {
 
   const { overall } = progress;
   console.log(
-    `  ${progressBar(overall.progress)} ${pct(overall.progress)} (${overall.done}/${overall.total} stories)`,
+    `  ${progressBar(overall.progress, 20)} ${pct(overall.progress)} (${overall.done}/${overall.total} stories)`,
   );
   console.log();
 
