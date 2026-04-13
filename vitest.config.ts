@@ -7,10 +7,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['packages/*/src/**/*.ts', 'packages/*/src/**/*.tsx'],
-      exclude: [
-        '**/*.test.ts',
-        '**/__tests__/**',
-      ],
+      exclude: ['**/*.test.ts', '**/__tests__/**'],
       reporter: ['text', 'text-summary'],
     },
   },
