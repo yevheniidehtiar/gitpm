@@ -208,4 +208,47 @@ describe('gitpm push', () => {
       expect.objectContaining({ event: 'post-export' }),
     );
   });
+
+  it('exits 1 when dry-run export fails', async () => {
+    mockAdapterExport.mockResolvedValue({
+      ok: false,
+      error: { message: 'dry err' },
+    });
+
+    await expect(run('--dry-run', '--meta-dir', '/tmp/meta')).rejects.toThrow(
+      'process.exit',
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(errOutput).toContain('dry err');
+  });
+
+  it('exits 1 when preview calculation fails', async () => {
+    mockAdapterExport.mockResolvedValue({
+      ok: false,
+      error: { message: 'preview err' },
+    });
+
+    await expect(run('--yes', '--meta-dir', '/tmp/meta')).rejects.toThrow(
+      'process.exit',
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(errOutput).toContain('preview err');
+  });
+
+  it('exits 1 when pre-export hook fails', async () => {
+    mockAdapterExport
+      .mockResolvedValueOnce({ ok: true, value: exportResult }) // preview
+      .mockResolvedValueOnce({ ok: true, value: exportResult });
+    mockRunHooks.mockResolvedValueOnce({
+      ok: false,
+      error: { message: 'hook err' },
+    });
+
+    await expect(run('--yes', '--meta-dir', '/tmp/meta')).rejects.toThrow(
+      'process.exit',
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
 });

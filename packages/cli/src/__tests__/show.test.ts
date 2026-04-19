@@ -210,4 +210,213 @@ describe('gitpm show', () => {
     );
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
+
+  it('exits with code 1 when resolveRefs fails (epic mode)', async () => {
+    mockParseTree.mockResolvedValue({ ok: true, value: makeTree() });
+    mockResolveRefs.mockReturnValue({
+      ok: false,
+      error: { message: 'resolve err' },
+    });
+
+    await expect(run('--epic', 'ep_1', '--meta-dir', '/tmp')).rejects.toThrow(
+      'process.exit',
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('shows a milestone with its epics (pretty mode)', async () => {
+    mockParseTree.mockResolvedValue({ ok: true, value: makeTree() });
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: {
+        ...makeResolvedTree(),
+        milestones: [
+          {
+            type: 'milestone',
+            id: 'ms_1',
+            title: 'v1.0',
+            status: 'in_progress',
+            body: '',
+            filePath: '/tmp/.meta/roadmap/milestones/v1.md',
+            resolvedEpics: [
+              {
+                type: 'epic',
+                id: 'ep_1',
+                title: 'Linked Epic',
+                status: 'todo',
+                priority: 'high',
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    await run('--milestone', 'ms_1', '--meta-dir', '/tmp');
+
+    const output = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('v1.0');
+    expect(output).toContain('Epics (1)');
+    expect(output).toContain('Linked Epic');
+  });
+
+  it('shows a milestone in JSON format', async () => {
+    mockParseTree.mockResolvedValue({ ok: true, value: makeTree() });
+    mockResolveRefs.mockReturnValue({ ok: true, value: makeResolvedTree() });
+
+    await run('--milestone', 'ms_1', '--format', 'json', '--meta-dir', '/tmp');
+
+    const output = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    const parsed = JSON.parse(output);
+    expect(parsed.milestone.id).toBe('ms_1');
+    expect(Array.isArray(parsed.epics)).toBe(true);
+  });
+
+  it('exits with code 1 when milestone not found', async () => {
+    mockParseTree.mockResolvedValue({ ok: true, value: makeTree() });
+    mockResolveRefs.mockReturnValue({ ok: true, value: makeResolvedTree() });
+
+    await expect(
+      run('--milestone', 'missing', '--meta-dir', '/tmp'),
+    ).rejects.toThrow('process.exit');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('outputs JSON for a single entity when --format json', async () => {
+    mockParseTree.mockResolvedValue({ ok: true, value: makeTree() });
+    mockResolveRefs.mockReturnValue({ ok: true, value: makeResolvedTree() });
+
+    await run('st_1', '--format', 'json', '--meta-dir', '/tmp');
+
+    const output = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    const parsed = JSON.parse(output);
+    expect(parsed.id).toBe('st_1');
+  });
+
+  it('renders entity body when --full is set', async () => {
+    mockParseTree.mockResolvedValue({ ok: true, value: makeTree() });
+    mockResolveRefs.mockReturnValue({ ok: true, value: makeResolvedTree() });
+
+    await run('st_1', '--full', '--meta-dir', '/tmp');
+
+    const output = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('Test body');
+  });
+
+  it('renders all status/priority values in formatFieldValue', async () => {
+    mockParseTree.mockResolvedValue({
+      ok: true,
+      value: {
+        ...makeTree(),
+        stories: [
+          {
+            type: 'story',
+            id: 'st_a',
+            title: 'A',
+            status: 'done',
+            priority: 'critical',
+            labels: [],
+            body: '',
+            filePath: '/tmp/.meta/stories/a.md',
+            meta: { nested: { deep: true } },
+          },
+        ],
+      },
+    });
+
+    await run('st_a', '--meta-dir', '/tmp');
+
+    const output = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('A');
+    expect(output).toContain('done');
+    expect(output).toContain('critical');
+    // Object serialized to JSON
+    expect(output).toContain('nested');
+  });
+
+  it('renders medium priority and cancelled status', async () => {
+    mockParseTree.mockResolvedValue({
+      ok: true,
+      value: {
+        ...makeTree(),
+        stories: [
+          {
+            type: 'story',
+            id: 'st_b',
+            title: 'B',
+            status: 'cancelled',
+            priority: 'medium',
+            labels: [],
+            body: '',
+            filePath: '/tmp/.meta/stories/b.md',
+          },
+        ],
+      },
+    });
+
+    await run('st_b', '--meta-dir', '/tmp');
+
+    const output = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('cancelled');
+    expect(output).toContain('medium');
+  });
+
+  it('renders low priority (default bullet branch)', async () => {
+    mockParseTree.mockResolvedValue({
+      ok: true,
+      value: {
+        ...makeTree(),
+        stories: [
+          {
+            type: 'story',
+            id: 'st_c',
+            title: 'C',
+            status: 'todo',
+            priority: 'low',
+            labels: [],
+            body: '',
+            filePath: '/tmp/.meta/stories/c.md',
+          },
+        ],
+      },
+    });
+
+    await run('st_c', '--meta-dir', '/tmp');
+
+    const output = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('low');
+  });
+
+  it('displays all priority bullets in epic stories list', async () => {
+    mockParseTree.mockResolvedValue({ ok: true, value: makeTree() });
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: {
+        ...makeResolvedTree(),
+        epics: [
+          {
+            type: 'epic',
+            id: 'ep_1',
+            title: 'E',
+            status: 'todo',
+            priority: 'high',
+            labels: [],
+            body: '',
+            filePath: '/tmp/.meta/epics/e/epic.md',
+            resolvedStories: [
+              { id: 'c', title: 'C', status: 'todo', priority: 'critical' },
+              { id: 'h', title: 'H', status: 'todo', priority: 'high' },
+              { id: 'm', title: 'M', status: 'todo', priority: 'medium' },
+              { id: 'l', title: 'L', status: 'done', priority: 'low' },
+            ],
+          },
+        ],
+      },
+    });
+
+    await run('--epic', 'ep_1', '--meta-dir', '/tmp');
+
+    const output = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('Stories (4)');
+  });
 });
