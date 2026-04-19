@@ -6,8 +6,14 @@ export default defineConfig({
     globals: true,
     coverage: {
       provider: 'v8',
-      include: ['packages/*/src/**/*.ts', 'packages/*/src/**/*.tsx'],
-      exclude: ['**/*.test.ts', '**/__tests__/**'],
+      include: ['packages/*/src/**/*.ts'],
+      exclude: [
+        '**/*.test.ts',
+        '**/__tests__/**',
+        '**/index.ts',
+        '**/types.ts',
+        'packages/ui/**',
+      ],
       reporter: ['text', 'text-summary'],
     },
   },
