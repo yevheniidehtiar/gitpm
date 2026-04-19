@@ -147,5 +147,68 @@ describe('formatEntities', () => {
       const parsed = JSON.parse(output);
       expect(parsed[0].estimate).toBe('');
     });
+
+    it('extracts filePath relative to cwd', () => {
+      const output = formatEntities(mockEntities, {
+        fields: ['id', 'filePath'],
+        format: 'json',
+      });
+      const parsed = JSON.parse(output);
+      // The relative path does not start with '/'
+      expect(parsed[0].filePath.startsWith('/')).toBe(false);
+      expect(parsed[0].filePath).toContain('first-story.md');
+    });
+
+    it('extracts milestone_ref as ID', () => {
+      const entities: ParsedEntity[] = [
+        {
+          type: 'epic',
+          id: 'ep_ms',
+          title: 'Epic with milestone',
+          status: 'todo',
+          priority: 'medium',
+          labels: [],
+          milestone_ref: { id: 'ms_001' },
+          body: '',
+          filePath: '/project/.meta/epics/e/epic.md',
+        } as ParsedEntity,
+        {
+          type: 'epic',
+          id: 'ep_no_ms',
+          title: 'Epic without milestone',
+          status: 'todo',
+          priority: 'medium',
+          labels: [],
+          body: '',
+          filePath: '/project/.meta/epics/e2/epic.md',
+        } as ParsedEntity,
+      ];
+      const output = formatEntities(entities, {
+        fields: ['id', 'milestone_ref'],
+        format: 'json',
+      });
+      const parsed = JSON.parse(output);
+      expect(parsed[0].milestone_ref).toBe('ms_001');
+      expect(parsed[1].milestone_ref).toBe('');
+    });
+
+    it('returns empty string for labels on entity types without a labels array', () => {
+      const roadmap: ParsedEntity[] = [
+        {
+          type: 'roadmap',
+          id: 'rm_1',
+          title: 'Roadmap',
+          description: '',
+          milestones: [],
+          filePath: '/project/.meta/roadmap.yaml',
+        } as ParsedEntity,
+      ];
+      const output = formatEntities(roadmap, {
+        fields: ['id', 'labels'],
+        format: 'json',
+      });
+      const parsed = JSON.parse(output);
+      expect(parsed[0].labels).toBe('');
+    });
   });
 });

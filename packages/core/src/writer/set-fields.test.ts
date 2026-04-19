@@ -300,6 +300,24 @@ describe('applyAssignments', () => {
     if (result.ok) return;
     expect(result.error.message).toContain('Dangerous field name');
   });
+
+  it('updates a nested field when the intermediate object already exists', () => {
+    // baseStory has no epic_ref, so the first nested set creates the object.
+    // Verify that a subsequent nested set traverses the existing object
+    // (exercising the "existing is an object, reuse it" branch).
+    const withEpic = {
+      ...baseStory,
+      epic_ref: { id: 'ep_old' } as Record<string, unknown>,
+    } as ParsedEntity;
+    const result = applyAssignments(withEpic, [
+      { field: 'epic_ref.id', operator: '=', value: 'ep_new' },
+    ]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect((result.value as Record<string, unknown>).epic_ref).toEqual({
+      id: 'ep_new',
+    });
+  });
 });
 
 describe('applyAssignments schema dispatch', () => {
