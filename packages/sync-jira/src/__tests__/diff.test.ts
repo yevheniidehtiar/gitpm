@@ -162,6 +162,134 @@ describe('diffEntity', () => {
     expect(result.localChanges.length).toBeGreaterThan(0);
   });
 
+  it('detects remote changes when only the remote side differs', () => {
+    const local = {
+      type: 'story' as const,
+      id: 's1',
+      title: 'Same',
+      status: 'todo' as const,
+      priority: 'medium' as const,
+      assignee: null,
+      labels: [],
+      estimate: null,
+      epic_ref: null,
+      body: '',
+      filePath: '.meta/stories/s.md',
+    };
+    const baseline = {
+      title: 'Same',
+      status: 'todo',
+      priority: 'medium',
+      assignee: null,
+      labels: [],
+      body: '',
+    };
+    const remote = {
+      title: 'Remote Edited',
+      status: 'todo',
+      priority: 'medium',
+      assignee: null,
+      labels: [],
+      body: '',
+    };
+
+    const result = diffEntity(local, remote, baseline, baseline);
+    expect(result.status).toBe('remote_changed');
+    expect(result.remoteChanges.length).toBeGreaterThan(0);
+    expect(result.conflicts).toHaveLength(0);
+  });
+
+  it('treats strings with equivalent trimmed content as equal', () => {
+    const local = {
+      type: 'story' as const,
+      id: 's1',
+      title: 'Same Title',
+      status: 'todo' as const,
+      priority: 'medium' as const,
+      assignee: null,
+      labels: [],
+      estimate: null,
+      epic_ref: null,
+      body: 'body text',
+      filePath: '.meta/stories/s.md',
+    };
+    const baseline = {
+      title: '  Same Title  ',
+      status: 'todo',
+      priority: 'medium',
+      assignee: null,
+      labels: [],
+      body: '  body text  ',
+    };
+
+    const result = diffEntity(local, baseline, baseline, baseline);
+    expect(result.status).toBe('in_sync');
+  });
+
+  it('extracts epic fields including owner', () => {
+    const epic = {
+      type: 'epic' as const,
+      id: 'e1',
+      title: 'Feature',
+      status: 'in_progress' as const,
+      priority: 'high' as const,
+      owner: 'Alice',
+      labels: ['backend'],
+      milestone_ref: null,
+      body: 'Epic body',
+      filePath: '.meta/epics/feature/epic.md',
+    };
+    const remoteFields = {
+      title: 'Feature',
+      status: 'in_progress',
+      priority: 'high',
+      owner: 'Alice',
+      labels: ['backend'],
+      body: 'Epic body',
+    };
+
+    const result = diffEntity(epic, remoteFields, remoteFields, remoteFields);
+    expect(result.status).toBe('in_sync');
+  });
+
+  it('extracts milestone fields including target_date', () => {
+    const milestone = {
+      type: 'milestone' as const,
+      id: 'm1',
+      title: 'Q2',
+      status: 'in_progress' as const,
+      target_date: '2026-06-30T00:00:00Z',
+      body: 'body',
+      filePath: '.meta/roadmap/milestones/q2.md',
+    };
+    const baseline = {
+      title: 'Q2',
+      status: 'in_progress',
+      target_date: '2026-06-30T00:00:00Z',
+      body: 'body',
+    };
+
+    const result = diffEntity(milestone, baseline, baseline, baseline);
+    expect(result.status).toBe('in_sync');
+  });
+
+  it('falls back to title-only fields for unsupported entity types', () => {
+    const prd = {
+      type: 'prd' as const,
+      id: 'p1',
+      title: 'Product Requirements',
+      status: 'draft' as const,
+      body: 'PRD body',
+      filePath: '.meta/prds/p.md',
+    };
+    const baseline = {
+      title: 'Product Requirements',
+    };
+
+    const result = diffEntity(prd, baseline, baseline, baseline);
+    expect(result.status).toBe('in_sync');
+  });
+
   it('detects conflicts when both sides change same field differently', () => {
     const local = {
       type: 'story' as const,

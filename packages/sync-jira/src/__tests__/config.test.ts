@@ -65,4 +65,18 @@ describe('saveConfig and loadConfig', () => {
     const result = await loadConfig(join(TEST_DIR, 'nonexistent'));
     expect(result.ok).toBe(false);
   });
+
+  it('returns an error result when the config cannot be written', async () => {
+    // Create a file where we want to create a directory — mkdir will fail.
+    mkdirSync(TEST_DIR, { recursive: true });
+    const blocker = join(TEST_DIR, 'blocker-config');
+    const { writeFileSync } = await import('node:fs');
+    writeFileSync(blocker, 'x');
+    // Passing a path under the blocker file forces mkdir to fail.
+    const result = await saveConfig(
+      join(blocker, 'sub-meta'),
+      createDefaultConfig('s', 'p'),
+    );
+    expect(result.ok).toBe(false);
+  });
 });

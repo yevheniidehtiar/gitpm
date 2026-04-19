@@ -256,6 +256,25 @@ describe('entityToJiraIssue', () => {
     const params = entityToJiraIssue(entity as never, defaultConfig);
     expect(params.targetStatus).toBe('Done');
   });
+
+  it('maps priority values to their Jira names', () => {
+    const entity = jiraIssueToEntity(storyIssue, defaultConfig, SITE) as {
+      priority: 'critical' | 'high' | 'medium' | 'low';
+      type: 'story';
+    };
+    entity.priority = 'critical';
+    expect(entityToJiraIssue(entity as never, defaultConfig).priority).toBe(
+      'Highest',
+    );
+    entity.priority = 'low';
+    expect(entityToJiraIssue(entity as never, defaultConfig).priority).toBe(
+      'Low',
+    );
+    entity.priority = 'medium';
+    expect(entityToJiraIssue(entity as never, defaultConfig).priority).toBe(
+      'Medium',
+    );
+  });
 });
 
 describe('milestoneToJiraSprint', () => {
