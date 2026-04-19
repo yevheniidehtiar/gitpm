@@ -1,4 +1,4 @@
-import { join, relative } from 'node:path';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { ParsedEntity } from '../parser/types.js';
 import { formatEntities } from './format.js';
@@ -168,7 +168,6 @@ describe('formatEntities', () => {
         format: 'json',
       });
       const parsed = JSON.parse(output);
-      expect(parsed[0].filePath).toBe(relative(process.cwd(), absolutePath));
       expect(parsed[0].filePath).toBe(join('pkg', 'story.md'));
     });
 
