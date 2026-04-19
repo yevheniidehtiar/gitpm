@@ -157,6 +157,77 @@ describe('importFromGitHub', () => {
     expect(storiesWithEpicRef.length).toBeGreaterThanOrEqual(2);
   });
 
+  it('fetches sub-issues when linkStrategy is "sub-issues"', async () => {
+    const { GitHubClient } = await import('../client.js');
+    const listSubIssuesMock = vi
+      .fn()
+      .mockResolvedValueOnce([
+        { id: 300, number: 3, title: 'Price Feed' },
+        { id: 400, number: 4, title: 'Solver' },
+      ])
+      .mockResolvedValue([]);
+    vi.mocked(GitHubClient).mockImplementation(function () {
+      return {
+        listMilestones: vi.fn().mockResolvedValue(fixtureMilestones),
+        listIssues: vi
+          .fn()
+          .mockResolvedValue(
+            (fixtureIssues as GhIssue[]).filter((i) => !i.pull_request),
+          ),
+        listSubIssues: listSubIssuesMock,
+        getProject: vi.fn().mockResolvedValue(null),
+        getProjectItems: vi.fn().mockResolvedValue([]),
+      } as never;
+    });
+
+    const result = await importFromGitHub({
+      ...defaultOptions,
+      metaDir,
+      linkStrategy: 'sub-issues',
+    });
+    expect(result.ok).toBe(true);
+    expect(listSubIssuesMock).toHaveBeenCalled();
+  });
+
+  it('returns error from outer catch when listMilestones throws an Error', async () => {
+    const { GitHubClient } = await import('../client.js');
+    vi.mocked(GitHubClient).mockImplementationOnce(function () {
+      return {
+        listMilestones: vi.fn().mockRejectedValue(new Error('auth failed')),
+        listIssues: vi.fn().mockResolvedValue([]),
+        listSubIssues: vi.fn().mockResolvedValue([]),
+        getProject: vi.fn().mockResolvedValue(null),
+        getProjectItems: vi.fn().mockResolvedValue([]),
+      } as never;
+    });
+
+    const result = await importFromGitHub({ ...defaultOptions, metaDir });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toContain('auth failed');
+    }
+  });
+
+  it('wraps non-Error thrown values in outer catch', async () => {
+    const { GitHubClient } = await import('../client.js');
+    vi.mocked(GitHubClient).mockImplementationOnce(function () {
+      return {
+        // biome-ignore lint/suspicious/noExplicitAny: testing non-Error rejection
+        listMilestones: vi.fn().mockRejectedValue('string error' as any),
+        listIssues: vi.fn().mockResolvedValue([]),
+        listSubIssues: vi.fn().mockResolvedValue([]),
+        getProject: vi.fn().mockResolvedValue(null),
+        getProjectItems: vi.fn().mockResolvedValue([]),
+      } as never;
+    });
+
+    const result = await importFromGitHub({ ...defaultOptions, metaDir });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toContain('Import failed');
+    }
+  });
+
   it('works with no milestones', async () => {
     // Re-mock to return empty milestones
     const { GitHubClient } = await import('../client.js');

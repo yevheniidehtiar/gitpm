@@ -129,6 +129,21 @@ describe('computeContentHash', () => {
     const hash = computeContentHash(ms);
     expect(hash).toMatch(/^sha256:[a-f0-9]{64}$/);
   });
+
+  it('works for PRD entities (covers prd branch)', () => {
+    const prd = {
+      type: 'prd' as const,
+      id: 'prd-0001',
+      title: 'Example PRD',
+      status: 'todo' as const,
+      owner: null,
+      epic_refs: [],
+      body: 'PRD body',
+      filePath: '.meta/prd/example.md',
+    };
+    const hash = computeContentHash(prd);
+    expect(hash).toMatch(/^sha256:[a-f0-9]{64}$/);
+  });
 });
 
 describe('createInitialState', () => {
@@ -178,6 +193,37 @@ describe('createInitialState', () => {
     expect(entry.local_hash).toBe(entry.remote_hash);
     expect(entry.local_hash).toMatch(/^sha256:/);
   });
+
+  it('persists github_project_item_id from entity metadata', () => {
+    const story = makeStory({
+      github: {
+        issue_number: 5,
+        project_item_id: 'PVTI_abc',
+        repo: 'org/repo',
+        last_sync_hash: '',
+        synced_at: '',
+      },
+    });
+    const state = createInitialState('org/repo', [story]);
+    expect(state.entities['test-story-01'].github_project_item_id).toBe(
+      'PVTI_abc',
+    );
+  });
+
+  it('skips roadmap entities', () => {
+    const story = makeStory();
+    const roadmap = {
+      type: 'roadmap' as const,
+      id: 'rm',
+      title: 'Rm',
+      description: '',
+      milestones: [],
+      updated_at: '2026-01-01T00:00:00Z',
+      filePath: '.meta/roadmap/roadmap.yaml',
+    };
+    const state = createInitialState('org/repo', [story, roadmap]);
+    expect(Object.keys(state.entities)).toEqual(['test-story-01']);
+  });
 });
 
 describe('saveState / loadState', () => {
@@ -203,6 +249,33 @@ describe('saveState / loadState', () => {
       expect(loadResult.value.repo).toBe('org/repo');
       expect(loadResult.value.project_number).toBe(5);
       expect(Object.keys(loadResult.value.entities)).toHaveLength(2);
+    }
+  });
+
+  it('returns error when saveState target path is invalid', async () => {
+    // Use a path that includes a NUL byte to force mkdir/writeFile to throw
+    const result = await saveState(
+      `${tmpDir}\u0000/invalid`,
+      createInitialState('org/repo', [makeStory()]),
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toContain('Failed to save sync state');
+    }
+  });
+
+  it('returns error when github-state.json is unparseable JSON', async () => {
+    const { mkdir, writeFile } = await import('node:fs/promises');
+    await mkdir(join(tmpDir, 'sync'), { recursive: true });
+    await writeFile(
+      join(tmpDir, 'sync', 'github-state.json'),
+      '{not json',
+      'utf-8',
+    );
+    const result = await loadState(tmpDir);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toContain('Failed to load sync state');
     }
   });
 
