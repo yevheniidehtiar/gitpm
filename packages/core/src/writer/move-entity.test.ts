@@ -157,15 +157,11 @@ describe('moveStory', () => {
   });
 
   it('returns a Result error when move logic throws unexpectedly', async () => {
-    // Create a standalone story so parseFile succeeds.
     const storyResult = await createStory(metaDir, { title: 'Throwy story' });
     expect(storyResult.ok).toBe(true);
     if (!storyResult.ok) return;
 
-    // Force a throw deep inside the move logic by passing a Symbol as
-    // toEpic. Template literal interpolation (used by the epic-matching
-    // check) rejects Symbol values with a TypeError, exercising the
-    // outer catch block.
+    // Symbols trigger TypeError when interpolated into a template literal.
     const moveResult = await moveStory(metaDir, storyResult.value.filePath, {
       toEpic: Symbol('unconvertible') as unknown as string,
     });
