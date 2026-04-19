@@ -131,6 +131,30 @@ describe('loadGitpmConfig', () => {
     const result = await loadGitpmConfig(tmpDir);
     expect(result.ok).toBe(false);
   });
+
+  it('returns error for invalid JS config that fails schema validation', async () => {
+    await writeFile(
+      join(tmpDir, 'gitpm.config.mjs'),
+      'export default { adapters: "not-an-array" };',
+    );
+    const result = await loadGitpmConfig(tmpDir);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Invalid config');
+  });
+
+  it('returns error when config file fails to parse (non-ENOENT)', async () => {
+    // Malformed JSON — JSON.parse throws, and the error is not ENOENT or
+    // a module-not-found error, so loadGitpmConfig surfaces it.
+    await writeFile(
+      join(tmpDir, 'gitpm.config.json'),
+      '{ this is not valid json',
+    );
+    const result = await loadGitpmConfig(tmpDir);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Failed to load config');
+  });
 });
 
 describe('detectAdapter', () => {

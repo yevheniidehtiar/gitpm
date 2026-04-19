@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { parseFile, parseFileContent } from './parse-file.js';
 import { parseTree } from './parse-tree.js';
 
@@ -124,6 +124,15 @@ milestones:
 ---`;
     const result = parseFileContent(content, '/test/r.md');
     expect(result.ok).toBe(true);
+  });
+
+  it('returns error when frontmatter parses to a non-object scalar', () => {
+    // gray-matter parses `---\n42\n---` into data=42, a number.
+    const content = '---\n42\n---\nbody';
+    const result = parseFileContent(content, '/test/scalar.md');
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Invalid frontmatter');
   });
 });
 
@@ -276,5 +285,35 @@ describe('parseTree', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.message).toContain('Failed to parse tree');
+  });
+
+  it('applies schema extensions when schema-extensions.yaml is valid and non-empty', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'gitpm-parse-ext-valid-'));
+    try {
+      const metaDir = join(dir, '.meta');
+      const storiesDir = join(metaDir, 'stories');
+      await mkdir(join(metaDir, '.gitpm'), { recursive: true });
+      await mkdir(storiesDir, { recursive: true });
+
+      await writeFile(
+        join(metaDir, '.gitpm', 'schema-extensions.yaml'),
+        'story:\n  fields:\n    team:\n      type: string\n      required: false\n',
+      );
+      await writeFile(
+        join(storiesDir, 'ext.md'),
+        '---\ntype: story\nid: st_ext\ntitle: With extension\nstatus: todo\npriority: medium\nlabels: []\nteam: platform\ncreated_at: 2026-01-01T00:00:00Z\nupdated_at: 2026-01-01T00:00:00Z\n---\n',
+      );
+
+      const result = await parseTree(metaDir);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.errors).toHaveLength(0);
+      expect(result.value.stories).toHaveLength(1);
+      expect((result.value.stories[0] as Record<string, unknown>).team).toBe(
+        'platform',
+      );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

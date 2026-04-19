@@ -114,6 +114,39 @@ describe('loadSchemaExtensions', () => {
     const result = await loadSchemaExtensions(tmpDir);
     expect(result.ok).toBe(false);
   });
+
+  it('returns empty extensions when YAML parses to null (empty file)', async () => {
+    await writeFile(join(tmpDir, '.gitpm', 'schema-extensions.yaml'), '');
+
+    const result = await loadSchemaExtensions(tmpDir);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value).toEqual({});
+  });
+
+  it('returns empty extensions when YAML parses to a scalar', async () => {
+    await writeFile(
+      join(tmpDir, '.gitpm', 'schema-extensions.yaml'),
+      '"just a string"\n',
+    );
+
+    const result = await loadSchemaExtensions(tmpDir);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value).toEqual({});
+  });
+
+  it('returns error when read fails with a non-ENOENT error (path is a directory)', async () => {
+    // Make the extensions path itself a directory so readFile fails with EISDIR
+    await mkdir(join(tmpDir, '.gitpm', 'schema-extensions.yaml'), {
+      recursive: true,
+    });
+
+    const result = await loadSchemaExtensions(tmpDir);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Failed to load schema extensions');
+  });
 });
 
 describe('buildExtensionFields', () => {
@@ -183,6 +216,50 @@ describe('buildExtensionFields', () => {
       'story',
     );
     expect(fields).not.toBeNull();
+  });
+
+  it('skips string enum field with empty enum array', () => {
+    const fields = buildExtensionFields(
+      {
+        story: {
+          fields: {
+            empty_enum: {
+              type: 'string',
+              required: false,
+              enum: [],
+            },
+            keeper: { type: 'string', required: false },
+          },
+        },
+      },
+      'story',
+    );
+    expect(fields).not.toBeNull();
+    expect(fields?.empty_enum).toBeUndefined();
+    expect(fields?.keeper).toBeDefined();
+  });
+
+  it('applies default value to fields when provided', () => {
+    const fields = buildExtensionFields(
+      {
+        story: {
+          fields: {
+            priority_score: {
+              type: 'number',
+              required: false,
+              default: 42,
+            },
+          },
+        },
+      },
+      'story',
+    );
+    expect(fields).not.toBeNull();
+    const parsed = z.object(fields ?? {}).safeParse({});
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.priority_score).toBe(42);
+    }
   });
 });
 

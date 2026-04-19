@@ -207,4 +207,19 @@ describe('scaffoldMeta', () => {
       await rm(tmpDir, { recursive: true });
     }
   });
+
+  it('returns a Result error when input triggers a thrown exception', async () => {
+    // Pass a non-string projectName — toSlug() calls .toLowerCase() on it
+    // and throws, exercising the outer catch block.
+    const tmpDir = await mkdtemp(join(tmpdir(), 'gitpm-scaffold-err-'));
+    try {
+      const metaDir = join(tmpDir, '.meta');
+      const result = await scaffoldMeta(metaDir, null as unknown as string);
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.message).toContain('Failed to scaffold');
+    } finally {
+      await rm(tmpDir, { recursive: true, force: true });
+    }
+  });
 });

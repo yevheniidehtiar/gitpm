@@ -156,6 +156,24 @@ describe('moveStory', () => {
     expect(moveResult.error.message).toContain('--to-epic or --to-orphan');
   });
 
+  it('returns a Result error when move logic throws unexpectedly', async () => {
+    // Create a standalone story so parseFile succeeds.
+    const storyResult = await createStory(metaDir, { title: 'Throwy story' });
+    expect(storyResult.ok).toBe(true);
+    if (!storyResult.ok) return;
+
+    // Force a throw deep inside the move logic by passing a Symbol as
+    // toEpic. Template literal interpolation (used by the epic-matching
+    // check) rejects Symbol values with a TypeError, exercising the
+    // outer catch block.
+    const moveResult = await moveStory(metaDir, storyResult.value.filePath, {
+      toEpic: Symbol('unconvertible') as unknown as string,
+    });
+    expect(moveResult.ok).toBe(false);
+    if (moveResult.ok) return;
+    expect(moveResult.error.message).toContain('Failed to move story');
+  });
+
   it('updates updated_at timestamp', async () => {
     const epicResult = await createEpic(metaDir, { title: 'Time Epic' });
     expect(epicResult.ok).toBe(true);

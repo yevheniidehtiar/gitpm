@@ -117,6 +117,18 @@ describe('createStory', () => {
     expect(r1.value.filePath).not.toBe(r2.value.filePath);
   });
 
+  it('increments suffix when multiple numbered variants already exist', async () => {
+    const r1 = await createStory(metaDir, { title: 'Repeat' });
+    const r2 = await createStory(metaDir, { title: 'Repeat' });
+    const r3 = await createStory(metaDir, { title: 'Repeat' });
+
+    expect(r1.ok && r2.ok && r3.ok).toBe(true);
+    if (!r1.ok || !r2.ok || !r3.ok) return;
+    expect(r1.value.filePath).toContain('repeat.md');
+    expect(r2.value.filePath).toContain('repeat-2.md');
+    expect(r3.value.filePath).toContain('repeat-3.md');
+  });
+
   it('includes body content when provided', async () => {
     const result = await createStory(metaDir, {
       title: 'Story with body',
@@ -129,6 +141,17 @@ describe('createStory', () => {
     const raw = await readFile(result.value.filePath, 'utf-8');
     expect(raw).toContain('## Description');
     expect(raw).toContain('Some content here.');
+  });
+
+  it('returns a Result error when input triggers a thrown exception', async () => {
+    // Pass an options object with a non-string title — toSlug() calls
+    // title.toLowerCase() and throws, exercising the outer catch block.
+    const result = await createStory(metaDir, {
+      title: null as unknown as string,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Failed to create story');
   });
 });
 
@@ -206,6 +229,15 @@ describe('createEpic', () => {
     if (result.ok) return;
     expect(result.error.message).toContain('Failed to write');
   });
+
+  it('returns a Result error when input triggers a thrown exception', async () => {
+    const result = await createEpic(metaDir, {
+      title: null as unknown as string,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Failed to create epic');
+  });
 });
 
 describe('createMilestone', () => {
@@ -260,6 +292,15 @@ describe('createMilestone', () => {
     await writeFile(metaDir, 'not-a-directory');
     const result = await createMilestone(metaDir, { title: 'Blocked' });
     expect(result.ok).toBe(false);
+  });
+
+  it('returns a Result error when input triggers a thrown exception', async () => {
+    const result = await createMilestone(metaDir, {
+      title: null as unknown as string,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Failed to create milestone');
   });
 });
 
@@ -350,5 +391,16 @@ describe('createSprint', () => {
       endDate: '2026-07-14',
     });
     expect(result.ok).toBe(false);
+  });
+
+  it('returns a Result error when input triggers a thrown exception', async () => {
+    const result = await createSprint(metaDir, {
+      title: null as unknown as string,
+      startDate: '2026-07-01',
+      endDate: '2026-07-14',
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Failed to create sprint');
   });
 });
