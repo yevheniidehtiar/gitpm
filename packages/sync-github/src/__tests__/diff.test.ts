@@ -1,4 +1,4 @@
-import type { Milestone, Story } from '@gitpm/core';
+import type { Epic, Milestone, Story } from '@gitpm/core';
 import { describe, expect, it } from 'vitest';
 import type { GhIssue, GhMilestone } from '../client.js';
 import {
@@ -181,6 +181,94 @@ describe('diffEntity', () => {
     expect(result.conflicts[0].field).toBe('status');
     expect(result.conflicts[0].localValue).toBe('in_progress');
     expect(result.conflicts[0].remoteValue).toBe('done');
+  });
+
+  it('diffs epic entities (covers epic branch in localEntityFields)', () => {
+    const baseEpic: Epic = {
+      type: 'epic',
+      id: 'epic-001',
+      title: 'Epic',
+      status: 'todo',
+      priority: 'medium',
+      owner: 'alice',
+      labels: ['backend'],
+      milestone_ref: null,
+      github: null,
+      body: 'Epic body',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+      filePath: '.meta/epics/e/epic.md',
+    };
+    const baseline = {
+      title: 'Epic',
+      status: 'todo',
+      priority: 'medium',
+      owner: 'alice',
+      labels: ['backend'],
+      body: 'Epic body',
+    };
+    const modified: Epic = { ...baseEpic, owner: 'bob' };
+    const result = diffEntity(modified, baseline, baseline, baseline);
+    expect(result.status).toBe('local_changed');
+    expect(result.localChanges[0].field).toBe('owner');
+  });
+
+  it('diffs non-story/epic/milestone entities (covers default branch)', () => {
+    const roadmap = {
+      type: 'roadmap' as const,
+      id: 'rm',
+      title: 'Roadmap',
+      description: '',
+      milestones: [],
+      updated_at: '2026-01-01T00:00:00Z',
+      filePath: '.meta/roadmap/roadmap.yaml',
+    };
+    const baseline = { title: 'Roadmap' };
+    const result = diffEntity(roadmap, baseline, baseline, baseline);
+    expect(result.status).toBe('in_sync');
+  });
+
+  it('diffs milestone entities (covers milestone branch in localEntityFields)', () => {
+    const baseMilestone: Milestone = {
+      type: 'milestone',
+      id: 'ms-001',
+      title: 'Q2',
+      status: 'in_progress',
+      target_date: '2026-06-30T00:00:00Z',
+      github: null,
+      body: 'body',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+      filePath: '.meta/roadmap/milestones/q2.md',
+    };
+    const baseline = {
+      title: 'Q2',
+      status: 'in_progress',
+      target_date: '2026-06-30T00:00:00Z',
+      body: 'body',
+    };
+    const modified: Milestone = { ...baseMilestone, status: 'done' };
+    const result = diffEntity(modified, baseline, baseline, baseline);
+    expect(result.status).toBe('local_changed');
+  });
+
+  it('ignores string changes that differ only in surrounding whitespace', () => {
+    // This specifically exercises the string-trim branch of fieldEquals (line 113 in diff.ts).
+    const baseline = {
+      title: 'Story',
+      status: 'todo',
+      priority: 'medium',
+      labels: ['frontend'],
+      assignee: 'alice',
+      body: '   hello world   ',
+    };
+    const remote = {
+      ...baseline,
+      body: 'hello world',
+    };
+    const result = diffEntity(baseStory, remote, baseline, baseline);
+    // "body" trimmed → equal on both sides → no remote_changed
+    expect(result.status).toBe('local_changed');
   });
 
   it('does not conflict when both changed to same value', () => {

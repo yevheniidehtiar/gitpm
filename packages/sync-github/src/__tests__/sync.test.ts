@@ -1,4 +1,5 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { mkdtemp, rm, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeFile as coreWriteFile, parseTree } from '@gitpm/core';
@@ -7,9 +8,17 @@ import fixtureIssues from '../__fixtures__/github-issues.json';
 import fixtureMilestones from '../__fixtures__/github-milestones.json';
 import { hasCheckpoint, saveCheckpoint } from '../checkpoint.js';
 import type { GhIssue, GhMilestone } from '../client.js';
+import { remoteIssueFields, remoteMilestoneFields } from '../diff.js';
 import { importFromGitHub } from '../import.js';
+import { loadState, saveState } from '../state.js';
 import { syncWithGitHub } from '../sync.js';
 import type { SyncCheckpoint } from '../types.js';
+
+function hashOf(fields: Record<string, unknown>): string {
+  return `sha256:${createHash('sha256').update(JSON.stringify(fields)).digest('hex')}`;
+}
+const remoteHashOfIssue = (gh: GhIssue) => hashOf(remoteIssueFields(gh));
+const remoteHashOfMs = (gh: GhMilestone) => hashOf(remoteMilestoneFields(gh));
 
 const mockUpdateIssue = vi.fn().mockImplementation(async () => ({
   number: 1,
@@ -306,6 +315,498 @@ describe('syncWithGitHub', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.value.resumedFromCheckpoint).toBe(true);
+    }
+  });
+
+  it('returns error when checkpoint check fails', async () => {
+    // Prime sync state so loadState succeeds
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+    // Sync against a broken checkpoint path (NUL byte in metaDir)
+    const result = await syncWithGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir: `${metaDir}\u0000/bad`,
+      strategy: 'local-wins',
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it('pushes local_changed milestone and issue to remote (local-wins path)', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw new Error('parseTree failed');
+    const milestone = tree.value.milestones[0];
+    const story = tree.value.stories[0];
+
+    const state = await loadState(metaDir);
+    if (!state.ok) throw new Error('loadState failed');
+
+    // Build fake remote resources whose hashes will match state.remote_hash
+    const fakeIssue: GhIssue = {
+      number: state.value.entities[story.id].github_issue_number ?? 1,
+      title: 'Remote Title',
+      body: 'Remote body',
+      state: 'open',
+      assignee: null,
+      labels: [],
+      milestone: null,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+    const fakeMilestone: GhMilestone = {
+      number: state.value.entities[milestone.id].github_milestone_number ?? 1,
+      title: 'Remote MS',
+      description: 'remote ms body',
+      state: 'open',
+      due_on: null,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+    mockGetIssue.mockImplementation(async (_o, _r, n) =>
+      n === fakeIssue.number ? fakeIssue : null,
+    );
+    mockGetMilestone.mockImplementation(async (_o, _r, n) =>
+      n === fakeMilestone.number ? fakeMilestone : null,
+    );
+
+    // Force state so current remote hash matches stored remote_hash (no remote
+    // change) but stored local_hash is stale → triggers local_changed.
+    state.value.entities[story.id] = {
+      ...state.value.entities[story.id],
+      local_hash: 'sha256:stale',
+      remote_hash: remoteHashOfIssue(fakeIssue),
+    };
+    state.value.entities[milestone.id] = {
+      ...state.value.entities[milestone.id],
+      local_hash: 'sha256:stale',
+      remote_hash: remoteHashOfMs(fakeMilestone),
+    };
+    await saveState(metaDir, state.value);
+
+    const result = await syncWithGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+      strategy: 'local-wins',
+    });
+    expect(result.ok).toBe(true);
+    expect(mockUpdateIssue).toHaveBeenCalled();
+    expect(mockUpdateMilestone).toHaveBeenCalled();
+  });
+
+  it('pulls remote_changed entities into local when remote changed', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw new Error('parseTree failed');
+    const milestone = tree.value.milestones[0];
+    const story = tree.value.stories[0];
+
+    const state = await loadState(metaDir);
+    if (!state.ok) throw new Error('loadState failed');
+
+    const fakeIssue: GhIssue = {
+      number: state.value.entities[story.id].github_issue_number ?? 1,
+      title: 'Remote-Renamed Title',
+      body: 'Remote body change',
+      state: 'closed',
+      assignee: { login: 'remote-user' },
+      labels: [{ name: 'remote-label' }],
+      milestone: null,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+    const fakeMilestone: GhMilestone = {
+      number: state.value.entities[milestone.id].github_milestone_number ?? 1,
+      title: 'Remote Milestone Renamed',
+      description: 'remote desc',
+      state: 'closed',
+      due_on: '2026-09-30T00:00:00Z',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+    mockGetIssue.mockImplementation(async (_o, _r, n) =>
+      n === fakeIssue.number ? fakeIssue : null,
+    );
+    mockGetMilestone.mockImplementation(async (_o, _r, n) =>
+      n === fakeMilestone.number ? fakeMilestone : null,
+    );
+
+    // Local not modified → currentLocalHash matches state.local_hash.
+    // Make state.remote_hash stale → remote_changed.
+    state.value.entities[story.id] = {
+      ...state.value.entities[story.id],
+      remote_hash: 'sha256:stale-remote',
+    };
+    state.value.entities[milestone.id] = {
+      ...state.value.entities[milestone.id],
+      remote_hash: 'sha256:stale-remote',
+    };
+    await saveState(metaDir, state.value);
+
+    const result = await syncWithGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+      strategy: 'remote-wins',
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.pulled.issues).toBeGreaterThan(0);
+      expect(result.value.pulled.milestones).toBeGreaterThan(0);
+    }
+  });
+
+  it('pulls remote_changed data into an epic (covers applyRemoteIssue owner branch)', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw new Error('parseTree failed');
+    const epic = tree.value.epics[0];
+
+    const state = await loadState(metaDir);
+    if (!state.ok) throw new Error('loadState failed');
+
+    const fakeIssue: GhIssue = {
+      number: state.value.entities[epic.id].github_issue_number ?? 1,
+      title: 'Renamed Epic',
+      body: 'Epic body update',
+      state: 'closed',
+      assignee: { login: 'new-owner' },
+      labels: [{ name: 'epic' }],
+      milestone: null,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+    mockGetIssue.mockImplementation(async (_o, _r, n) =>
+      n === fakeIssue.number ? fakeIssue : null,
+    );
+
+    state.value.entities[epic.id] = {
+      ...state.value.entities[epic.id],
+      remote_hash: 'sha256:stale-remote',
+    };
+    await saveState(metaDir, state.value);
+
+    const result = await syncWithGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+      strategy: 'remote-wins',
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it('both_changed → local-wins resolves to local update', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw new Error('parseTree failed');
+    const milestone = tree.value.milestones[0];
+    const story = tree.value.stories[0];
+
+    const state = await loadState(metaDir);
+    if (!state.ok) throw new Error('loadState failed');
+
+    const fakeIssue: GhIssue = {
+      number: state.value.entities[story.id].github_issue_number ?? 1,
+      title: 'Remote Conflict',
+      body: 'Remote body',
+      state: 'open',
+      assignee: null,
+      labels: [],
+      milestone: null,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+    const fakeMilestone: GhMilestone = {
+      number: state.value.entities[milestone.id].github_milestone_number ?? 1,
+      title: 'Remote MS Conflict',
+      description: 'ms body',
+      state: 'open',
+      due_on: null,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+    mockGetIssue.mockImplementation(async (_o, _r, n) =>
+      n === fakeIssue.number ? fakeIssue : null,
+    );
+    mockGetMilestone.mockImplementation(async (_o, _r, n) =>
+      n === fakeMilestone.number ? fakeMilestone : null,
+    );
+
+    // Both hashes stale → both_changed.
+    state.value.entities[story.id] = {
+      ...state.value.entities[story.id],
+      local_hash: 'sha256:stale-local',
+      remote_hash: 'sha256:stale-remote',
+    };
+    state.value.entities[milestone.id] = {
+      ...state.value.entities[milestone.id],
+      local_hash: 'sha256:stale-local',
+      remote_hash: 'sha256:stale-remote',
+    };
+    await saveState(metaDir, state.value);
+
+    const result = await syncWithGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+      strategy: 'local-wins',
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.resolved).toBeGreaterThan(0);
+    }
+    expect(mockUpdateIssue).toHaveBeenCalled();
+    expect(mockUpdateMilestone).toHaveBeenCalled();
+  });
+
+  it('both_changed → remote-wins pulls remote into local', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw new Error('parseTree failed');
+    const milestone = tree.value.milestones[0];
+    const story = tree.value.stories[0];
+
+    const state = await loadState(metaDir);
+    if (!state.ok) throw new Error('loadState failed');
+
+    const fakeIssue: GhIssue = {
+      number: state.value.entities[story.id].github_issue_number ?? 1,
+      title: 'Remote Conflict',
+      body: 'Remote body',
+      state: 'open',
+      assignee: null,
+      labels: [],
+      milestone: null,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+    const fakeMilestone: GhMilestone = {
+      number: state.value.entities[milestone.id].github_milestone_number ?? 1,
+      title: 'Remote MS Conflict',
+      description: '',
+      state: 'open',
+      due_on: null,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+    mockGetIssue.mockImplementation(async (_o, _r, n) =>
+      n === fakeIssue.number ? fakeIssue : null,
+    );
+    mockGetMilestone.mockImplementation(async (_o, _r, n) =>
+      n === fakeMilestone.number ? fakeMilestone : null,
+    );
+
+    state.value.entities[story.id] = {
+      ...state.value.entities[story.id],
+      local_hash: 'sha256:stale-local',
+      remote_hash: 'sha256:stale-remote',
+    };
+    state.value.entities[milestone.id] = {
+      ...state.value.entities[milestone.id],
+      local_hash: 'sha256:stale-local',
+      remote_hash: 'sha256:stale-remote',
+    };
+    await saveState(metaDir, state.value);
+
+    const result = await syncWithGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+      strategy: 'remote-wins',
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.resolved).toBeGreaterThan(0);
+    }
+  });
+
+  it('both_changed → ask strategy records unresolved conflicts', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw new Error('parseTree failed');
+    const story = tree.value.stories[0];
+
+    const state = await loadState(metaDir);
+    if (!state.ok) throw new Error('loadState failed');
+
+    const fakeIssue: GhIssue = {
+      number: state.value.entities[story.id].github_issue_number ?? 1,
+      title: 'Remote Ask',
+      body: 'Body',
+      state: 'open',
+      assignee: null,
+      labels: [],
+      milestone: null,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+    mockGetIssue.mockImplementation(async (_o, _r, n) =>
+      n === fakeIssue.number ? fakeIssue : null,
+    );
+
+    state.value.entities[story.id] = {
+      ...state.value.entities[story.id],
+      local_hash: 'sha256:stale-local',
+      remote_hash: 'sha256:stale-remote',
+    };
+    await saveState(metaDir, state.value);
+
+    const result = await syncWithGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+      strategy: 'ask',
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.conflicts.length).toBeGreaterThan(0);
+      expect(result.value.skipped).toBeGreaterThan(0);
+    }
+  });
+
+  it('closes GitHub resources for entities deleted locally', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw new Error('parseTree failed');
+    const story = tree.value.stories[0];
+    const milestone = tree.value.milestones[0];
+
+    // Delete the story + milestone files from disk but keep state entries →
+    // sync should treat them as locally-deleted (updateIssue state=closed).
+    await unlink(story.filePath);
+    await unlink(milestone.filePath);
+
+    const result = await syncWithGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+      strategy: 'local-wins',
+    });
+    expect(result.ok).toBe(true);
+    expect(mockUpdateIssue).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.any(Number),
+      expect.objectContaining({ state: 'closed' }),
+    );
+    expect(mockUpdateMilestone).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.any(Number),
+      expect.objectContaining({ state: 'closed' }),
+    );
+  });
+
+  it('creates GitHub resources for new local entities (not in sync state)', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+
+    // Add an untracked story + untracked milestone to the .meta tree:
+    // remove their entries from sync state so they are treated as "new".
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw new Error('parseTree failed');
+    const story = tree.value.stories.find((s) => s.status !== 'done');
+    const milestone = tree.value.milestones[0];
+    if (!story || !milestone) throw new Error('fixture assumption broken');
+
+    const state = await loadState(metaDir);
+    if (!state.ok) throw new Error('loadState failed');
+    delete state.value.entities[story.id];
+    delete state.value.entities[milestone.id];
+    await saveState(metaDir, state.value);
+
+    // Also force status=done on the story to exercise the close-after-create branch.
+    story.status = 'done';
+    await coreWriteFile(story, story.filePath);
+
+    const result = await syncWithGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+      strategy: 'local-wins',
+    });
+    expect(result.ok).toBe(true);
+    expect(mockCreateIssue).toHaveBeenCalled();
+    expect(mockCreateMilestone).toHaveBeenCalled();
+    // Since story.status === 'done', updateIssue with state:closed should be called
+    expect(mockUpdateIssue).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.any(Number),
+      expect.objectContaining({ state: 'closed' }),
+    );
+  });
+
+  it('records failedEntities when a new-entity create fails', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw new Error('parseTree failed');
+    const story = tree.value.stories[0];
+
+    const state = await loadState(metaDir);
+    if (!state.ok) throw new Error('loadState failed');
+    delete state.value.entities[story.id];
+    await saveState(metaDir, state.value);
+
+    mockCreateIssue.mockRejectedValueOnce(new Error('quota exceeded'));
+
+    const result = await syncWithGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+      strategy: 'local-wins',
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.failedEntities.length).toBeGreaterThan(0);
+      expect(result.value.failedEntities[0].error).toContain('quota exceeded');
     }
   });
 

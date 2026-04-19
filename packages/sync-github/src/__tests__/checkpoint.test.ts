@@ -95,6 +95,23 @@ describe('checkpoint', () => {
       expect(result.ok).toBe(false);
     });
 
+    it('returns error when the checkpoint file has invalid format', async () => {
+      const { writeFile } = await import('node:fs/promises');
+      const { mkdir } = await import('node:fs/promises');
+      await mkdir(join(tmpDir, '.gitpm'), { recursive: true });
+      // Invalid: missing required fields
+      await writeFile(
+        join(tmpDir, '.gitpm', 'sync-checkpoint.json'),
+        '{"foo":"bar"}',
+        'utf-8',
+      );
+      const result = await loadCheckpoint(tmpDir);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.message).toContain('Invalid checkpoint format');
+      }
+    });
+
     it('overwrites existing checkpoint on save', async () => {
       await saveCheckpoint(tmpDir, sampleCheckpoint);
 
@@ -115,6 +132,39 @@ describe('checkpoint', () => {
       if (loadResult.ok) {
         expect(loadResult.value.processedEntityIds).toHaveLength(4);
         expect(loadResult.value.lastError).toBeUndefined();
+      }
+    });
+  });
+
+  describe('error branches', () => {
+    it('hasCheckpoint returns error for non-ENOENT failures', async () => {
+      // A path containing a NUL byte makes stat reject with a non-ENOENT error
+      const result = await hasCheckpoint(`${tmpDir}\u0000/bad`);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.message).toContain(
+          'Failed to check for checkpoint',
+        );
+      }
+    });
+
+    it('saveCheckpoint returns error for invalid target path', async () => {
+      const result = await saveCheckpoint(`${tmpDir}\u0000/bad`, {
+        startedAt: '2026-01-01T00:00:00Z',
+        repo: 'o/r',
+        processedEntityIds: [],
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.message).toContain('Failed to save checkpoint');
+      }
+    });
+
+    it('clearCheckpoint returns error for invalid path', async () => {
+      const result = await clearCheckpoint(`${tmpDir}\u0000/bad`);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.message).toContain('Failed to clear checkpoint');
       }
     });
   });
