@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.10](https://github.com/yevheniidehtiar/gitpm/compare/ui-v0.1.9...ui-v0.1.10) (2026-04-12)
+
+
+### Features
+
+* implement Analytics & Project Intelligence epic ([5e50ba7](https://github.com/yevheniidehtiar/gitpm/commit/5e50ba7c0d8843cb9db6fca90b9ade9e544bd4a7))
+* **ui:** add markdown preview/split view in entity editor ([0eb48b3](https://github.com/yevheniidehtiar/gitpm/commit/0eb48b3ee8af53b25ca1a09f1e619965beb4ee49)), closes [#40](https://github.com/yevheniidehtiar/gitpm/issues/40)
+* **ui:** add virtual scrolling to Tree Browser for large projects ([b0af72d](https://github.com/yevheniidehtiar/gitpm/commit/b0af72d5d086dfcd27a83647dcdf1d7eb649466f))
+
+
+### Bug Fixes
+
+* address Claude Review findings on analytics PR ([d7f1043](https://github.com/yevheniidehtiar/gitpm/commit/d7f1043235c18bdf25e543c74fbf27db8a02ff21))
+* address second Claude Review round ([b0864fc](https://github.com/yevheniidehtiar/gitpm/commit/b0864fc8eb4b14f4ea8819bbb72a4b128584319f))
+* **ui:** memoize displayRows and reduce virtualizer overscan ([404235e](https://github.com/yevheniidehtiar/gitpm/commit/404235ea3fe68733611111aa9fc8e9dc1191c73a))
+
 ## [0.1.9](https://github.com/yevheniidehtiar/gitpm/compare/ui-v0.1.8...ui-v0.1.9) (2026-04-12)
 
 

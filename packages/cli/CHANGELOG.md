@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.9](https://github.com/yevheniidehtiar/gitpm/compare/cli-v0.1.8...cli-v0.1.9) (2026-04-12)
+
+
+### Features
+
+* implement Analytics & Project Intelligence epic ([5e50ba7](https://github.com/yevheniidehtiar/gitpm/commit/5e50ba7c0d8843cb9db6fca90b9ade9e544bd4a7))
+
+
+### Bug Fixes
+
+* address Claude Review findings on analytics PR ([d7f1043](https://github.com/yevheniidehtiar/gitpm/commit/d7f1043235c18bdf25e543c74fbf27db8a02ff21))
+
 ## [0.1.8](https://github.com/yevheniidehtiar/gitpm/compare/cli-v0.1.7...cli-v0.1.8) (2026-04-12)
 
 
