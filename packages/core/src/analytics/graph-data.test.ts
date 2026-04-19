@@ -179,4 +179,152 @@ describe('buildGraphData', () => {
     expect(result.nodes).toHaveLength(1);
     expect(result.edges).toHaveLength(0);
   });
+
+  it('creates roadmap node with milestone edges', () => {
+    const ms = {
+      type: 'milestone' as const,
+      id: 'm1',
+      title: 'MS',
+      status: 'todo' as const,
+      body: '',
+      filePath: '/m.md',
+      created_at: '',
+      updated_at: '',
+    };
+    const tree = makeTree({
+      roadmaps: [
+        {
+          type: 'roadmap',
+          id: 'r1',
+          title: 'Roadmap 2026',
+          description: '',
+          milestones: [{ id: 'm1' }],
+          filePath: '/r.yaml',
+          resolvedMilestones: [ms],
+        },
+      ] as ResolvedTree['roadmaps'],
+    });
+
+    const result = buildGraphData(tree);
+    expect(result.nodes).toContainEqual({
+      id: 'r1',
+      title: 'Roadmap 2026',
+      type: 'roadmap',
+      status: '',
+    });
+    expect(result.edges).toContainEqual({
+      source: 'r1',
+      target: 'm1',
+      label: 'milestone',
+    });
+  });
+
+  it('creates prd node with epic edges', () => {
+    const epic = {
+      type: 'epic' as const,
+      id: 'e1',
+      title: 'Epic',
+      status: 'in_progress' as const,
+      priority: 'high' as const,
+      labels: [],
+      owner: null,
+      milestone_ref: null,
+      body: '',
+      filePath: '/e.md',
+      created_at: '',
+      updated_at: '',
+    };
+    const tree = makeTree({
+      prds: [
+        {
+          type: 'prd',
+          id: 'p1',
+          title: 'PRD',
+          status: 'todo',
+          owner: null,
+          epic_refs: [{ id: 'e1' }],
+          body: '',
+          filePath: '/p.md',
+          resolvedEpics: [epic],
+        },
+      ] as ResolvedTree['prds'],
+    });
+
+    const result = buildGraphData(tree);
+    expect(result.nodes).toContainEqual({
+      id: 'p1',
+      title: 'PRD',
+      type: 'prd',
+      status: 'todo',
+    });
+    expect(result.edges).toContainEqual({
+      source: 'p1',
+      target: 'e1',
+      label: 'epic_ref',
+    });
+  });
+
+  it('creates sprint node with story edges', () => {
+    const story = {
+      type: 'story' as const,
+      id: 's1',
+      title: 'Story',
+      status: 'todo' as const,
+      priority: 'medium' as const,
+      labels: [],
+      assignee: null,
+      estimate: null,
+      epic_ref: null,
+      body: '',
+      filePath: '/s.md',
+      created_at: '',
+      updated_at: '',
+    };
+    const tree = makeTree({
+      sprints: [
+        {
+          type: 'sprint',
+          id: 'sp1',
+          title: 'Sprint 1',
+          status: 'in_progress',
+          start_date: '2026-01-01',
+          end_date: '2026-01-14',
+          stories: [{ id: 's1' }],
+          body: '',
+          filePath: '/sp.md',
+          created_at: '',
+          updated_at: '',
+          resolvedStories: [story],
+        },
+      ] as ResolvedTree['sprints'],
+    });
+
+    const result = buildGraphData(tree);
+    expect(result.nodes).toContainEqual({
+      id: 'sp1',
+      title: 'Sprint 1',
+      type: 'sprint',
+      status: 'in_progress',
+    });
+    expect(result.edges).toContainEqual({
+      source: 'sp1',
+      target: 's1',
+      label: 'sprint_story',
+    });
+  });
+
+  it('handles undefined sprints array (nullish coalescing)', () => {
+    const tree = {
+      stories: [],
+      epics: [],
+      milestones: [],
+      roadmaps: [],
+      prds: [],
+      errors: [],
+    } as unknown as ResolvedTree;
+
+    const result = buildGraphData(tree);
+    expect(result.nodes).toHaveLength(0);
+    expect(result.edges).toHaveLength(0);
+  });
 });
