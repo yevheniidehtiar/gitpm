@@ -195,6 +195,8 @@ describe('validateTree', () => {
     );
     expect(cycleErrors.length).toBeGreaterThan(0);
     expect(cycleErrors[0].message).toContain('Circular dependency');
+    const dupErrors = result.errors.filter((e) => e.code === 'DUPLICATE_ID');
+    expect(dupErrors.length).toBeGreaterThan(0);
   });
 
   it('passes when epic is done and all stories are done', () => {
