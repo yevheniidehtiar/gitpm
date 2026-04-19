@@ -104,6 +104,169 @@ describe('resolveRefs', () => {
   });
 });
 
+describe('resolveRefs — unresolved reference paths', () => {
+  it('reports unresolved story → epic reference', () => {
+    const tree: MetaTree = {
+      stories: [
+        {
+          type: 'story',
+          id: 's1',
+          title: 'Orphan story',
+          status: 'todo',
+          priority: 'medium',
+          labels: [],
+          assignee: null,
+          estimate: null,
+          epic_ref: { id: 'missing_epic' },
+          body: '',
+          filePath: '/s.md',
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+      epics: [],
+      milestones: [],
+      roadmaps: [],
+      prds: [],
+      sprints: [],
+      errors: [],
+    };
+    const resolved = resolveRefs(tree);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    expect(resolved.value.errors).toHaveLength(1);
+    expect(resolved.value.errors[0].message).toContain(
+      'non-existent epic "missing_epic"',
+    );
+    expect(resolved.value.stories[0].resolvedEpic).toBeUndefined();
+  });
+
+  it('reports unresolved roadmap → milestone reference', () => {
+    const tree: MetaTree = {
+      stories: [],
+      epics: [],
+      milestones: [],
+      roadmaps: [
+        {
+          type: 'roadmap',
+          id: 'rm1',
+          title: 'My roadmap',
+          description: '',
+          milestones: [{ id: 'missing_ms' }],
+          filePath: '/r.yaml',
+        },
+      ],
+      prds: [],
+      sprints: [],
+      errors: [],
+    };
+    const resolved = resolveRefs(tree);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    const refErrors = resolved.value.errors.filter((e) =>
+      e.message.includes('non-existent milestone'),
+    );
+    expect(refErrors).toHaveLength(1);
+    expect(resolved.value.roadmaps[0].resolvedMilestones).toHaveLength(0);
+  });
+
+  it('reports unresolved prd → epic reference', () => {
+    const tree: MetaTree = {
+      stories: [],
+      epics: [],
+      milestones: [],
+      roadmaps: [],
+      prds: [
+        {
+          type: 'prd',
+          id: 'prd1',
+          title: 'Big PRD',
+          status: 'todo',
+          epic_refs: [{ id: 'missing_epic' }],
+          body: '',
+          filePath: '/p.md',
+        },
+      ],
+      sprints: [],
+      errors: [],
+    };
+    const resolved = resolveRefs(tree);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    const refErrors = resolved.value.errors.filter((e) =>
+      e.message.includes('non-existent epic'),
+    );
+    expect(refErrors).toHaveLength(1);
+    expect(resolved.value.prds[0].resolvedEpics).toHaveLength(0);
+  });
+
+  it('resolves sprint → story references', () => {
+    const tree: MetaTree = {
+      stories: [
+        {
+          type: 'story',
+          id: 'st_real',
+          title: 'Existing story',
+          status: 'todo',
+          priority: 'medium',
+          labels: [],
+          assignee: null,
+          estimate: null,
+          epic_ref: null,
+          body: '',
+          filePath: '/s.md',
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+      epics: [],
+      milestones: [],
+      roadmaps: [],
+      prds: [],
+      sprints: [
+        {
+          type: 'sprint',
+          id: 'sp1',
+          title: 'Sprint',
+          status: 'in_progress',
+          start_date: '2026-01-01',
+          end_date: '2026-01-14',
+          stories: [{ id: 'st_real' }, { id: 'missing_story' }],
+          body: '',
+          filePath: '/sp.md',
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+      errors: [],
+    };
+    const resolved = resolveRefs(tree);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    expect(resolved.value.sprints[0].resolvedStories).toHaveLength(1);
+    expect(resolved.value.sprints[0].resolvedStories[0].id).toBe('st_real');
+    const storyErrors = resolved.value.errors.filter((e) =>
+      e.message.includes('non-existent story'),
+    );
+    expect(storyErrors).toHaveLength(1);
+  });
+
+  it('handles undefined sprints via nullish fallback', () => {
+    const tree = {
+      stories: [],
+      epics: [],
+      milestones: [],
+      roadmaps: [],
+      prds: [],
+      errors: [],
+    } as unknown as MetaTree;
+    const resolved = resolveRefs(tree);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    expect(resolved.value.sprints).toEqual([]);
+  });
+});
+
 describe('buildDependencyGraph', () => {
   it('builds graph from valid tree', async () => {
     const parsed = await parseTree(validTree);

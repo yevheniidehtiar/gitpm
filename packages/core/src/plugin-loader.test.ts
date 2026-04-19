@@ -266,6 +266,23 @@ describe('runHooks', () => {
     }
   });
 
+  it('rejects hook path that resolves outside the project root', async () => {
+    const config: GitpmConfig = {
+      adapters: [],
+      hooks: { 'pre-sync': '../escape.mjs' },
+    };
+    const result = await runHooks(
+      config,
+      'pre-sync',
+      { metaDir: '/tmp', event: 'pre-sync' },
+      tmpDir,
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toContain('outside the project root');
+    }
+  });
+
   it('runs multiple hooks in array order', async () => {
     const hook1 = join(tmpDir, 'hook1.mjs');
     const hook2 = join(tmpDir, 'hook2.mjs');
@@ -395,6 +412,14 @@ describe('getPackageEntry', () => {
     );
     const result = await getPackageEntry(pkgDir);
     expect(result).toBe(resolve(pkgDir, 'index.js'));
+  });
+
+  it('returns null when package.json is malformed JSON', async () => {
+    const pkgDir = join(tmpDir, 'broken-pkg');
+    await mkdir(pkgDir, { recursive: true });
+    await writeFile(join(pkgDir, 'package.json'), '{ not-valid-json');
+    const result = await getPackageEntry(pkgDir);
+    expect(result).toBeNull();
   });
 });
 
@@ -526,5 +551,62 @@ describe('loadAdapters workspace fallback', () => {
     if (result.ok) {
       expect(result.value).toHaveLength(0);
     }
+  });
+
+  it('reports an error when a relative adapter file does not exist', async () => {
+    const config: GitpmConfig = {
+      adapters: ['./nope.mjs'],
+      hooks: {},
+    };
+    const result = await loadAdapters(config, tmpDir);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('No adapters could be loaded');
+  });
+
+  it('rejects relative adapter paths that escape the project root', async () => {
+    const config: GitpmConfig = {
+      adapters: ['../outside.mjs'],
+      hooks: {},
+    };
+    const result = await loadAdapters(config, tmpDir);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('outside the project root');
+  });
+
+  it('reports error when the module does not export a SyncAdapter', async () => {
+    const modPath = join(tmpDir, 'not-adapter.mjs');
+    await writeFile(modPath, 'export default { hello: "world" };');
+    const config: GitpmConfig = {
+      adapters: [modPath],
+      hooks: {},
+    };
+    const result = await loadAdapters(config, tmpDir);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain(
+      'does not export a valid SyncAdapter',
+    );
+  });
+
+  it('loads adapter from default export when present', async () => {
+    const modPath = join(tmpDir, 'adapter-default.mjs');
+    await writeFile(
+      modPath,
+      `export default {
+        name: 'default-export',
+        displayName: 'Default',
+        detect: async () => false,
+        import: async () => ({ ok: true, value: { milestones: 0, epics: 0, stories: 0, totalFiles: 0 } }),
+        export: async () => ({ ok: true, value: { created: { milestones: 0, issues: 0 }, updated: { milestones: 0, issues: 0 }, totalChanges: 0 } }),
+        sync: async () => ({ ok: true, value: { pushed: { milestones: 0, issues: 0 }, pulled: { milestones: 0, issues: 0 }, conflicts: [], resolved: 0, skipped: 0 } }),
+      };`,
+    );
+    const config: GitpmConfig = { adapters: [modPath], hooks: {} };
+    const result = await loadAdapters(config, tmpDir);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value[0].name).toBe('default-export');
   });
 });

@@ -102,6 +102,88 @@ describe('round-trip: parse → write → parse', () => {
   });
 });
 
+describe('writeTree error paths', () => {
+  it('returns an error result when an entity cannot be written', async () => {
+    const tmpDir = await mkdtemp(join(tmpdir(), 'gitpm-writetree-err-'));
+    try {
+      // Blocking: metaDir is a file, not a dir.
+      const metaDir = join(tmpDir, 'meta-file');
+      const { writeFile: fsWrite } = await import('node:fs/promises');
+      await fsWrite(metaDir, 'blocker');
+
+      const tree = {
+        stories: [],
+        epics: [],
+        milestones: [],
+        roadmaps: [],
+        prds: [],
+        sprints: [
+          {
+            type: 'sprint' as const,
+            id: 'sp1',
+            title: 'S',
+            status: 'todo' as const,
+            start_date: '2026-01-01',
+            end_date: '2026-01-14',
+            stories: [],
+            body: '',
+            filePath: join(metaDir, 'sprints', 'sp1.md'),
+            created_at: '2026-01-01T00:00:00Z',
+            updated_at: '2026-01-01T00:00:00Z',
+          },
+        ],
+        errors: [],
+      };
+
+      const result = await writeTree(tree, metaDir);
+      expect(result.ok).toBe(false);
+    } finally {
+      await rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('handles tree with undefined sprints field', async () => {
+    const tmpDir = await mkdtemp(join(tmpdir(), 'gitpm-writetree-nosprints-'));
+    try {
+      const metaDir = join(tmpDir, '.meta');
+      const tree = {
+        stories: [],
+        epics: [],
+        milestones: [],
+        roadmaps: [],
+        prds: [],
+        errors: [],
+      } as unknown as Parameters<typeof writeTree>[0];
+      const result = await writeTree(tree, metaDir);
+      expect(result.ok).toBe(true);
+    } finally {
+      await rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns an error when iterating fails unexpectedly', async () => {
+    // Force the try/catch by passing a tree-like object whose accessors throw.
+    const bad = {
+      get stories(): never[] {
+        throw new Error('boom');
+      },
+      epics: [],
+      milestones: [],
+      roadmaps: [],
+      prds: [],
+      sprints: [],
+      errors: [],
+    };
+    const result = await writeTree(
+      bad as unknown as Parameters<typeof writeTree>[0],
+      '/tmp/nowhere',
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('/tmp/nowhere');
+  });
+});
+
 describe('scaffoldMeta', () => {
   it('creates a valid .meta tree', async () => {
     const tmpDir = await mkdtemp(join(tmpdir(), 'gitpm-scaffold-'));

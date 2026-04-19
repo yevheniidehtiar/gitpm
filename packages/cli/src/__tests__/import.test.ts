@@ -222,4 +222,73 @@ describe('gitpm import', () => {
       expect.objectContaining({ event: 'post-import' }),
     );
   });
+
+  it('exits 1 when loadGitpmConfig fails', async () => {
+    mockLoadGitpmConfig.mockResolvedValue({
+      ok: false,
+      error: { message: 'bad config' },
+    });
+
+    await expect(
+      run('--repo', 'owner/repo', '--meta-dir', '/tmp/meta'),
+    ).rejects.toThrow('process.exit');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(errOutput).toContain('Failed to load config');
+  });
+
+  it('exits 1 when loadAdapters fails', async () => {
+    mockLoadAdapters.mockResolvedValue({
+      ok: false,
+      error: { message: 'adapters broken' },
+    });
+
+    await expect(
+      run('--repo', 'owner/repo', '--meta-dir', '/tmp/meta'),
+    ).rejects.toThrow('process.exit');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(errOutput).toContain('Failed to load adapters');
+  });
+
+  it('exits 1 with install hint when no adapters installed', async () => {
+    mockLoadAdapters.mockResolvedValue({ ok: true, value: [] });
+    mockFindAdapterByName.mockReturnValue(null);
+
+    await expect(
+      run('--repo', 'owner/repo', '--meta-dir', '/tmp/meta'),
+    ).rejects.toThrow('process.exit');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(errOutput).toContain('is not installed');
+  });
+
+  it('exits 1 when pre-import hook fails', async () => {
+    mockRunHooks.mockResolvedValueOnce({
+      ok: false,
+      error: { message: 'hook failed' },
+    });
+
+    await expect(
+      run('--repo', 'owner/repo', '--meta-dir', '/tmp/meta'),
+    ).rejects.toThrow('process.exit');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('passes --project numeric as projectNumber', async () => {
+    mockAdapterImport.mockResolvedValue({ ok: true, value: importSummary });
+
+    await run(
+      '--repo',
+      'owner/repo',
+      '--project',
+      '42',
+      '--meta-dir',
+      '/tmp/meta',
+    );
+
+    expect(mockAdapterImport).toHaveBeenCalledWith(
+      expect.objectContaining({ projectNumber: 42 }),
+    );
+  });
 });

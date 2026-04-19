@@ -214,6 +214,104 @@ describe('JiraClient', () => {
     });
   });
 
+  describe('updateIssue', () => {
+    it('sends PUT with all provided fields and clears assignee when null', async () => {
+      mockFetch.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+      const client = createClient();
+      await client.updateIssue('TEST-10', {
+        summary: 'Updated',
+        description: 'New desc',
+        labels: ['x'],
+        assignee: null,
+        priority: 'High',
+      });
+
+      const [url, init] = mockFetch.mock.calls[0];
+      expect(url).toContain('/rest/api/3/issue/TEST-10');
+      expect(init.method).toBe('PUT');
+      const body = JSON.parse(init.body);
+      expect(body.fields.summary).toBe('Updated');
+      expect(body.fields.description).toBe('New desc');
+      expect(body.fields.labels).toEqual(['x']);
+      expect(body.fields.assignee).toBeNull();
+      expect(body.fields.priority).toEqual({ name: 'High' });
+    });
+
+    it('sets assignee accountId object when a string is passed', async () => {
+      mockFetch.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+      const client = createClient();
+      await client.updateIssue('TEST-10', { assignee: 'acct-42' });
+      const [, init] = mockFetch.mock.calls[0];
+      const body = JSON.parse(init.body);
+      expect(body.fields.assignee).toEqual({ accountId: 'acct-42' });
+    });
+  });
+
+  describe('getBoard', () => {
+    it('returns the first board when values are present', async () => {
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({
+          values: [
+            { id: 42, name: 'Scrum', type: 'scrum' },
+            { id: 43, name: 'Other', type: 'kanban' },
+          ],
+        }),
+      );
+      const client = createClient();
+      const board = await client.getBoard('TEST');
+      expect(board?.id).toBe(42);
+    });
+
+    it('returns null when request fails', async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response('Not found', { status: 404 }),
+      );
+      const client = createClient();
+      const board = await client.getBoard('TEST');
+      expect(board).toBeNull();
+    });
+  });
+
+  describe('transitionIssue', () => {
+    it('sends POST with transition id', async () => {
+      mockFetch.mockResolvedValueOnce(new Response(null, { status: 204 }));
+      const client = createClient();
+      await client.transitionIssue('TEST-1', '31');
+      const [url, init] = mockFetch.mock.calls[0];
+      expect(url).toContain('/issue/TEST-1/transitions');
+      expect(init.method).toBe('POST');
+      expect(JSON.parse(init.body)).toEqual({ transition: { id: '31' } });
+    });
+  });
+
+  describe('listSprintIssues', () => {
+    it('fetches issues for a sprint', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({ issues: [], total: 0 }));
+      const client = createClient();
+      const issues = await client.listSprintIssues(9);
+      expect(issues).toEqual([]);
+      const [url] = mockFetch.mock.calls[0];
+      expect(url).toContain('/rest/agile/1.0/sprint/9/issue');
+    });
+  });
+
+  describe('api version', () => {
+    it('uses v2 path when apiVersion is v2', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse([]));
+      const client = new JiraClient({
+        site: 'test.atlassian.net',
+        email: 'a@b.com',
+        apiToken: 'x',
+        apiVersion: 'v2',
+      });
+      await client.listProjects();
+      const [url] = mockFetch.mock.calls[0];
+      expect(url).toContain('/rest/api/2/project');
+    });
+  });
+
   describe('rate limiting', () => {
     it('handles 429 response with Retry-After', async () => {
       const rateLimitResponse = new Response('Rate limited', {

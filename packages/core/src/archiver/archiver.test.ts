@@ -197,4 +197,76 @@ describe('archiveOldEntities', () => {
     expect(result.value.archivedFiles).toEqual([]);
     expect(result.value.archivedEntityIds).toEqual([]);
   });
+
+  it('skips files that fail to parse', async () => {
+    await writeFile(
+      join(metaDir, 'stories', 'broken.md'),
+      '---\ntype: story\n---\njust broken',
+    );
+    const result = await archiveOldEntities(metaDir, {
+      daysOld: 7,
+      dryRun: false,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.skippedFiles).toHaveLength(1);
+    expect(result.value.skippedFiles[0]).toContain('broken.md');
+    expect(result.value.archivedFiles).toEqual([]);
+  });
+
+  it('skips roadmap files (no status)', async () => {
+    await mkdir(join(metaDir, 'roadmap'), { recursive: true });
+    await writeFile(
+      join(metaDir, 'roadmap', 'roadmap.md'),
+      '---\ntype: roadmap\nid: rm_1\ntitle: My Roadmap\n---\n',
+    );
+    const result = await archiveOldEntities(metaDir, {
+      daysOld: 7,
+      dryRun: false,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(
+      result.value.skippedFiles.some((f) => f.endsWith('roadmap.md')),
+    ).toBe(true);
+  });
+
+  it('skips entities with invalid date strings', async () => {
+    await writeFile(
+      join(metaDir, 'stories', 'bad-date.md'),
+      `---
+type: story
+id: s1
+title: Bad date story
+status: done
+priority: medium
+labels: []
+created_at: not-a-date
+updated_at: not-a-date
+---
+
+body
+`,
+    );
+    const result = await archiveOldEntities(metaDir, {
+      daysOld: 7,
+      dryRun: false,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.archivedFiles).toEqual([]);
+    expect(
+      result.value.skippedFiles.some((f) => f.endsWith('bad-date.md')),
+    ).toBe(true);
+  });
+
+  it('returns an error result when archive logic throws', async () => {
+    const result = await archiveOldEntities(
+      join(metaDir, 'nonexistent-subdir-xyz'),
+      { daysOld: 7, dryRun: false },
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Archive failed');
+  });
 });

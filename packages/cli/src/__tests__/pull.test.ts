@@ -192,4 +192,25 @@ describe('gitpm pull', () => {
       expect.objectContaining({ event: 'post-sync' }),
     );
   });
+
+  it('exits 1 on invalid strategy', async () => {
+    await expect(
+      run('--strategy', 'xyz', '--meta-dir', '/tmp/meta'),
+    ).rejects.toThrow('process.exit');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(errOutput).toContain('Invalid strategy');
+  });
+
+  it('exits 1 when pre-sync hook fails', async () => {
+    mockRunHooks.mockResolvedValueOnce({
+      ok: false,
+      error: { message: 'hook failed' },
+    });
+
+    await expect(run('--meta-dir', '/tmp/meta')).rejects.toThrow(
+      'process.exit',
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
 });
