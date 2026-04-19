@@ -302,9 +302,9 @@ describe('applyAssignments', () => {
   });
 
   it('updates a nested field when the intermediate object already exists', () => {
-    // baseStory has no epic_ref, so the first nested set creates the object.
-    // Verify that a subsequent nested set traverses the existing object
-    // (exercising the "existing is an object, reuse it" branch).
+    // Seed the entity with a populated epic_ref so setNestedField traverses
+    // the existing object (exercising the "existing is an object, reuse it"
+    // branch) instead of creating a fresh intermediate.
     const withEpic = {
       ...baseStory,
       epic_ref: { id: 'ep_old' } as Record<string, unknown>,
