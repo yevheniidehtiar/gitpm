@@ -1,3 +1,4 @@
+import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { ParsedEntity } from '../parser/types.js';
 import { formatEntities } from './format.js';
@@ -149,14 +150,26 @@ describe('formatEntities', () => {
     });
 
     it('extracts filePath relative to cwd', () => {
-      const output = formatEntities(mockEntities, {
+      const absolutePath = join(process.cwd(), 'pkg', 'story.md');
+      const entities: ParsedEntity[] = [
+        {
+          type: 'story',
+          id: 'st_fp',
+          title: 'Path story',
+          status: 'todo',
+          priority: 'medium',
+          labels: [],
+          body: '',
+          filePath: absolutePath,
+        } as ParsedEntity,
+      ];
+      const output = formatEntities(entities, {
         fields: ['id', 'filePath'],
         format: 'json',
       });
       const parsed = JSON.parse(output);
-      // The relative path does not start with '/'
-      expect(parsed[0].filePath.startsWith('/')).toBe(false);
-      expect(parsed[0].filePath).toContain('first-story.md');
+      expect(parsed[0].filePath).toBe(relative(process.cwd(), absolutePath));
+      expect(parsed[0].filePath).toBe(join('pkg', 'story.md'));
     });
 
     it('extracts milestone_ref as ID', () => {
