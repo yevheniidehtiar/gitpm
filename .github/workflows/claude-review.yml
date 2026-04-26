@@ -519,9 +519,14 @@ jobs:
         run: |
           set -euo pipefail
           SELF_JOBS='["Claude Autofix Loop"]'
-          CHECK_RUNS=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" --paginate \
-            | jq --argjson self "$SELF_JOBS" \
-                '[.check_runs[] | select(.name as $n | $self | index($n) | not)]')
+          # `gh api --paginate --jq '.check_runs[]'` flattens every page into
+          # one ndjson stream; `jq -s` then slurps the lot into a single array
+          # so TOTAL/PENDING/FAILING are accurate when there are >100 runs.
+          # (Without `--jq`, paginate emits one wrapper object per page and
+          # downstream filters silently see only the last page.)
+          CHECK_RUNS=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" --paginate --jq '.check_runs[]' \
+            | jq -s --argjson self "$SELF_JOBS" \
+                '[.[] | select(.name as $n | $self | index($n) | not)]')
           TOTAL=$(echo "$CHECK_RUNS" | jq 'length')
           PENDING=$(echo "$CHECK_RUNS" | jq '[.[] | select(.status != "completed")] | length')
           FAILING=$(echo "$CHECK_RUNS" | jq '[.[] | select(.conclusion == "failure" or .conclusion == "timed_out" or .conclusion == "cancelled")] | length')
@@ -637,10 +642,13 @@ jobs:
             echo "Current HEAD: $HEAD_SHA"
 
             # Fetch all check runs for this commit, excluding this workflow's
-            # own jobs so we don't wait on ourselves.
-            CHECK_RUNS=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" --paginate \
-              | jq --argjson self "$SELF_JOBS" \
-                  '[.check_runs[] | select(.name as $n | $self | index($n) | not)]')
+            # own jobs so we don't wait on ourselves. Use `--jq '.check_runs[]'`
+            # + `jq -s` so pagination above 100 runs collapses into one array
+            # (without it, each page becomes a separate jq input and the
+            # downstream length/select filters only see the last page).
+            CHECK_RUNS=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" --paginate --jq '.check_runs[]' \
+              | jq -s --argjson self "$SELF_JOBS" \
+                  '[.[] | select(.name as $n | $self | index($n) | not)]')
 
             TOTAL=$(echo "$CHECK_RUNS" | jq 'length')
             if [ "$TOTAL" -eq 0 ]; then
