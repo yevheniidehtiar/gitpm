@@ -3,7 +3,7 @@ package schema
 import "time"
 
 type Roadmap struct {
-	Type        string      `yaml:"type" json:"type"`
+	Type        EntityType  `yaml:"type" json:"type"`
 	ID          string      `yaml:"id" json:"id"`
 	Title       string      `yaml:"title" json:"title"`
 	Description string      `yaml:"description,omitempty" json:"description,omitempty"`

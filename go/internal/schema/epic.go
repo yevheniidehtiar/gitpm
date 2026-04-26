@@ -3,7 +3,7 @@ package schema
 import "time"
 
 type EpicFrontmatter struct {
-	Type         string      `yaml:"type" json:"type"`
+	Type         EntityType  `yaml:"type" json:"type"`
 	ID           string      `yaml:"id" json:"id"`
 	Title        string      `yaml:"title" json:"title"`
 	Status       Status      `yaml:"status" json:"status"`

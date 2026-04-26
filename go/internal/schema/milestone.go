@@ -3,7 +3,7 @@ package schema
 import "time"
 
 type MilestoneFrontmatter struct {
-	Type       string      `yaml:"type" json:"type"`
+	Type       EntityType  `yaml:"type" json:"type"`
 	ID         string      `yaml:"id" json:"id"`
 	Title      string      `yaml:"title" json:"title"`
 	TargetDate *string     `yaml:"target_date,omitempty" json:"target_date,omitempty"`
