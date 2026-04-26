@@ -1,6 +1,6 @@
 {
   "repo": "yevheniidehtiar/gitpm",
-  "last_sync": "2026-04-12T11:18:14.065Z",
+  "last_sync": "2026-04-26T09:40:17.833Z",
   "entities": {
     "lFNL-hn79Edx": {
       "local_hash": "sha256:c80c6ddae59254da17317bbd45064a97651fe108ae1dab77453d97afbae58c85",
@@ -189,10 +189,11 @@
       "closed_on_remote": true
     },
     "DZS1X4xTJkZj": {
-      "local_hash": "sha256:0b7df3f466d1b46defdbd1ad3f131e69541d64507c92b72ef438eada7ad0998f",
-      "remote_hash": "sha256:0b7df3f466d1b46defdbd1ad3f131e69541d64507c92b72ef438eada7ad0998f",
-      "synced_at": "2026-04-12T11:18:13.712Z",
-      "github_issue_number": 37
+      "local_hash": "sha256:1de780b3b5e99d58682bc32eaa6f2aadb03f7b844f1a597f538df92441e48641",
+      "remote_hash": "sha256:1de780b3b5e99d58682bc32eaa6f2aadb03f7b844f1a597f538df92441e48641",
+      "synced_at": "2026-04-26T09:40:17.833Z",
+      "github_issue_number": 37,
+      "closed_on_remote": true
     },
     "e6Mnoo3iNwiv": {
       "local_hash": "sha256:b9bf81aaa9228d0f33fb932f25d48685e0c4427cc6622f82753c6012ca6e7680",
@@ -209,10 +210,11 @@
       "closed_on_remote": true
     },
     "eb-9Va_neAdh": {
-      "local_hash": "sha256:16f5cd41e90e8749ddd20a436c2d851a75fc05f82a7a826a3c9411815c956a6b",
-      "remote_hash": "sha256:16f5cd41e90e8749ddd20a436c2d851a75fc05f82a7a826a3c9411815c956a6b",
-      "synced_at": "2026-04-12T11:18:13.351Z",
-      "github_issue_number": 40
+      "local_hash": "sha256:f9a28266beaeac138b049ebf480496b33a7d83c97b16b35f022688f7256d08bc",
+      "remote_hash": "sha256:f9a28266beaeac138b049ebf480496b33a7d83c97b16b35f022688f7256d08bc",
+      "synced_at": "2026-04-26T09:40:17.467Z",
+      "github_issue_number": 40,
+      "closed_on_remote": true
     },
     "EWHnNnW4rAWN": {
       "local_hash": "sha256:5f5aab7038b3fa32d51e4e2f42382efce42e714aaca75f68374b863e45c44029",
@@ -221,10 +223,11 @@
       "github_issue_number": 41
     },
     "YTEAoETh3A7C": {
-      "local_hash": "sha256:c82c2510bf6e5991f3732c93525f0d4ed9e42b4925bd1ef4456bd9e496c4b73d",
-      "remote_hash": "sha256:c82c2510bf6e5991f3732c93525f0d4ed9e42b4925bd1ef4456bd9e496c4b73d",
-      "synced_at": "2026-04-05T17:24:12.531Z",
-      "github_issue_number": 43
+      "local_hash": "sha256:5995670c628d76f2f7646a4d4e13e59075f2214e378e6c77d4563e688963d10f",
+      "remote_hash": "sha256:5995670c628d76f2f7646a4d4e13e59075f2214e378e6c77d4563e688963d10f",
+      "synced_at": "2026-04-26T09:40:16.706Z",
+      "github_issue_number": 43,
+      "closed_on_remote": true
     },
     "XDbbOigUWenB": {
       "local_hash": "sha256:da2d36ac16494c4e674dc1b73e2b7cfc7917e7ab1d46549a13b90397a809993f",
@@ -249,6 +252,12 @@
       "remote_hash": "sha256:aad005e68721c882ea37c1a8ea0124746fc9b1c72235ad43de16c68d591ff356",
       "synced_at": "2026-04-05T17:24:12.531Z",
       "github_issue_number": 46
+    },
+    "rXKv8mPq2WZc": {
+      "github_issue_number": 216,
+      "local_hash": "sha256:2f9c09de0c5d7b88783ca6d7c613b1c9316e07c21449a41bbb69e4d21706ad89",
+      "remote_hash": "sha256:2f9c09de0c5d7b88783ca6d7c613b1c9316e07c21449a41bbb69e4d21706ad89",
+      "synced_at": "2026-04-26T09:40:17.065Z"
     }
   }
 }
