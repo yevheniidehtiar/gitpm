@@ -12,6 +12,11 @@ labels:
 milestone_ref: null
 created_at: 2026-04-26T20:05:24.415Z
 updated_at: 2026-04-26T20:05:24.415Z
+github:
+  issue_number: 221
+  repo: yevheniidehtiar/gitpm
+  last_sync_hash: sha256:efb2e981f4a9bb24fbd15b745efbfa8e900caf3cfe494387331939fb1bfbd102
+  synced_at: 2026-04-26T20:12:26.480Z
 ---
 
 ## Overview

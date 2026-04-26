@@ -14,10 +14,10 @@ epic_ref:
 github:
   issue_number: 26
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:2a39ad8f02e2b8e6bdd68e46ecf3df38ac72db3aee6f01e5bdea0a167f222949
-  synced_at: 2026-04-05T17:24:12.492Z
-created_at: 2026-04-04T20:08:13Z
-updated_at: 2026-04-04T20:08:13Z
+  last_sync_hash: sha256:f4eec993c9e5af82a6cebda5ee9e6b09d914f134779d32d935ce628e12f109a5
+  synced_at: 2026-04-26T20:12:33.144Z
+created_at: 2026-04-04T20:08:13.000Z
+updated_at: 2026-04-04T20:08:13.000Z
 ---
 
 Define the `SyncAdapter` interface that all integrations implement:

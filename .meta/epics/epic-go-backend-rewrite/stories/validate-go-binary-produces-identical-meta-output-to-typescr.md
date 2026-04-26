@@ -15,6 +15,11 @@ epic_ref:
   id: 38Dhzqg4CU5j
 created_at: 2026-04-26T20:06:15.604Z
 updated_at: 2026-04-26T20:06:15.604Z
+github:
+  issue_number: 236
+  repo: yevheniidehtiar/gitpm
+  last_sync_hash: sha256:be6e27adb6f03195ff843a1efd6d0d3e737b69db02303c974bd3e89daa7d27c8
+  synced_at: 2026-04-26T20:12:32.238Z
 ---
 
 **Phase 2 — Validation**

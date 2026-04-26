@@ -1,0 +1,3 @@
+{
+  "adapters": ["@gitpm/sync-github"]
+}

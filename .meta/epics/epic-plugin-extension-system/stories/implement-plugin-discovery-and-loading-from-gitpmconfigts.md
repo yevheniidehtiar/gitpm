@@ -14,10 +14,10 @@ epic_ref:
 github:
   issue_number: 27
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:831de208571fbfbdda2a109cec8c477deee515bc31d0d47f23d492118a17e1a1
-  synced_at: 2026-04-05T17:24:12.493Z
-created_at: 2026-04-04T20:08:16Z
-updated_at: 2026-04-04T20:08:16Z
+  last_sync_hash: sha256:d39e8c1dcd480055bdb0c47970cc98d475f966c7f0ad01fe4a84942533aeebc7
+  synced_at: 2026-04-26T20:12:33.617Z
+created_at: 2026-04-04T20:08:16.000Z
+updated_at: 2026-04-04T20:08:16.000Z
 ---
 
 Load sync adapters dynamically from config:

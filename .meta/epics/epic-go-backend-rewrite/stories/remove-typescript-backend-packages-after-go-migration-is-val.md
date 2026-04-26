@@ -14,6 +14,11 @@ epic_ref:
   id: 38Dhzqg4CU5j
 created_at: 2026-04-26T20:06:16.501Z
 updated_at: 2026-04-26T20:06:16.501Z
+github:
+  issue_number: 234
+  repo: yevheniidehtiar/gitpm
+  last_sync_hash: sha256:b6eca68d4aa04cedbd9480d70f943635a960d2a9fa1055f08a2b3ebf5d2753d6
+  synced_at: 2026-04-26T20:12:31.471Z
 ---
 
 **Phase 2 — Cleanup**

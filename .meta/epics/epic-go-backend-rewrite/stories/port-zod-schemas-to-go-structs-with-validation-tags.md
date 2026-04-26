@@ -14,6 +14,11 @@ epic_ref:
   id: 38Dhzqg4CU5j
 created_at: 2026-04-26T20:05:48.251Z
 updated_at: 2026-04-26T20:05:48.251Z
+github:
+  issue_number: 233
+  repo: yevheniidehtiar/gitpm
+  last_sync_hash: sha256:8afc465abc117d220c1e852b1e1de1d7f7568cc9ad13c2cd3bf198b785e4a549
+  synced_at: 2026-04-26T20:12:31.059Z
 ---
 
 **Phase 1 — Foundation**
