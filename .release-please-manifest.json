@@ -1,8 +1,8 @@
 {
-  "packages/core": "0.1.11",
-  "packages/sync-github": "0.1.8",
-  "packages/sync-gitlab": "0.1.8",
-  "packages/sync-jira": "0.1.7",
-  "packages/cli": "0.1.10",
+  "packages/core": "0.1.12",
+  "packages/sync-github": "0.1.9",
+  "packages/sync-gitlab": "0.1.9",
+  "packages/sync-jira": "0.1.8",
+  "packages/cli": "0.1.11",
   "packages/ui": "0.1.10"
 }

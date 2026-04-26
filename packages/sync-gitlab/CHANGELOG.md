@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.9](https://github.com/yevheniidehtiar/gitpm/compare/sync-gitlab-v0.1.8...sync-gitlab-v0.1.9) (2026-04-26)
+
+
+### Features
+
+* pass adapter result payload into post-* hook context ([460fe1a](https://github.com/yevheniidehtiar/gitpm/commit/460fe1a96109909d86cd9cfb16e0c34c64ae7472))
+
 ## [0.1.8](https://github.com/yevheniidehtiar/gitpm/compare/sync-gitlab-v0.1.7...sync-gitlab-v0.1.8) (2026-04-26)
 
 
