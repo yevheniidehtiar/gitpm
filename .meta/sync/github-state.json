@@ -1,6 +1,6 @@
 {
   "repo": "yevheniidehtiar/gitpm",
-  "last_sync": "2026-04-26T19:23:28.136Z",
+  "last_sync": "2026-04-26T19:54:50.544Z",
   "entities": {
     "lFNL-hn79Edx": {
       "local_hash": "sha256:c80c6ddae59254da17317bbd45064a97651fe108ae1dab77453d97afbae58c85",
@@ -255,9 +255,10 @@
     },
     "rXKv8mPq2WZc": {
       "github_issue_number": 216,
-      "local_hash": "sha256:99fda7a1c47d29932697759c1eafea4f1175f9e78cd492408b1a4e0e72897aee",
-      "remote_hash": "sha256:99fda7a1c47d29932697759c1eafea4f1175f9e78cd492408b1a4e0e72897aee",
-      "synced_at": "2026-04-26T19:23:28.135Z"
+      "local_hash": "sha256:78f1fa0f69c1fd40f501bb6f2967577d56962b7357768a577e9b9db99b0984dd",
+      "remote_hash": "sha256:78f1fa0f69c1fd40f501bb6f2967577d56962b7357768a577e9b9db99b0984dd",
+      "synced_at": "2026-04-26T19:54:50.544Z",
+      "closed_on_remote": true
     }
   }
 }
