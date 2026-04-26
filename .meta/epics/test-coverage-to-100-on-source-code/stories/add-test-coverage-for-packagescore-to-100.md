@@ -13,6 +13,9 @@ epic_ref:
   id: xGG0RMogvzyo
 created_at: 2026-04-12T19:34:55.144Z
 updated_at: 2026-04-19T13:29:28.662Z
+github:
+  issue_number: 166
+  repo: yevheniidehtiar/gitpm
 ---
 
 ## Objective

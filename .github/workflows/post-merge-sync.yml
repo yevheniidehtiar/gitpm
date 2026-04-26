@@ -14,7 +14,7 @@ on:
       - '.meta/**'
 
 permissions:
-  contents: read
+  contents: write
   issues: write
 
 jobs:
@@ -42,3 +42,18 @@ jobs:
         run: node packages/cli/dist/index.js push --token "$GITHUB_TOKEN" --yes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Persist sync writebacks (github.issue_number on entities,
+      # .meta/sync/github-state.json) so the next push doesn't see entities
+      # as new and create duplicate issues. [skip ci] avoids re-triggering.
+      - name: Commit sync writebacks
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add .meta/
+          if git diff --cached --quiet; then
+            echo "No sync writebacks to commit."
+            exit 0
+          fi
+          git commit -m "chore(pm): persist GitHub sync metadata [skip ci]"
+          git push origin HEAD:master
