@@ -6,12 +6,17 @@ name: Post-Merge Sync
 # stories as done` commit written by `release-please.yml`. `gitpm push` then
 # closes every GitHub issue whose story is now `status: done` (mapper at
 # packages/sync-github/src/mapper.ts:232-235 maps done/cancelled → closed).
+#
+# Also exposes `workflow_dispatch` so a maintainer can run the sync manually
+# from the Actions UI — useful when the workflow was disabled or a previous
+# run failed and `.meta/` is out of sync with GitHub Issues.
 
 on:
   push:
     branches: [master]
     paths:
       - '.meta/**'
+  workflow_dispatch:
 
 permissions:
   contents: write
