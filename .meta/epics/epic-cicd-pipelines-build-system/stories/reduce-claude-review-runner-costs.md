@@ -2,7 +2,7 @@
 type: story
 id: rXKv8mPq2WZc
 title: Reduce GitHub runner cost of Claude Review + Autofix Loop
-status: in_review
+status: done
 priority: medium
 assignee: null
 labels:
@@ -18,7 +18,7 @@ github:
   last_sync_hash: sha256:99fda7a1c47d29932697759c1eafea4f1175f9e78cd492408b1a4e0e72897aee
   synced_at: 2026-04-26T19:23:28.129Z
 created_at: 2026-04-26T00:00:00.000Z
-updated_at: 2026-04-26T00:00:00.000Z
+updated_at: 2026-04-26T19:29:53.723Z
 ---
 
 ## Problem
