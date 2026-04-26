@@ -53,9 +53,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Persist sync writebacks (github.issue_number on entities,
-      # .meta/sync/github-state.json) so the next push doesn't see entities
-      # as new and create duplicate issues. [skip ci] avoids re-triggering.
-      - name: Commit sync writebacks
+      # .meta/sync/github-state.json) to a dedicated snapshot branch.
+      # Master branch protection blocks direct bot pushes (PR + signed
+      # commits required), so this branch is the side-channel record of
+      # the latest sync state — maintainers can cherry-pick or open a PR
+      # from it when reconciliation is needed. PR validation
+      # (`pr-validation.yml`) and the pre-push hook (`.githooks/pre-push`)
+      # block stale `.meta/` from reaching master in the first place.
+      - name: Snapshot sync writebacks
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
@@ -64,5 +69,5 @@ jobs:
             echo "No sync writebacks to commit."
             exit 0
           fi
-          git commit -m "chore(pm): persist GitHub sync metadata [skip ci]"
-          git push origin HEAD:master
+          git commit -m "chore(pm): persist GitHub sync metadata"
+          git push -f origin HEAD:chore/sync-state-snapshot

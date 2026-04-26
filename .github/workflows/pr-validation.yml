@@ -94,3 +94,50 @@ jobs:
           name: playwright-traces
           path: packages/ui/test-results/
           retention-days: 7
+
+  meta-sync-check:
+    name: .meta/ Sync Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build CLI
+        run: bun run build
+
+      # Detect entities in `.meta/` that lack `github.issue_number` (or
+      # whose state is otherwise out of sync with GitHub). If any such
+      # entity exists, post-merge-sync would create a fresh GitHub issue
+      # for it on merge — historically the source of duplicate issues.
+      # Block the PR; the author should run `gitpm push` locally and
+      # commit the resulting `github.issue_number` blocks.
+      - name: Check for unsynced .meta/ entities
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          OUTPUT=$(node packages/cli/dist/index.js push --token "$GITHUB_TOKEN" --dry-run 2>&1)
+          echo "$OUTPUT"
+          NEW_ISSUES=$(echo "$OUTPUT" | awk '/^  New issues:/ {print $NF}')
+          NEW_MILESTONES=$(echo "$OUTPUT" | awk '/^  New milestones:/ {print $NF}')
+          NEW_ISSUES=${NEW_ISSUES:-0}
+          NEW_MILESTONES=${NEW_MILESTONES:-0}
+          if [ "$NEW_ISSUES" -gt 0 ] || [ "$NEW_MILESTONES" -gt 0 ]; then
+            echo "::error::Stale .meta/ state: dry-run would create $NEW_ISSUES new issues and $NEW_MILESTONES new milestones."
+            echo "::error::Run 'gitpm push' locally to populate github.issue_number, then commit the resulting frontmatter changes."
+            exit 1
+          fi
+          echo "OK: no new issues/milestones would be created."
