@@ -6,10 +6,9 @@ import (
 	"github.com/yevheniidehtiar/gitpm/internal/writer"
 )
 
-func TestToSlugPlaceholder(t *testing.T) {
+func TestToSlugNotYetImplemented(t *testing.T) {
 	slug := writer.ToSlug("Hello World")
 	if slug != "" {
-		t.Skipf("ToSlug implemented, got: %s", slug)
+		t.Errorf("ToSlug stub should return empty string, got: %q", slug)
 	}
-	t.Skip("ToSlug not yet implemented")
 }

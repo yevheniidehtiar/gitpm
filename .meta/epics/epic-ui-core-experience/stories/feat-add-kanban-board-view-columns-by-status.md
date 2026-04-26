@@ -2,7 +2,7 @@
 type: story
 id: NdHIAmE7OeDa
 title: "feat: add kanban board view (columns by status)"
-status: in_progress
+status: done
 priority: high
 assignee: null
 labels:
@@ -14,10 +14,10 @@ epic_ref:
 github:
   issue_number: 38
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:c797a9fd7dfe7c4c77b7952271063dc2a13ca184abccf7fa6272e306b7a50207
-  synced_at: 2026-04-26T20:12:36.980Z
+  last_sync_hash: sha256:d435fa691ee3fe67b5ea9c5952d32391cd54a4e62cdc3e33eea8d5c2b6135ef8
+  synced_at: 2026-04-12T11:18:12.933Z
 created_at: 2026-04-05T09:48:52.000Z
-updated_at: 2026-04-05T09:48:52.000Z
+updated_at: 2026-04-12T10:52:40.343Z
 ---
 
 ## Problem

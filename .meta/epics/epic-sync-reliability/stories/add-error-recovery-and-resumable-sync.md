@@ -2,7 +2,7 @@
 type: story
 id: HE_jzoks9ky_
 title: Add error recovery and resumable sync
-status: in_progress
+status: done
 priority: high
 assignee: null
 labels:
@@ -14,10 +14,10 @@ epic_ref:
 github:
   issue_number: 29
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:2ba62766f1598b6992146f51a59a62de8fdcc8a9ecb37211992f70c0461383ca
-  synced_at: 2026-04-26T20:12:34.377Z
+  last_sync_hash: sha256:6feb363dacfaaf9548743f5eac3fef65b07715f90cd3b5d4767c8107cbf442db
+  synced_at: 2026-04-12T11:18:10.654Z
 created_at: 2026-04-04T20:08:23.000Z
-updated_at: 2026-04-04T20:08:24.000Z
+updated_at: 2026-04-12T10:52:33.577Z
 ---
 
 If `gitpm sync` fails mid-way (API error at issue #147 of 200), it should:

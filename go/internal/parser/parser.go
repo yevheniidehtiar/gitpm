@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/yevheniidehtiar/gitpm/internal/schema"
 )
 
@@ -27,5 +29,5 @@ func ParseTree(root string) (*MetaTree, error) {
 // ParseFile parses a single markdown or YAML file into an entity.
 func ParseFile(path string) (schema.Entity, error) {
 	// TODO: implement — read file, detect format, parse frontmatter, validate
-	return nil, nil
+	return nil, fmt.Errorf("ParseFile not implemented")
 }
