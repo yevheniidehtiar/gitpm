@@ -83,4 +83,13 @@ template:
     if (result.ok) return;
     expect(result.error.message).toContain('Invalid quality config');
   });
+
+  it('returns error when the config path is unreadable (non-ENOENT)', async () => {
+    // Make the quality.yaml path itself a directory so readFile fails with EISDIR
+    await mkdir(join(testDir, '.gitpm', 'quality.yaml'), { recursive: true });
+    const result = await loadQualityConfig(testDir);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Failed to read quality config');
+  });
 });

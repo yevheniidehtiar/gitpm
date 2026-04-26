@@ -2,7 +2,7 @@
 type: epic
 id: Jm9BOEIh35z1
 title: "[Epic] Analytics & Project Intelligence"
-status: todo
+status: in_progress
 priority: medium
 owner: null
 labels:
@@ -14,8 +14,8 @@ github:
   issue_number: 67
   repo: yevheniidehtiar/gitpm
   synced_at: 2026-04-06T12:53:26.000Z
-created_at: 2026-04-06T00:00:00Z
-updated_at: 2026-04-06T00:00:00Z
+created_at: 2026-04-06T00:00:00.000Z
+updated_at: 2026-04-12T16:06:39.180Z
 ---
 
 ## Overview

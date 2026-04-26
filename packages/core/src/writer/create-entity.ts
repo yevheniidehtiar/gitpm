@@ -5,6 +5,7 @@ import type { ParsedEntity } from '../parser/types.js';
 import type { Priority, Result, Status } from '../schemas/common.js';
 import type { Epic } from '../schemas/epic.js';
 import type { Milestone } from '../schemas/milestone.js';
+import type { Sprint } from '../schemas/sprint.js';
 import type { Story } from '../schemas/story.js';
 import { toSlug } from './slug.js';
 import { writeFile } from './write-file.js';
@@ -59,6 +60,16 @@ export interface CreateMilestoneOptions {
   title: string;
   status?: Status;
   targetDate?: string;
+  body?: string;
+}
+
+export interface CreateSprintOptions {
+  title: string;
+  startDate: string;
+  endDate: string;
+  status?: Status;
+  storyIds?: string[];
+  capacity?: number;
   body?: string;
 }
 
@@ -195,6 +206,45 @@ export async function createMilestone(
     return {
       ok: false,
       error: new Error(`Failed to create milestone: ${err}`),
+    };
+  }
+}
+
+export async function createSprint(
+  metaDir: string,
+  options: CreateSprintOptions,
+): Promise<Result<CreateResult>> {
+  try {
+    const id = nanoid(12);
+    const slug = toSlug(options.title);
+    const now = new Date().toISOString();
+
+    const sprintDir = join(metaDir, 'sprints');
+    const filePath = await uniquePath(sprintDir, slug, '.md');
+
+    const sprint: Sprint = {
+      type: 'sprint',
+      id,
+      title: options.title,
+      start_date: options.startDate,
+      end_date: options.endDate,
+      status: options.status ?? 'todo',
+      stories: (options.storyIds ?? []).map((sid) => ({ id: sid })),
+      capacity: options.capacity,
+      body: options.body ?? '',
+      filePath,
+      created_at: now,
+      updated_at: now,
+    };
+
+    const result = await writeFile(sprint, filePath);
+    if (!result.ok) return result;
+
+    return { ok: true, value: { filePath, id, entity: sprint } };
+  } catch (err) {
+    return {
+      ok: false,
+      error: new Error(`Failed to create sprint: ${err}`),
     };
   }
 }

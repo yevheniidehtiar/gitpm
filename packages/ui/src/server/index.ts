@@ -2,6 +2,8 @@ import { unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ParsedEntity, Priority, ResolvedTree, Status } from '@gitpm/core';
 import {
+  buildGraphData,
+  computeProjectProgress,
   parseTree,
   resolveRefs,
   toSlug,
@@ -41,6 +43,7 @@ export function createApp(metaDir: string) {
       tree.milestones,
       tree.roadmaps,
       tree.prds,
+      tree.sprints,
     ]) {
       const found = (list as ParsedEntity[]).find((e) => e.id === id);
       if (found) return found;
@@ -60,6 +63,7 @@ export function createApp(metaDir: string) {
           milestones: tree.milestones.length,
           roadmaps: tree.roadmaps.length,
           prds: tree.prds.length,
+          sprints: tree.sprints.length,
           errors: tree.errors.length,
         },
       });
@@ -182,6 +186,19 @@ export function createApp(metaDir: string) {
             filePath,
           } as ParsedEntity;
           break;
+        case 'sprint':
+          filePath = join(metaDir, 'sprints', `${slug}.md`);
+          entity = {
+            ...base,
+            type: 'sprint',
+            status: (rest.status as Status) || 'todo',
+            start_date: (rest.start_date as string) || '',
+            end_date: (rest.end_date as string) || '',
+            stories: (rest.stories as Array<{ id: string }>) || [],
+            capacity: (rest.capacity as number) || undefined,
+            filePath,
+          } as ParsedEntity;
+          break;
         default:
           return c.json({ error: `Unknown type: ${type}` }, 400);
       }
@@ -204,6 +221,26 @@ export function createApp(metaDir: string) {
 
       await unlink(entity.filePath);
       return c.body(null, 204);
+    } catch (err) {
+      return c.json({ error: String(err) }, 500);
+    }
+  });
+
+  // GET /api/progress
+  app.get('/api/progress', async (c) => {
+    try {
+      const tree = await getResolvedTree();
+      return c.json(computeProjectProgress(tree));
+    } catch (err) {
+      return c.json({ error: String(err) }, 500);
+    }
+  });
+
+  // GET /api/graph
+  app.get('/api/graph', async (c) => {
+    try {
+      const tree = await getResolvedTree();
+      return c.json(buildGraphData(tree));
     } catch (err) {
       return c.json({ error: String(err) }, 500);
     }

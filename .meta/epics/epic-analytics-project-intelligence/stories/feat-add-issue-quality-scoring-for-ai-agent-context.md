@@ -2,7 +2,7 @@
 type: story
 id: YTEAoETh3A7C
 title: "feat: add issue quality scoring for AI agent context"
-status: todo
+status: done
 priority: medium
 assignee: null
 labels:
@@ -15,10 +15,10 @@ epic_ref:
 github:
   issue_number: 43
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:c82c2510bf6e5991f3732c93525f0d4ed9e42b4925bd1ef4456bd9e496c4b73d
-  synced_at: 2026-04-05T17:24:12.493Z
-created_at: 2026-04-05T09:49:45Z
-updated_at: 2026-04-05T09:49:45Z
+  last_sync_hash: sha256:5995670c628d76f2f7646a4d4e13e59075f2214e378e6c77d4563e688963d10f
+  synced_at: 2026-04-26T09:40:16.698Z
+created_at: 2026-04-05T09:49:45.000Z
+updated_at: 2026-04-12T16:06:36.793Z
 ---
 
 ## Motivation

@@ -41,6 +41,7 @@ export async function exportToGitHub(
       created: { milestones: 0, issues: 0 },
       updated: { milestones: 0, issues: 0 },
       totalChanges: 0,
+      exportedPaths: [],
     };
 
     // 3. Process milestones
@@ -73,6 +74,7 @@ export async function exportToGitHub(
             remote_hash: hash,
             synced_at: new Date().toISOString(),
           };
+          result.exportedPaths.push(milestone.filePath);
         }
         result.created.milestones++;
       } else {
@@ -105,6 +107,7 @@ export async function exportToGitHub(
               remote_hash: currentHash,
               synced_at: new Date().toISOString(),
             };
+            result.exportedPaths.push(milestone.filePath);
           }
           result.updated.milestones++;
         }
@@ -175,6 +178,7 @@ export async function exportToGitHub(
             remote_hash: hash,
             synced_at: new Date().toISOString(),
           };
+          result.exportedPaths.push(entity.filePath);
         }
         result.created.issues++;
       } else {
@@ -228,6 +232,7 @@ export async function exportToGitHub(
               closed_on_remote: expectedState === 'closed' ? true : undefined,
               synced_at: new Date().toISOString(),
             };
+            result.exportedPaths.push(entity.filePath);
           }
           result.updated.issues++;
         }

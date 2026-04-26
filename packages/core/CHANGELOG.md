@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.1.11](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.10...core-v0.1.11) (2026-04-26)
+
+
+### Features
+
+* pass adapter result payload into post-* hook context ([460fe1a](https://github.com/yevheniidehtiar/gitpm/commit/460fe1a96109909d86cd9cfb16e0c34c64ae7472))
+
+## [0.1.10](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.9...core-v0.1.10) (2026-04-12)
+
+
+### Features
+
+* implement Analytics & Project Intelligence epic ([5e50ba7](https://github.com/yevheniidehtiar/gitpm/commit/5e50ba7c0d8843cb9db6fca90b9ade9e544bd4a7))
+
+
+### Bug Fixes
+
+* address Claude Review findings on analytics PR ([d7f1043](https://github.com/yevheniidehtiar/gitpm/commit/d7f1043235c18bdf25e543c74fbf27db8a02ff21))
+* address second Claude Review round ([b0864fc](https://github.com/yevheniidehtiar/gitpm/commit/b0864fc8eb4b14f4ea8819bbb72a4b128584319f))
+
+## [0.1.9](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.8...core-v0.1.9) (2026-04-12)
+
+
+### Bug Fixes
+
+* **core:** address review findings for workspace adapter resolution ([fc2ed99](https://github.com/yevheniidehtiar/gitpm/commit/fc2ed99b17a714a0aeb54e231dc669703d7fb9f0))
+* **core:** resolve adapter packages from workspace node_modules in Node.js ([2187cb4](https://github.com/yevheniidehtiar/gitpm/commit/2187cb439b9d927da09c316dc495fe170b44eaeb))
+
+## [0.1.8](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.7...core-v0.1.8) (2026-04-12)
+
+
+### Features
+
+* implement Plugin & Extension System epic ([#151](https://github.com/yevheniidehtiar/gitpm/issues/151)) ([86df984](https://github.com/yevheniidehtiar/gitpm/commit/86df9844d5b995527aa036989f305d35f515c36c))
+
 ## [0.1.7](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.6...core-v0.1.7) (2026-04-12)
 
 

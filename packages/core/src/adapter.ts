@@ -7,12 +7,15 @@ export interface ImportResult {
   epics: number;
   stories: number;
   totalFiles: number;
+  /** Entity .meta/ paths written during import (excludes sync config/state). */
+  writtenPaths: string[];
 }
 
 export interface ExportResult {
   created: { milestones: number; issues: number };
   updated: { milestones: number; issues: number };
   totalChanges: number;
+  exportedPaths: string[];
 }
 
 export interface SyncResult {
@@ -21,6 +24,8 @@ export interface SyncResult {
   conflicts: FieldConflict[];
   resolved: number;
   skipped: number;
+  pulledPaths: string[];
+  pushedPaths: string[];
 }
 
 export type ConflictStrategy = 'local-wins' | 'remote-wins' | 'ask';

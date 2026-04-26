@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.8](https://github.com/yevheniidehtiar/gitpm/compare/sync-gitlab-v0.1.7...sync-gitlab-v0.1.8) (2026-04-26)
+
+
+### Features
+
+* pass adapter result payload into post-* hook context ([460fe1a](https://github.com/yevheniidehtiar/gitpm/commit/460fe1a96109909d86cd9cfb16e0c34c64ae7472))
+
+## [0.1.7](https://github.com/yevheniidehtiar/gitpm/compare/sync-gitlab-v0.1.6...sync-gitlab-v0.1.7) (2026-04-12)
+
+
+### Features
+
+* implement Plugin & Extension System epic ([#151](https://github.com/yevheniidehtiar/gitpm/issues/151)) ([86df984](https://github.com/yevheniidehtiar/gitpm/commit/86df9844d5b995527aa036989f305d35f515c36c))
+
 ## [0.1.6](https://github.com/yevheniidehtiar/gitpm/compare/sync-gitlab-v0.1.5...sync-gitlab-v0.1.6) (2026-04-11)
 
 

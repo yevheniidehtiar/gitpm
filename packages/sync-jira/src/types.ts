@@ -15,6 +15,7 @@ export interface ImportResult {
   epics: number;
   stories: number;
   totalFiles: number;
+  writtenPaths: string[];
 }
 
 export interface JiraConfig {
@@ -67,6 +68,7 @@ export interface ExportResult {
   created: { milestones: number; issues: number };
   updated: { milestones: number; issues: number };
   totalChanges: number;
+  exportedPaths: string[];
 }
 
 export interface JiraSyncOptions {
@@ -87,6 +89,8 @@ export interface SyncResult {
   conflicts: FieldConflict[];
   resolved: number;
   skipped: number;
+  pulledPaths: string[];
+  pushedPaths: string[];
 }
 
 export interface FieldChange {

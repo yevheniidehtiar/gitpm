@@ -15,14 +15,17 @@
   "scripts": {
     "build": "bun run --filter '*' build",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "lint": "biome check .",
-    "dev:ui": "bun run --filter @gitpm/ui dev"
+    "dev:ui": "bun run --filter @gitpm/ui dev",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.10",
     "@types/node": "^25.5.2",
     "tsup": "^8.3.0",
     "typescript": "^6.0.2",
+    "@vitest/coverage-v8": "^4.1.4",
     "vitest": "^4.1.2"
   }
 }

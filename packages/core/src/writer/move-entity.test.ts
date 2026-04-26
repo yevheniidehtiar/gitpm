@@ -156,6 +156,20 @@ describe('moveStory', () => {
     expect(moveResult.error.message).toContain('--to-epic or --to-orphan');
   });
 
+  it('returns a Result error when move logic throws unexpectedly', async () => {
+    const storyResult = await createStory(metaDir, { title: 'Throwy story' });
+    expect(storyResult.ok).toBe(true);
+    if (!storyResult.ok) return;
+
+    // Symbols trigger TypeError when interpolated into a template literal.
+    const moveResult = await moveStory(metaDir, storyResult.value.filePath, {
+      toEpic: Symbol('unconvertible') as unknown as string,
+    });
+    expect(moveResult.ok).toBe(false);
+    if (moveResult.ok) return;
+    expect(moveResult.error.message).toContain('Failed to move story');
+  });
+
   it('updates updated_at timestamp', async () => {
     const epicResult = await createEpic(metaDir, { title: 'Time Epic' });
     expect(epicResult.ok).toBe(true);

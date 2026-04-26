@@ -32,6 +32,7 @@ function makeTree() {
     milestones: [],
     roadmaps: [],
     prds: [],
+    sprints: [],
     errors: [],
   };
 }
@@ -162,6 +163,19 @@ describe('gitpm query', () => {
     expect(mockFilterEntities).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ search: 'responsive' }),
+    );
+  });
+
+  it('parses assignee filter', async () => {
+    mockParseTree.mockResolvedValue({ ok: true, value: makeTree() });
+    mockFilterEntities.mockReturnValue([]);
+    mockFormatEntities.mockReturnValue('');
+
+    await run('--assignee', 'alice', '--meta-dir', '/tmp/test');
+
+    expect(mockFilterEntities).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ assignee: 'alice' }),
     );
   });
 });

@@ -282,4 +282,178 @@ describe('applyAssignments', () => {
     expect(({} as Record<string, unknown>).id).toBeUndefined();
     expect(({} as Record<string, unknown>).safe_value).toBeUndefined();
   });
+
+  it('fails -= on a non-array field', () => {
+    const result = applyAssignments(baseStory, [
+      { field: 'priority', operator: '-=', value: 'medium' },
+    ]);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('non-array');
+  });
+
+  it('returns error when nested set receives a dangerous path', () => {
+    const result = applyAssignments(baseStory, [
+      { field: 'epic_ref.constructor', operator: '=', value: 'oops' },
+    ]);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Dangerous field name');
+  });
+
+  it('updates a nested field when the intermediate object already exists', () => {
+    // Seed the entity with a populated epic_ref so setNestedField traverses
+    // the existing object (exercising the "existing is an object, reuse it"
+    // branch) instead of creating a fresh intermediate.
+    const withEpic = {
+      ...baseStory,
+      epic_ref: { id: 'ep_old' } as Record<string, unknown>,
+    } as ParsedEntity;
+    const result = applyAssignments(withEpic, [
+      { field: 'epic_ref.id', operator: '=', value: 'ep_new' },
+    ]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect((result.value as Record<string, unknown>).epic_ref).toEqual({
+      id: 'ep_new',
+    });
+  });
+});
+
+describe('applyAssignments schema dispatch', () => {
+  const baseEpic: ParsedEntity = {
+    type: 'epic',
+    id: 'ep_id',
+    title: 'Epic',
+    status: 'backlog',
+    priority: 'medium',
+    labels: [],
+    owner: null,
+    milestone_ref: null,
+    body: '',
+    filePath: '/tmp/e.md',
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  };
+
+  const baseMilestone: ParsedEntity = {
+    type: 'milestone',
+    id: 'ms_id',
+    title: 'MS',
+    status: 'backlog',
+    target_date: '',
+    body: '',
+    filePath: '/tmp/ms.md',
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  };
+
+  const basePrd: ParsedEntity = {
+    type: 'prd',
+    id: 'pr_id',
+    title: 'PRD',
+    status: 'backlog',
+    epic_refs: [],
+    body: '',
+    filePath: '/tmp/prd.md',
+  };
+
+  const baseRoadmap: ParsedEntity = {
+    type: 'roadmap',
+    id: 'rm_id',
+    title: 'Roadmap',
+    description: '',
+    milestones: [],
+    filePath: '/tmp/r.yaml',
+  };
+
+  it('validates epic fields and returns success', () => {
+    const result = applyAssignments(baseEpic, [
+      { field: 'priority', operator: '=', value: 'high' },
+    ]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect((result.value as Record<string, unknown>).priority).toBe('high');
+  });
+
+  it('rejects invalid epic values via zod', () => {
+    const result = applyAssignments(baseEpic, [
+      { field: 'status', operator: '=', value: 'not-a-status' },
+    ]);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Validation failed');
+  });
+
+  it('validates milestone fields and returns success', () => {
+    const result = applyAssignments(baseMilestone, [
+      { field: 'status', operator: '=', value: 'done' },
+    ]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect((result.value as Record<string, unknown>).status).toBe('done');
+  });
+
+  it('rejects invalid milestone values via zod', () => {
+    const result = applyAssignments(baseMilestone, [
+      { field: 'title', operator: '=', value: '' },
+    ]);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Validation failed');
+  });
+
+  it('validates prd fields and returns success', () => {
+    const result = applyAssignments(basePrd, [
+      { field: 'title', operator: '=', value: 'New PRD title' },
+    ]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect((result.value as Record<string, unknown>).title).toBe(
+      'New PRD title',
+    );
+  });
+
+  it('rejects invalid prd values via zod', () => {
+    const result = applyAssignments(basePrd, [
+      { field: 'status', operator: '=', value: 'garbage' },
+    ]);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Validation failed');
+  });
+
+  it('validates roadmap fields and returns success', () => {
+    const result = applyAssignments(baseRoadmap, [
+      { field: 'description', operator: '=', value: 'Updated description' },
+    ]);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect((result.value as Record<string, unknown>).description).toBe(
+      'Updated description',
+    );
+  });
+
+  it('rejects invalid roadmap values via zod', () => {
+    const result = applyAssignments(baseRoadmap, [
+      { field: 'title', operator: '=', value: '' },
+    ]);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Validation failed');
+  });
+
+  it('rejects unknown entity types', () => {
+    const mystery = {
+      ...baseEpic,
+      type: 'sprint',
+    } as unknown as ParsedEntity;
+    const result = applyAssignments(mystery, [
+      { field: 'title', operator: '=', value: 'New' },
+    ]);
+    // sprint type isn't listed in applyAssignments switch, so it hits default
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('Unknown entity type');
+  });
 });

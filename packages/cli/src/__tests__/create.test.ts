@@ -110,6 +110,7 @@ describe('gitpm create story', () => {
         milestones: [],
         roadmaps: [],
         prds: [],
+        sprints: [],
         errors: [],
       },
     });
@@ -218,6 +219,40 @@ describe('gitpm create epic', () => {
       expect.objectContaining({ milestoneId: 'ms_abc' }),
     );
   });
+
+  it('exits 1 when createEpic fails', async () => {
+    mockCreateEpic.mockResolvedValue({
+      ok: false,
+      error: { message: 'epic error' },
+    });
+
+    await expect(
+      run('epic', '--title', 'Broken', '--meta-dir', '/tmp'),
+    ).rejects.toThrow('process.exit');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('parses labels for epic', async () => {
+    mockCreateEpic.mockResolvedValue({
+      ok: true,
+      value: { filePath: '/tmp/.meta/epics/test/epic.md', id: 'ep_003' },
+    });
+
+    await run(
+      'epic',
+      '--title',
+      'Labeled',
+      '--labels',
+      'auth, ui',
+      '--meta-dir',
+      '/tmp',
+    );
+
+    expect(mockCreateEpic).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ labels: ['auth', 'ui'] }),
+    );
+  });
 });
 
 describe('gitpm create milestone', () => {
@@ -271,5 +306,110 @@ describe('gitpm create milestone', () => {
       expect.any(String),
       expect.objectContaining({ targetDate: '2026-06-01' }),
     );
+  });
+
+  it('exits 1 when createMilestone fails', async () => {
+    mockCreateMilestone.mockResolvedValue({
+      ok: false,
+      error: { message: 'milestone error' },
+    });
+
+    await expect(
+      run('milestone', '--title', 'Bad', '--meta-dir', '/tmp'),
+    ).rejects.toThrow('process.exit');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+});
+
+describe('gitpm create story — epic lookup', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.resetAllMocks();
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    _errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('process.exit');
+    }) as never);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('exits 1 when parseTree fails during epic lookup', async () => {
+    mockParseTree.mockResolvedValue({
+      ok: false,
+      error: { message: 'parse tree error' },
+    });
+
+    await expect(
+      run('story', '--title', 'X', '--epic', 'ep_x', '--meta-dir', '/tmp'),
+    ).rejects.toThrow('process.exit');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('finds epic by slug when ID does not match', async () => {
+    mockParseTree.mockResolvedValue({
+      ok: true,
+      value: {
+        epics: [
+          {
+            id: 'ep_abc',
+            filePath: '/tmp/.meta/epics/auth-flow/epic.md',
+          },
+        ],
+        stories: [],
+        milestones: [],
+        roadmaps: [],
+        prds: [],
+        sprints: [],
+        errors: [],
+      },
+    });
+    mockCreateStory.mockResolvedValue({
+      ok: true,
+      value: {
+        filePath: '/tmp/.meta/epics/auth-flow/stories/x.md',
+        id: 'st_1',
+      },
+    });
+
+    await run(
+      'story',
+      '--title',
+      'X',
+      '--epic',
+      'auth-flow',
+      '--meta-dir',
+      '/tmp',
+    );
+
+    expect(mockCreateStory).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        epicId: 'ep_abc',
+        epicSlug: 'auth-flow',
+      }),
+    );
+  });
+
+  it('exits 1 when epic cannot be resolved by ID or slug', async () => {
+    mockParseTree.mockResolvedValue({
+      ok: true,
+      value: {
+        epics: [],
+        stories: [],
+        milestones: [],
+        roadmaps: [],
+        prds: [],
+        sprints: [],
+        errors: [],
+      },
+    });
+
+    await expect(
+      run('story', '--title', 'X', '--epic', 'missing', '--meta-dir', '/tmp'),
+    ).rejects.toThrow('process.exit');
+    expect(exitSpy).toHaveBeenCalledWith(1);
   });
 });

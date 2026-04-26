@@ -67,6 +67,8 @@ export async function syncWithGitLab(
       conflicts: [],
       resolved: 0,
       skipped: 0,
+      pulledPaths: [],
+      pushedPaths: [],
     };
 
     // 4. Build entity lookup maps
@@ -123,6 +125,7 @@ export async function syncWithGitLab(
             };
           }
           result.pulled.milestones++;
+          result.pulledPaths.push(localEntity.filePath);
           continue;
         }
 
@@ -151,6 +154,7 @@ export async function syncWithGitLab(
             };
           }
           result.pushed.milestones++;
+          result.pushedPaths.push(localEntity.filePath);
         } else if (direction === 'remote_changed') {
           if (!dryRun) {
             applyRemoteMilestone(localEntity, remoteMilestone);
@@ -165,6 +169,7 @@ export async function syncWithGitLab(
             };
           }
           result.pulled.milestones++;
+          result.pulledPaths.push(localEntity.filePath);
         } else {
           // Both changed — conflict
           const conflict: FieldConflict = {
@@ -237,6 +242,7 @@ export async function syncWithGitLab(
             };
           }
           result.pulled.issues++;
+          result.pulledPaths.push(localEntity.filePath);
           continue;
         }
 
@@ -269,6 +275,7 @@ export async function syncWithGitLab(
             };
           }
           result.pushed.issues++;
+          result.pushedPaths.push(localEntity.filePath);
         } else if (direction === 'remote_changed') {
           if (
             !dryRun &&
@@ -286,6 +293,7 @@ export async function syncWithGitLab(
             };
           }
           result.pulled.issues++;
+          result.pulledPaths.push(localEntity.filePath);
         } else {
           // Both changed — conflict
           const conflict: FieldConflict = {
@@ -372,6 +380,7 @@ export async function syncWithGitLab(
           };
         }
         result.pushed.milestones++;
+        result.pushedPaths.push(entity.filePath);
       } else {
         if (!dryRun) {
           const params = entityToGlIssue(entity);
@@ -405,6 +414,7 @@ export async function syncWithGitLab(
           };
         }
         result.pushed.issues++;
+        result.pushedPaths.push(entity.filePath);
       }
     }
 

@@ -85,6 +85,7 @@ describe('validateTree', () => {
       milestones: [],
       roadmaps: [],
       prds: [],
+      sprints: [],
       errors: [],
     };
 
@@ -131,6 +132,7 @@ describe('validateTree', () => {
       milestones: [],
       roadmaps: [],
       prds: [],
+      sprints: [],
       errors: [],
     };
 
@@ -141,6 +143,60 @@ describe('validateTree', () => {
     const result = validateTree(resolved.value);
     expect(result.warnings.length).toBe(1);
     expect(result.warnings[0].code).toBe('STATUS_INCONSISTENCY');
+  });
+
+  it('detects circular dependencies in the dependency graph', () => {
+    // Create a story and an epic that share the same ID. This causes the
+    // adjacency map (keyed by ID) to produce a self-loop once the story's
+    // epic_ref edge is added: 'X' → 'X'. The cycle detector then surfaces
+    // a CIRCULAR_DEPENDENCY error (alongside a DUPLICATE_ID, which we
+    // also verify is reported).
+    const tree: MetaTree = {
+      stories: [
+        {
+          type: 'story',
+          id: 'X',
+          title: 'Self-ref story',
+          status: 'todo',
+          priority: 'medium',
+          labels: [],
+          epic_ref: { id: 'X' },
+          body: '',
+          filePath: '/test/st.md',
+        },
+      ],
+      epics: [
+        {
+          type: 'epic',
+          id: 'X',
+          title: 'Duplicate-id epic',
+          status: 'todo',
+          priority: 'medium',
+          labels: [],
+          body: '',
+          filePath: '/test/ep.md',
+        },
+      ],
+      milestones: [],
+      roadmaps: [],
+      prds: [],
+      sprints: [],
+      errors: [],
+    };
+
+    const resolved = resolveRefs(tree);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+
+    const result = validateTree(resolved.value);
+    expect(result.valid).toBe(false);
+    const cycleErrors = result.errors.filter(
+      (e) => e.code === 'CIRCULAR_DEPENDENCY',
+    );
+    expect(cycleErrors.length).toBeGreaterThan(0);
+    expect(cycleErrors[0].message).toContain('Circular dependency');
+    const dupErrors = result.errors.filter((e) => e.code === 'DUPLICATE_ID');
+    expect(dupErrors.length).toBeGreaterThan(0);
   });
 
   it('passes when epic is done and all stories are done', () => {
@@ -173,6 +229,7 @@ describe('validateTree', () => {
       milestones: [],
       roadmaps: [],
       prds: [],
+      sprints: [],
       errors: [],
     };
 

@@ -534,6 +534,33 @@ describe('resolveEpicLink', () => {
     });
   });
 
+  describe('unknown strategy', () => {
+    it('returns null for an unrecognized strategy name', () => {
+      const epic = makeEpic('epic1', 'My Epic');
+      const story = makeStory('story1', 'My Story');
+      const ghStory = makeGhIssue({ number: 2 });
+
+      const ctx: LinkContext = {
+        ghIssues: [makeGhIssue({ number: 1 }), ghStory],
+        issueNumberToEntity: new Map([
+          [1, epic],
+          [2, story],
+        ]),
+        epicIssueNumberToEpic: new Map([[1, epic]]),
+        epicSubIssues: new Map(),
+      };
+
+      // Cast through unknown to bypass TS exhaustiveness check
+      const result = resolveEpicLink(
+        ghStory,
+        story,
+        ctx,
+        'nonexistent' as unknown as 'all',
+      );
+      expect(result).toBeNull();
+    });
+  });
+
   describe('score strategy (composite)', () => {
     it('links via sub-issues match (10 pts, above threshold)', () => {
       const epic = makeEpic('epic1', 'My Epic');

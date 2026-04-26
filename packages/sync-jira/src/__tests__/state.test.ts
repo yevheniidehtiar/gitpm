@@ -135,6 +135,76 @@ describe('createInitialState', () => {
   });
 });
 
+describe('computeContentHash — entity types', () => {
+  it('hashes PRD entities using status and body', () => {
+    const prd = {
+      type: 'prd' as const,
+      id: 'prd-1',
+      title: 'Feature',
+      status: 'draft' as const,
+      body: '  multiline\n  doc\n  ',
+      filePath: '.meta/prds/feature.md',
+    };
+    const hash = computeContentHash(prd);
+    expect(hash).toMatch(/^sha256:[a-f0-9]{64}$/);
+  });
+
+  it('hashes milestones using target_date', () => {
+    const ms = {
+      type: 'milestone' as const,
+      id: 'ms-1',
+      title: 'Q2',
+      status: 'in_progress' as const,
+      target_date: '2026-06-30T00:00:00Z',
+      body: 'Ship it',
+      filePath: '.meta/roadmap/milestones/q2.md',
+    };
+    const hash = computeContentHash(ms);
+    expect(hash).toMatch(/^sha256:[a-f0-9]{64}$/);
+  });
+
+  it('preserves sprint_id on milestone entries in createInitialState', () => {
+    const ms = {
+      type: 'milestone' as const,
+      id: 'ms-2',
+      title: 'Sprint A',
+      status: 'in_progress' as const,
+      body: '',
+      filePath: '.meta/roadmap/milestones/sprint-a.md',
+      jira: {
+        sprint_id: 7,
+        project_key: 'TEST',
+        site: 'test.atlassian.net',
+        last_sync_hash: '',
+        synced_at: '2026-01-01T00:00:00Z',
+      },
+    };
+    const state = createInitialState('test.atlassian.net', 'TEST', [ms]);
+    expect(state.entities['ms-2'].jira_sprint_id).toBe(7);
+  });
+});
+
+describe('saveState error handling', () => {
+  it('returns an error result when the target path cannot be written', async () => {
+    // Attempting to save beneath a file (as if the path segment were a dir)
+    // should fail, triggering the error branch.
+    const filePath = join(TEST_DIR, 'blocker');
+    mkdirSync(TEST_DIR, { recursive: true });
+    // Write a file named "blocker" so we can't mkdir under it
+    const { writeFileSync } = await import('node:fs');
+    writeFileSync(filePath, 'x');
+    const pseudoMeta = join(filePath, 'nested');
+
+    const result = await saveState(pseudoMeta, {
+      site: 's',
+      project_key: 'p',
+      last_sync: new Date().toISOString(),
+      entities: {},
+    });
+    expect(result.ok).toBe(false);
+  });
+});
+
 describe('saveState and loadState', () => {
   it('round-trips state to JSON', async () => {
     const state = createInitialState('test.atlassian.net', 'TEST', [

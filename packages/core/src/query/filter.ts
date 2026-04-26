@@ -21,6 +21,7 @@ export function filterEntities(
     ...tree.milestones,
     ...tree.roadmaps,
     ...tree.prds,
+    ...(tree.sprints ?? []),
   ];
 
   if (filter.type && filter.type.length > 0) {

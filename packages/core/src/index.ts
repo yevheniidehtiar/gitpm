@@ -15,6 +15,29 @@ export type {
 } from './adapter.js';
 export { isSyncAdapter } from './adapter.js';
 export type {
+  AuditConfig,
+  AuditItem,
+  AuditReport,
+  DuplicatePair,
+} from './analytics/audit.js';
+export { auditTree } from './analytics/audit.js';
+export type {
+  GraphData,
+  GraphEdge,
+  GraphNode,
+} from './analytics/graph-data.js';
+export { buildGraphData } from './analytics/graph-data.js';
+export type {
+  EpicProgress,
+  MilestoneProgress,
+  ProjectProgress,
+} from './analytics/progress.js';
+export {
+  computeEpicProgress,
+  computeMilestoneProgress,
+  computeProjectProgress,
+} from './analytics/progress.js';
+export type {
   ArchiveOptions,
   ArchiveResult,
 } from './archiver/index.js';
@@ -56,6 +79,7 @@ export type {
   ResolvedMilestone,
   ResolvedPrd,
   ResolvedRoadmap,
+  ResolvedSprint,
   ResolvedStory,
   ResolvedTree,
 } from './resolver/index.js';
@@ -71,6 +95,7 @@ export type {
   CreateEpicOptions,
   CreateMilestoneOptions,
   CreateResult,
+  CreateSprintOptions,
   CreateStoryOptions,
   FieldAssignment,
   MoveOptions,
@@ -80,6 +105,7 @@ export {
   applyAssignments,
   createEpic,
   createMilestone,
+  createSprint,
   createStory,
   moveStory,
   parseAssignment,

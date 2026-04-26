@@ -39,6 +39,16 @@ async function seedMetaDir(metaDir: string): Promise<void> {
   await writeFile(join(metaDir, 'roadmap.yaml'), '');
 }
 
+async function seedMetaDirWithSubtree(metaDir: string): Promise<void> {
+  await mkdir(join(metaDir, 'epics', 'auth', 'stories'), { recursive: true });
+  await writeFile(join(metaDir, 'roadmap.yaml'), '');
+  await writeFile(join(metaDir, 'epics', 'auth', 'epic.md'), '# Auth epic');
+  await writeFile(
+    join(metaDir, 'epics', 'auth', 'stories', 'login.md'),
+    '# Login story',
+  );
+}
+
 // --- Tests ---
 
 describe('gitpm init', () => {
@@ -112,6 +122,23 @@ describe('gitpm init', () => {
     await run('test-proj', '--meta-dir', customDir);
 
     expect(mockScaffoldMeta).toHaveBeenCalledWith(customDir, 'test-proj');
+  });
+
+  it('prints nested directory tree (covers collectFiles recursion)', async () => {
+    const metaDir = join(tmpDir, '.meta');
+    mockScaffoldMeta.mockResolvedValue({ ok: true, value: undefined });
+    await seedMetaDirWithSubtree(metaDir);
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    await run('my-project', '--meta-dir', metaDir);
+
+    const output = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('epics/');
+    expect(output).toContain('auth/');
+    expect(output).toContain('stories/');
+    expect(output).toContain('epic.md');
+    expect(output).toContain('login.md');
   });
 
   describe('Claude Code skill scaffolding', () => {

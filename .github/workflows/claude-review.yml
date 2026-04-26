@@ -11,6 +11,19 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [master]
+    # Skip the workflow entirely on docs-only / .meta-only / license-only
+    # PRs. There's nothing for Claude to review or autofix in those, and
+    # spinning up two runners costs real money at scale. NOTE: if you
+    # ever mark "Claude Review" as a required status check, switch this
+    # to a per-job `paths-changed` pre-step instead — required checks
+    # that never get triggered will block merge on filtered PRs.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.meta/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.editorconfig'
 
 concurrency:
   group: claude-review-${{ github.event.pull_request.number }}
@@ -29,6 +42,11 @@ jobs:
     # Review historically finishes in 5–6 min; 20 min leaves headroom
     # for a slow run while preventing a hung session from tying up CI.
     timeout-minutes: 20
+    outputs:
+      # Surface the cache decision so `autofix-loop` can short-circuit
+      # without spinning up a runner when there's nothing new to fix.
+      cache_hit: ${{ steps.cache.outputs.hit }}
+      diff_hash: ${{ steps.cache.outputs.new_hash }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -105,6 +123,15 @@ jobs:
         if: steps.cache.outputs.hit != 'true'
         with:
           node-version: '22'
+
+      - name: Cache bun install
+        if: steps.cache.outputs.hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
 
       - name: Install dependencies
         if: steps.cache.outputs.hit != 'true'
@@ -457,8 +484,15 @@ jobs:
   autofix-loop:
     name: Claude Autofix Loop
     runs-on: ubuntu-latest
-    # Skip PRs from forks — we can't push to a fork branch from this workflow.
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # Wait for `review` so the autofix runner doesn't get billed for the
+    # 5–6 minutes it would otherwise sleep through review's run.
+    # `if: always()` is required because we want autofix to run even
+    # when review fails — that's the whole point.
+    needs: review
+    if: |
+      always() &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      needs.review.outputs.cache_hit != 'true'
     timeout-minutes: 60
     # Override workflow-level permissions with the broader set this job
     # needs: `contents: write` to push fix commits, plus `checks: read`
@@ -471,6 +505,39 @@ jobs:
       checks: read
       actions: read
     steps:
+      # Cheap up-front check: if every other CI job on HEAD is already
+      # complete and green, there's nothing to fix — exit before paying
+      # for the App token mint, checkout, bun install, and Claude CLI
+      # install. This catches the common "PR is green on first try" case
+      # where the loop would otherwise wake up, spin for 45 s, and exit.
+      - name: Pre-check — skip if everything is already green
+        id: precheck
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          SELF_JOBS='["Claude Autofix Loop"]'
+          # `gh api --paginate --jq '.check_runs[]'` flattens every page into
+          # one ndjson stream; `jq -s` then slurps the lot into a single array
+          # so TOTAL/PENDING/FAILING are accurate when there are >100 runs.
+          # (Without `--jq`, paginate emits one wrapper object per page and
+          # downstream filters silently see only the last page.)
+          CHECK_RUNS=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" --paginate --jq '.check_runs[]' \
+            | jq -s --argjson self "$SELF_JOBS" \
+                '[.[] | select(.name as $n | $self | index($n) | not)]')
+          TOTAL=$(echo "$CHECK_RUNS" | jq 'length')
+          PENDING=$(echo "$CHECK_RUNS" | jq '[.[] | select(.status != "completed")] | length')
+          FAILING=$(echo "$CHECK_RUNS" | jq '[.[] | select(.conclusion == "failure" or .conclusion == "timed_out" or .conclusion == "cancelled")] | length')
+          echo "checks=$TOTAL pending=$PENDING failing=$FAILING"
+          if [ "$TOTAL" -gt 0 ] && [ "$PENDING" -eq 0 ] && [ "$FAILING" -eq 0 ]; then
+            echo "All non-self checks already green — skipping autofix loop."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       # Generate a GitHub App token so autofix commits trigger new workflow
       # runs. The default GITHUB_TOKEN is subject to anti-loop protection —
       # pushes made with it do NOT dispatch new `pull_request` events, which
@@ -479,6 +546,7 @@ jobs:
       # secrets are the same GitHub App release-please.yml uses for its own
       # post-merge commits.
       - name: Generate GitHub App Token
+        if: steps.precheck.outputs.skip != 'true'
         id: app-token
         uses: actions/create-github-app-token@v1
         with:
@@ -486,28 +554,43 @@ jobs:
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
 
       - uses: actions/checkout@v4
+        if: steps.precheck.outputs.skip != 'true'
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
           token: ${{ steps.app-token.outputs.token }}
 
       - uses: oven-sh/setup-bun@v2
+        if: steps.precheck.outputs.skip != 'true'
         with:
           bun-version: latest
 
       - uses: actions/setup-node@v4
+        if: steps.precheck.outputs.skip != 'true'
         with:
           node-version: '22'
 
+      - name: Cache bun install
+        if: steps.precheck.outputs.skip != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
       - name: Install dependencies
+        if: steps.precheck.outputs.skip != 'true'
         run: bun install
 
       - name: Configure git identity
+        if: steps.precheck.outputs.skip != 'true'
         run: |
           git config user.name "claude-autofix[bot]"
           git config user.email "claude-autofix@users.noreply.github.com"
 
       - name: Wait-and-fix loop
+        if: steps.precheck.outputs.skip != 'true'
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # Use the App token so `git push` below triggers new workflow runs
@@ -559,10 +642,13 @@ jobs:
             echo "Current HEAD: $HEAD_SHA"
 
             # Fetch all check runs for this commit, excluding this workflow's
-            # own jobs so we don't wait on ourselves.
-            CHECK_RUNS=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" --paginate \
-              | jq --argjson self "$SELF_JOBS" \
-                  '[.check_runs[] | select(.name as $n | $self | index($n) | not)]')
+            # own jobs so we don't wait on ourselves. Use `--jq '.check_runs[]'`
+            # + `jq -s` so pagination above 100 runs collapses into one array
+            # (without it, each page becomes a separate jq input and the
+            # downstream length/select filters only see the last page).
+            CHECK_RUNS=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" --paginate --jq '.check_runs[]' \
+              | jq -s --argjson self "$SELF_JOBS" \
+                  '[.[] | select(.name as $n | $self | index($n) | not)]')
 
             TOTAL=$(echo "$CHECK_RUNS" | jq 'length')
             if [ "$TOTAL" -eq 0 ]; then

@@ -1,6 +1,6 @@
 {
   "name": "@gitpm/sync-gitlab",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "license": "MIT",
   "description": "GitLab sync adapter for gitpm — bidirectional sync between .meta/ and GitLab Issues/Milestones",
   "keywords": [

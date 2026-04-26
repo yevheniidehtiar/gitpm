@@ -6,6 +6,7 @@ export type {
   ResolvedMilestone,
   ResolvedPrd,
   ResolvedRoadmap,
+  ResolvedSprint,
   ResolvedStory,
   ResolvedTree,
 } from './types.js';

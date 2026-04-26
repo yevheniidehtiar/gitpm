@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
-import DOMPurify from 'dompurify';
 import { useEffect, useState } from 'react';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { ConfirmDialog } from '../components/ConfirmDialog.js';
 import { Spinner } from '../components/Spinner.js';
 import { StatusBadge } from '../components/StatusBadge.js';
@@ -24,6 +25,8 @@ const STATUSES = [
 ];
 const PRIORITIES = ['low', 'medium', 'high', 'critical'];
 
+type ViewMode = 'edit' | 'preview' | 'split';
+
 export function EntityEditor() {
   const { id } = useParams({ from: '/entity/$id' });
   const { data: entity, isLoading } = useEntity(id);
@@ -35,7 +38,7 @@ export function EntityEditor() {
 
   const [form, setForm] = useState<Partial<Entity>>({});
   const [body, setBody] = useState('');
-  const [preview, setPreview] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('edit');
   const [labelInput, setLabelInput] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -330,32 +333,42 @@ export function EntityEditor() {
         {/* Right: body editor */}
         <div className="w-2/3">
           <div className="flex items-center gap-2 mb-2">
-            <button
-              type="button"
-              onClick={() => setPreview(false)}
-              className={`px-2 py-1 text-xs rounded ${!preview ? 'bg-gray-200 font-medium' : 'text-gray-500 hover:bg-gray-100'}`}
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              onClick={() => setPreview(true)}
-              className={`px-2 py-1 text-xs rounded ${preview ? 'bg-gray-200 font-medium' : 'text-gray-500 hover:bg-gray-100'}`}
-            >
-              Preview
-            </button>
+            {(['edit', 'preview', 'split'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                className={`px-2 py-1 text-xs rounded ${viewMode === mode ? 'bg-gray-200 font-medium' : 'text-gray-500 hover:bg-gray-100'}`}
+              >
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </button>
+            ))}
           </div>
-          {preview ? (
-            <div className="markdown-preview border border-gray-200 rounded p-4 min-h-[400px] bg-white text-sm">
-              <MarkdownPreview text={body} />
-            </div>
-          ) : (
+          {viewMode === 'edit' && (
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
               className="w-full h-[400px] p-4 text-sm font-mono border border-gray-300 rounded resize-y focus:outline-none focus:ring-2 focus:ring-blue-400"
               placeholder="Write markdown content..."
             />
+          )}
+          {viewMode === 'preview' && (
+            <div className="markdown-preview border border-gray-200 rounded p-4 min-h-[400px] bg-white text-sm">
+              <MarkdownPreview text={body} />
+            </div>
+          )}
+          {viewMode === 'split' && (
+            <div className="flex gap-4">
+              <textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                className="w-1/2 h-[400px] p-4 text-sm font-mono border border-gray-300 rounded resize-y focus:outline-none focus:ring-2 focus:ring-blue-400"
+                placeholder="Write markdown content..."
+              />
+              <div className="w-1/2 markdown-preview border border-gray-200 rounded p-4 min-h-[400px] max-h-[400px] overflow-y-auto bg-white text-sm">
+                <MarkdownPreview text={body} />
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -389,26 +402,6 @@ function Field({
   );
 }
 
-export function renderMarkdown(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/^(?!<[hulo])(.+)$/gm, '<p>$1</p>');
-}
-
 function MarkdownPreview({ text }: { text: string }) {
-  const html = DOMPurify.sanitize(renderMarkdown(text));
-
-  // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized by DOMPurify
-  return <div dangerouslySetInnerHTML={{ __html: html }} />;
+  return <Markdown remarkPlugins={[remarkGfm]}>{text}</Markdown>;
 }

@@ -6,21 +6,30 @@ name: Post-Merge Sync
 # stories as done` commit written by `release-please.yml`. `gitpm push` then
 # closes every GitHub issue whose story is now `status: done` (mapper at
 # packages/sync-github/src/mapper.ts:232-235 maps done/cancelled → closed).
+#
+# Also exposes `workflow_dispatch` so a maintainer can run the sync manually
+# from the Actions UI — useful when the workflow was disabled or a previous
+# run failed and `.meta/` is out of sync with GitHub Issues.
 
 on:
   push:
     branches: [master]
     paths:
       - '.meta/**'
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   issues: write
 
 jobs:
   sync-to-github:
     name: Sync .meta/ to GitHub Issues
     runs-on: ubuntu-latest
+    # workflow_dispatch lets the UI pick any branch, but the writeback step
+    # below pushes to master — guard against a misclick that would overwrite
+    # master with a feature branch's .meta/ state.
+    if: github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v4
 
@@ -42,3 +51,23 @@ jobs:
         run: node packages/cli/dist/index.js push --token "$GITHUB_TOKEN" --yes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Persist sync writebacks (github.issue_number on entities,
+      # .meta/sync/github-state.json) to a dedicated snapshot branch.
+      # Master branch protection blocks direct bot pushes (PR + signed
+      # commits required), so this branch is the side-channel record of
+      # the latest sync state — maintainers can cherry-pick or open a PR
+      # from it when reconciliation is needed. PR validation
+      # (`pr-validation.yml`) and the pre-push hook (`.githooks/pre-push`)
+      # block stale `.meta/` from reaching master in the first place.
+      - name: Snapshot sync writebacks
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add .meta/
+          if git diff --cached --quiet; then
+            echo "No sync writebacks to commit."
+            exit 0
+          fi
+          git commit -m "chore(pm): persist GitHub sync metadata"
+          git push -f origin HEAD:chore/sync-state-snapshot

@@ -2,9 +2,15 @@ export type {
   CreateEpicOptions,
   CreateMilestoneOptions,
   CreateResult,
+  CreateSprintOptions,
   CreateStoryOptions,
 } from './create-entity.js';
-export { createEpic, createMilestone, createStory } from './create-entity.js';
+export {
+  createEpic,
+  createMilestone,
+  createSprint,
+  createStory,
+} from './create-entity.js';
 export type { MoveOptions, MoveResult } from './move-entity.js';
 export { moveStory } from './move-entity.js';
 export { scaffoldMeta } from './scaffold.js';

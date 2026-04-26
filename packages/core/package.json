@@ -1,6 +1,6 @@
 {
   "name": "@gitpm/core",
-  "version": "0.1.7",
+  "version": "0.1.11",
   "license": "MIT",
   "description": "Schema engine for gitpm — parse, validate, and serialize .meta/ project management trees",
   "keywords": [
