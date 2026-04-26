@@ -4,14 +4,16 @@ This page documents `.github/workflows/claude-review.yml`, the workflow that run
 
 ## Overview
 
-The workflow contains **two jobs that start in parallel**:
+The workflow contains **two jobs**:
 
 | Job | Wall-clock | Cap | Permissions | Purpose |
 |---|---|---|---|---|
 | `review` | 5–6 min typical | 20 min | `contents: read`, `pull-requests: write`, `issues: write` | Review the diff, post findings as a PR comment, gate the check on critical-severity findings |
 | `autofix-loop` | up to 60 min | 60 min | `contents: write`, `checks: read`, `actions: read`, plus PR/issue write | Wait for every other check on HEAD to settle, then ask Claude to fix any failures and push the fix back to the PR branch |
 
-They are *parallel in start time*, but `autofix-loop` spends most of its life polling. It is effectively gated on every other check (including `review`) reaching a terminal state.
+`autofix-loop` declares `needs: review` so it does not start until `review` has finished. This avoids billing the autofix runner for the 5–6 min it would otherwise sleep through review's run.
+
+The workflow itself is filtered with `paths-ignore` for docs-only / `.meta/`-only / `LICENSE` / `.gitignore` / `.editorconfig` PRs — those don't trigger any runner. **Caveat:** if you ever mark "Claude Review" as a required status check, switch this to a per-job `paths-changed` pre-step instead, since required checks that never get triggered will block merge on filtered PRs.
 
 ## `review` job
 
@@ -33,7 +35,11 @@ Failure modes the gate handles:
 
 ## `autofix-loop` job
 
-Skipped on fork PRs (`github.event.pull_request.head.repo.full_name == github.repository`), since the workflow can't push to a fork branch.
+Skipped on fork PRs (`github.event.pull_request.head.repo.full_name == github.repository`), since the workflow can't push to a fork branch. Also skipped when `review` short-circuited on its diff-hash cache (no new code since a known-green review, so there's nothing for autofix to do) — the `if:` condition checks `needs.review.outputs.cache_hit`.
+
+### Pre-check short-circuit
+
+Before paying for the App-token mint, checkout, bun install, and Claude CLI install, the job runs a single `gh api .../check-runs` call. If every non-self check on HEAD is already complete and green, the rest of the steps are skipped via `steps.precheck.outputs.skip`. This catches the common "PR was green on first try" case where the loop would otherwise wake up, spin for 45 s, and exit having done nothing.
 
 ### App token (not `GITHUB_TOKEN`)
 
