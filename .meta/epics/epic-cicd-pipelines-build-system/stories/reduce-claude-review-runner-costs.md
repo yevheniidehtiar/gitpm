@@ -12,7 +12,11 @@ labels:
 estimate: null
 epic_ref:
   id: 0KmESSRSd002
-github: null
+github:
+  issue_number: 216
+  repo: yevheniidehtiar/gitpm
+  last_sync_hash: sha256:2f9c09de0c5d7b88783ca6d7c613b1c9316e07c21449a41bbb69e4d21706ad89
+  synced_at: 2026-04-26T09:40:17.063Z
 created_at: 2026-04-26T00:00:00.000Z
 updated_at: 2026-04-26T00:00:00.000Z
 ---
