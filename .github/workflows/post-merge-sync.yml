@@ -26,6 +26,10 @@ jobs:
   sync-to-github:
     name: Sync .meta/ to GitHub Issues
     runs-on: ubuntu-latest
+    # workflow_dispatch lets the UI pick any branch, but the writeback step
+    # below pushes to master — guard against a misclick that would overwrite
+    # master with a feature branch's .meta/ state.
+    if: github.ref == 'refs/heads/master'
     steps:
       - uses: actions/checkout@v4
 
