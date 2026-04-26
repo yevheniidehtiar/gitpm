@@ -39,6 +39,25 @@ jobs:
       - name: Test
         run: npx vitest run
 
+  go-test:
+    name: Go Test & Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: go/go.sum
+
+      - name: Build
+        working-directory: go
+        run: go build ./...
+
+      - name: Test
+        working-directory: go
+        run: go test -race ./...
+
   ui-e2e:
     name: UI E2E (Kanban)
     runs-on: ubuntu-latest

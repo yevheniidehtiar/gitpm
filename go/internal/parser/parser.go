@@ -21,6 +21,8 @@ type MetaTree struct {
 }
 
 // ParseTree reads all entities from the .meta/ directory tree.
+// Returns an empty MetaTree (not an error) if root does not exist,
+// so callers can safely operate on repos without a .meta/ directory.
 func ParseTree(root string) (*MetaTree, error) {
 	// TODO: implement — walk root dir, parse frontmatter+YAML files into entities
 	return &MetaTree{}, nil
