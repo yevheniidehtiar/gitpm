@@ -62,6 +62,10 @@ describe('importFromGitHub', () => {
     expect(result.value.epics).toBe(2);
     expect(result.value.stories).toBe(4); // issues 3,4,5,6 (PR filtered out)
     expect(result.value.totalFiles).toBeGreaterThan(0);
+    expect(result.value.writtenPaths).toHaveLength(9);
+    expect(result.value.writtenPaths.every((p) => p.startsWith('.meta/'))).toBe(
+      true,
+    );
   });
 
   it('creates a valid .meta tree', async () => {

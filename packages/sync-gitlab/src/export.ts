@@ -46,6 +46,7 @@ export async function exportToGitLab(
       created: { milestones: 0, issues: 0 },
       updated: { milestones: 0, issues: 0 },
       totalChanges: 0,
+      exportedPaths: [],
     };
 
     // 4. Process milestones
@@ -78,6 +79,7 @@ export async function exportToGitLab(
             remote_hash: hash,
             synced_at: new Date().toISOString(),
           };
+          result.exportedPaths.push(milestone.filePath);
         }
         result.created.milestones++;
       } else {
@@ -110,6 +112,7 @@ export async function exportToGitLab(
               remote_hash: currentHash,
               synced_at: new Date().toISOString(),
             };
+            result.exportedPaths.push(milestone.filePath);
           }
           result.updated.milestones++;
         }
@@ -178,6 +181,7 @@ export async function exportToGitLab(
             remote_hash: hash,
             synced_at: new Date().toISOString(),
           };
+          result.exportedPaths.push(entity.filePath);
         }
         result.created.issues++;
       } else {
@@ -220,6 +224,7 @@ export async function exportToGitLab(
               remote_hash: currentHash,
               synced_at: new Date().toISOString(),
             };
+            result.exportedPaths.push(entity.filePath);
           }
           result.updated.issues++;
         }

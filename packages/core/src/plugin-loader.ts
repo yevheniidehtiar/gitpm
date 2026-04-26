@@ -1,7 +1,12 @@
 import { access, readdir, readFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import type { SyncAdapter } from './adapter.js';
+import type {
+  ExportResult,
+  ImportResult,
+  SyncAdapter,
+  SyncResult,
+} from './adapter.js';
 import { isSyncAdapter } from './adapter.js';
 import type { GitpmConfig, HookEvent } from './config.js';
 import { createDefaultGitpmConfig, gitpmConfigSchema } from './config.js';
@@ -14,11 +19,20 @@ const CONFIG_FILENAMES = [
   'gitpm.config.json',
 ];
 
-export interface HookContext {
+interface BaseHookContext {
   metaDir: string;
-  event: HookEvent;
   adapterName?: string;
 }
+
+/**
+ * Discriminated by `event` so post-* hooks see a typed `result` and pre-* hooks
+ * have no `result` field at all.
+ */
+export type HookContext =
+  | (BaseHookContext & { event: 'pre-import' | 'pre-export' | 'pre-sync' })
+  | (BaseHookContext & { event: 'post-import'; result: ImportResult })
+  | (BaseHookContext & { event: 'post-export'; result: ExportResult })
+  | (BaseHookContext & { event: 'post-sync'; result: SyncResult });
 
 /**
  * Load gitpm.config from the project root directory.

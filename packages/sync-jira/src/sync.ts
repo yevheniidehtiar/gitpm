@@ -74,6 +74,8 @@ export async function syncWithJira(
       conflicts: [],
       resolved: 0,
       skipped: 0,
+      pulledPaths: [],
+      pushedPaths: [],
     };
 
     // 4. Build entity lookup maps
@@ -143,6 +145,7 @@ export async function syncWithJira(
             };
           }
           result.pulled.issues++;
+          result.pulledPaths.push(localEntity.filePath);
           continue;
         }
 
@@ -195,6 +198,7 @@ export async function syncWithJira(
             };
           }
           result.pushed.issues++;
+          result.pushedPaths.push(localEntity.filePath);
         } else if (direction === 'remote_changed') {
           if (
             !dryRun &&
@@ -212,6 +216,7 @@ export async function syncWithJira(
             };
           }
           result.pulled.issues++;
+          result.pulledPaths.push(localEntity.filePath);
         } else {
           // Both changed — conflict
           const conflict: FieldConflict = {
@@ -304,6 +309,7 @@ export async function syncWithJira(
         };
       }
       result.pushed.issues++;
+      result.pushedPaths.push(entity.filePath);
     }
 
     // 7. Save state

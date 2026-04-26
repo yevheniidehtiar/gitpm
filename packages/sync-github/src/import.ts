@@ -184,6 +184,7 @@ export async function importFromGitHub(
 
     // 8. Write all entities to disk
     let totalFiles = 0;
+    const writtenPaths: string[] = [];
     // filePath values start with ".meta/", replace that prefix with the actual metaDir
     const resolveEntityPath = (filePath: string) => {
       const relative = filePath.replace(/^\.meta\//, '');
@@ -195,6 +196,7 @@ export async function importFromGitHub(
     const roadmapResult = await writeFile(roadmap, roadmapPath);
     if (!roadmapResult.ok) return roadmapResult;
     totalFiles++;
+    writtenPaths.push(roadmap.filePath);
 
     // Write milestones
     for (const ms of milestones) {
@@ -202,6 +204,7 @@ export async function importFromGitHub(
       const result = await writeFile(ms, msPath);
       if (!result.ok) return result;
       totalFiles++;
+      writtenPaths.push(ms.filePath);
     }
 
     // Write epics
@@ -210,6 +213,7 @@ export async function importFromGitHub(
       const result = await writeFile(epic, epicPath);
       if (!result.ok) return result;
       totalFiles++;
+      writtenPaths.push(epic.filePath);
     }
 
     // Write stories
@@ -218,6 +222,7 @@ export async function importFromGitHub(
       const result = await writeFile(story, storyPath);
       if (!result.ok) return result;
       totalFiles++;
+      writtenPaths.push(story.filePath);
     }
 
     // 9. Save config
@@ -239,6 +244,7 @@ export async function importFromGitHub(
         epics: epics.length,
         stories: stories.length,
         totalFiles,
+        writtenPaths,
       },
     };
   } catch (err) {

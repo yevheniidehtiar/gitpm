@@ -111,6 +111,7 @@ export const pushCommand = new Command('push')
       metaDir,
       event: 'post-export',
       adapterName: adapter.name,
+      result: result.value,
     });
   });
 

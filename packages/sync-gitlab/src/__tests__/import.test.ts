@@ -73,6 +73,10 @@ describe('importFromGitLab', () => {
     expect(result.value.stories).toBe(3);
     // total files = milestones + epics + stories + roadmap + config + state
     expect(result.value.totalFiles).toBe(2 + 2 + 3 + 1 + 1 + 1);
+    expect(result.value.writtenPaths).toHaveLength(8);
+    expect(result.value.writtenPaths.every((p) => p.startsWith('.meta/'))).toBe(
+      true,
+    );
   });
 
   it('creates valid tree structure', async () => {
