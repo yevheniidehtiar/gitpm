@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Pre-push hook: block pushes that would leave .meta/ out of sync with
+# GitHub Issues. Mirrors the meta-sync-check CI job in pr-validation.yml.
+#
+# Skips if no .meta/ files changed in the commits being pushed.
+# Skips if GITHUB_TOKEN is unavailable (CI handles it instead).
+# Bypass with GITPM_SKIP_SYNC_CHECK=1.
+
+set -e
+
+if [ "${GITPM_SKIP_SYNC_CHECK:-0}" = "1" ]; then
+  exit 0
+fi
+
+# Determine the diff range for files-changed detection.
+zero="0000000000000000000000000000000000000000"
+range=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ -z "$local_sha" ] && continue
+  [ "$local_sha" = "$zero" ] && continue
+  if [ "$remote_sha" = "$zero" ]; then
+    upstream=$(git rev-parse --verify --quiet origin/master 2>/dev/null || echo "")
+    [ -z "$upstream" ] && continue
+    range="$upstream..$local_sha"
+  else
+    range="$remote_sha..$local_sha"
+  fi
+  if git diff --name-only "$range" 2>/dev/null | grep -q '^\.meta/'; then
+    needs_check=1
+  fi
+done
+
+if [ "${needs_check:-0}" != "1" ]; then
+  exit 0
+fi
+
+if [ -z "${GITHUB_TOKEN:-}" ]; then
+  echo "[pre-push] GITHUB_TOKEN unset; skipping .meta/ sync check (CI will run it)."
+  exit 0
+fi
+
+if [ ! -f packages/cli/dist/index.js ]; then
+  echo "[pre-push] Building gitpm CLI for sync check..."
+  bun run build >/dev/null
+fi
+
+OUTPUT=$(node packages/cli/dist/index.js push --token "$GITHUB_TOKEN" --dry-run 2>&1)
+NEW_ISSUES=$(echo "$OUTPUT" | awk '/^  New issues:/ {print $NF}')
+NEW_MILESTONES=$(echo "$OUTPUT" | awk '/^  New milestones:/ {print $NF}')
+NEW_ISSUES=${NEW_ISSUES:-0}
+NEW_MILESTONES=${NEW_MILESTONES:-0}
+
+if [ "$NEW_ISSUES" -gt 0 ] || [ "$NEW_MILESTONES" -gt 0 ]; then
+  echo
+  echo "[pre-push] Stale .meta/ state: would create $NEW_ISSUES new issues and $NEW_MILESTONES new milestones."
+  echo "[pre-push] Run 'gitpm push' locally to populate github.issue_number, then commit the result."
+  echo "[pre-push] To bypass: GITPM_SKIP_SYNC_CHECK=1 git push ..."
+  exit 1
+fi
+
+echo "[pre-push] .meta/ sync check passed."
