@@ -56,15 +56,22 @@ type JiraSync struct {
 }
 
 type Result[T any] struct {
-	Ok    bool   `json:"ok"`
-	Value T      `json:"value,omitempty"`
-	Error string `json:"error,omitempty"`
+	Ok    bool  `json:"ok"`
+	Value T     `json:"value,omitempty"`
+	Err   error `json:"-"`
+}
+
+func (r Result[T]) ErrorString() string {
+	if r.Err != nil {
+		return r.Err.Error()
+	}
+	return ""
 }
 
 func Ok[T any](value T) Result[T] {
 	return Result[T]{Ok: true, Value: value}
 }
 
-func Err[T any](err error) Result[T] {
-	return Result[T]{Ok: false, Error: err.Error()}
+func Error[T any](err error) Result[T] {
+	return Result[T]{Ok: false, Err: err}
 }

@@ -1,6 +1,7 @@
 package schema_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/yevheniidehtiar/gitpm/internal/schema"
@@ -49,5 +50,24 @@ func TestResultOk(t *testing.T) {
 	}
 	if r.Value != 42 {
 		t.Errorf("expected Value=42, got %d", r.Value)
+	}
+	if r.Err != nil {
+		t.Errorf("expected nil error, got %v", r.Err)
+	}
+}
+
+func TestResultError(t *testing.T) {
+	r := schema.Error[int](fmt.Errorf("something failed"))
+	if r.Ok {
+		t.Error("expected Ok to be false")
+	}
+	if r.Err == nil {
+		t.Fatal("expected non-nil error")
+	}
+	if r.Err.Error() != "something failed" {
+		t.Errorf("expected 'something failed', got %q", r.Err.Error())
+	}
+	if r.ErrorString() != "something failed" {
+		t.Errorf("ErrorString mismatch: %q", r.ErrorString())
 	}
 }

@@ -9,9 +9,12 @@ import (
 func TestParseTreeReturnsEmptyForMissingDir(t *testing.T) {
 	tree, err := parser.ParseTree("/nonexistent/path")
 	if err != nil {
-		t.Skipf("ParseTree not yet implemented: %v", err)
+		t.Fatalf("ParseTree returned unexpected error: %v", err)
 	}
 	if tree == nil {
-		t.Error("expected non-nil MetaTree")
+		t.Fatal("expected non-nil MetaTree")
+	}
+	if len(tree.Stories)+len(tree.Epics)+len(tree.Milestones) != 0 {
+		t.Error("expected empty tree for nonexistent directory")
 	}
 }

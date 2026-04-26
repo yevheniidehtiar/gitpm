@@ -1,6 +1,8 @@
 package writer
 
 import (
+	"fmt"
+
 	"github.com/yevheniidehtiar/gitpm/internal/schema"
 )
 
@@ -30,14 +32,12 @@ type MoveOptions struct {
 
 // WriteFile serializes an entity back to its YAML frontmatter + markdown file.
 func WriteFile(entity schema.Entity) error {
-	// TODO: implement — marshal frontmatter, combine with body, write to disk
-	return nil
+	return fmt.Errorf("WriteFile not implemented")
 }
 
 // ScaffoldMeta creates the initial .meta/ directory structure.
 func ScaffoldMeta(root string) error {
-	// TODO: implement — create epics/, stories/, roadmap/ dirs and template files
-	return nil
+	return fmt.Errorf("ScaffoldMeta not implemented")
 }
 
 // ToSlug converts a title to a filesystem-safe slug.

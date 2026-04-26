@@ -14,9 +14,9 @@ func TestFilterEntitiesNilOnEmpty(t *testing.T) {
 	}
 }
 
-func TestFormatEntitiesEmpty(t *testing.T) {
+func TestFormatEntitiesEmptySlice(t *testing.T) {
 	out := query.FormatEntities([]schema.Entity{}, query.FormatOptions{Format: "json"})
 	if out != "" {
-		t.Skipf("FormatEntities implemented, got: %s", out)
+		t.Errorf("expected empty string for stub, got: %q", out)
 	}
 }
