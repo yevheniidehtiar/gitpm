@@ -2,7 +2,7 @@
 type: story
 id: rXKv8mPq2WZc
 title: Reduce GitHub runner cost of Claude Review + Autofix Loop
-status: in_progress
+status: in_review
 priority: medium
 assignee: null
 labels:
