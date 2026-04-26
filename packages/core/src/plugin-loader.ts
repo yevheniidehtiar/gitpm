@@ -24,10 +24,7 @@ interface BaseHookContext {
   adapterName?: string;
 }
 
-/**
- * Discriminated by `event` so post-* hooks see a typed `result` and pre-* hooks
- * have no `result` field at all.
- */
+/** Discriminated by `event`: post-* hooks see a typed `result`; pre-* hooks have none. */
 export type HookContext =
   | (BaseHookContext & { event: 'pre-import' | 'pre-export' | 'pre-sync' })
   | (BaseHookContext & { event: 'post-import'; result: ImportResult })
