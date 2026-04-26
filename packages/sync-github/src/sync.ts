@@ -103,6 +103,8 @@ export async function syncWithGitHub(
       skipped: 0,
       resumedFromCheckpoint,
       failedEntities: [],
+      pulledPaths: [],
+      pushedPaths: [],
     };
 
     // Helper to save checkpoint on failure (skipped during dry runs)
@@ -194,6 +196,7 @@ export async function syncWithGitHub(
               };
             }
             result.pulled.milestones++;
+            result.pulledPaths.push(localEntity.filePath);
             processedEntityIds.add(entityId);
             continue;
           }
@@ -228,6 +231,7 @@ export async function syncWithGitHub(
               };
             }
             result.pushed.milestones++;
+            result.pushedPaths.push(localEntity.filePath);
           } else if (direction === 'remote_changed') {
             // Pull remote → local
             if (!dryRun) {
@@ -243,6 +247,7 @@ export async function syncWithGitHub(
               };
             }
             result.pulled.milestones++;
+            result.pulledPaths.push(localEntity.filePath);
           } else {
             // Both changed — conflict
             const conflict: FieldConflict = {
@@ -317,6 +322,7 @@ export async function syncWithGitHub(
               };
             }
             result.pulled.issues++;
+            result.pulledPaths.push(localEntity.filePath);
             processedEntityIds.add(entityId);
             continue;
           }
@@ -359,6 +365,7 @@ export async function syncWithGitHub(
               };
             }
             result.pushed.issues++;
+            result.pushedPaths.push(localEntity.filePath);
           } else if (direction === 'remote_changed') {
             if (
               !dryRun &&
@@ -376,6 +383,7 @@ export async function syncWithGitHub(
               };
             }
             result.pulled.issues++;
+            result.pulledPaths.push(localEntity.filePath);
           } else {
             // Both changed — conflict
             const conflict: FieldConflict = {
@@ -485,6 +493,7 @@ export async function syncWithGitHub(
             };
           }
           result.pushed.milestones++;
+          result.pushedPaths.push(entity.filePath);
         } else {
           if (!dryRun) {
             const params = entityToGhIssue(entity);
@@ -518,6 +527,7 @@ export async function syncWithGitHub(
             };
           }
           result.pushed.issues++;
+          result.pushedPaths.push(entity.filePath);
         }
 
         processedEntityIds.add(entity.id);

@@ -22,6 +22,7 @@ export interface ImportResult {
   epics: number;
   stories: number;
   totalFiles: number;
+  writtenPaths: string[];
 }
 
 export interface GitHubConfig {
@@ -89,6 +90,7 @@ export interface ExportResult {
   created: { milestones: number; issues: number };
   updated: { milestones: number; issues: number };
   totalChanges: number;
+  exportedPaths: string[];
 }
 
 export interface SyncOptions {
@@ -117,6 +119,8 @@ export interface SyncResult {
   skipped: number;
   resumedFromCheckpoint: boolean;
   failedEntities: { entityId: string; error: string }[];
+  pulledPaths: string[];
+  pushedPaths: string[];
 }
 
 export interface FieldChange {

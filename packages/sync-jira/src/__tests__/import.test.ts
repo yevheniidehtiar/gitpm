@@ -159,6 +159,13 @@ describe('importFromJira', () => {
     expect(result.value.epics).toBe(1);
     expect(result.value.stories).toBe(1);
     expect(result.value.totalFiles).toBe(1 + 1 + 1 + 1 + 1 + 1);
+    expect(result.value.writtenPaths).toHaveLength(4);
+    expect(result.value.writtenPaths).toContain(
+      '.meta/epics/auth-epic/epic.md',
+    );
+    expect(result.value.writtenPaths).toContain(
+      '.meta/epics/auth-epic/stories/login-form.md',
+    );
 
     const epicPath = join(metaDir, 'epics', 'auth-epic', 'epic.md');
     await expect(stat(epicPath)).resolves.toBeDefined();

@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -324,6 +324,47 @@ describe('runHooks', () => {
       tmpDir,
     );
     expect(result.ok).toBe(true);
+  });
+
+  it('passes result payload through to the hook', async () => {
+    const hookPath = join(tmpDir, 'hook-result.mjs');
+    const capturePath = join(tmpDir, 'captured.json');
+    await writeFile(
+      hookPath,
+      `import { writeFile } from 'node:fs/promises';
+export default async function(ctx) {
+  await writeFile(${JSON.stringify(capturePath)}, JSON.stringify(ctx.result));
+}`,
+    );
+
+    const config: GitpmConfig = {
+      adapters: [],
+      hooks: { 'post-import': hookPath },
+    };
+    const result = await runHooks(
+      config,
+      'post-import',
+      {
+        metaDir: '/tmp',
+        event: 'post-import',
+        result: {
+          milestones: 1,
+          epics: 2,
+          stories: 3,
+          totalFiles: 6,
+          writtenPaths: ['.meta/epics/foo.md', '.meta/stories/bar.md'],
+        },
+      },
+      tmpDir,
+    );
+    expect(result.ok).toBe(true);
+
+    const captured = JSON.parse(await readFile(capturePath, 'utf-8'));
+    expect(captured.writtenPaths).toEqual([
+      '.meta/epics/foo.md',
+      '.meta/stories/bar.md',
+    ]);
+    expect(captured.stories).toBe(3);
   });
 });
 

@@ -138,6 +138,7 @@ export const importCommand = new Command('import')
       metaDir,
       event: 'post-import',
       adapterName: adapter.name,
+      result: result.value,
     });
   });
 

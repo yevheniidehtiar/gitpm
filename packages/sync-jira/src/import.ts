@@ -156,6 +156,7 @@ export async function importFromJira(
 
     // 7. Write all entities to disk
     let totalFiles = 0;
+    const writtenPaths: string[] = [];
     const resolveEntityPath = (filePath: string) => {
       const relative = filePath.replace(/^\.meta\//, '');
       return join(metaDir, relative);
@@ -165,12 +166,14 @@ export async function importFromJira(
     const roadmapResult = await writeFile(roadmap, roadmapPath);
     if (!roadmapResult.ok) return roadmapResult;
     totalFiles++;
+    writtenPaths.push(roadmap.filePath);
 
     for (const ms of milestones) {
       const msPath = resolveEntityPath(ms.filePath);
       const result = await writeFile(ms, msPath);
       if (!result.ok) return result;
       totalFiles++;
+      writtenPaths.push(ms.filePath);
     }
 
     for (const epic of epics) {
@@ -178,6 +181,7 @@ export async function importFromJira(
       const result = await writeFile(epic, epicPath);
       if (!result.ok) return result;
       totalFiles++;
+      writtenPaths.push(epic.filePath);
     }
 
     for (const story of stories) {
@@ -185,6 +189,7 @@ export async function importFromJira(
       const result = await writeFile(story, storyPath);
       if (!result.ok) return result;
       totalFiles++;
+      writtenPaths.push(story.filePath);
     }
 
     // 8. Save config
@@ -211,6 +216,7 @@ export async function importFromJira(
         epics: epics.length,
         stories: stories.length,
         totalFiles,
+        writtenPaths,
       },
     };
   } catch (err) {

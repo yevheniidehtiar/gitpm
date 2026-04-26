@@ -199,6 +199,7 @@ export async function importFromGitLab(
 
     // 10. Write all entities to disk
     let totalFiles = 0;
+    const writtenPaths: string[] = [];
     const resolveEntityPath = (filePath: string) => {
       const relative = filePath.replace(/^\.meta\//, '');
       return join(metaDir, relative);
@@ -209,6 +210,7 @@ export async function importFromGitLab(
     const roadmapResult = await writeFile(roadmap, roadmapPath);
     if (!roadmapResult.ok) return roadmapResult;
     totalFiles++;
+    writtenPaths.push(roadmap.filePath);
 
     // Write milestones
     for (const ms of milestones) {
@@ -216,6 +218,7 @@ export async function importFromGitLab(
       const result = await writeFile(ms, msPath);
       if (!result.ok) return result;
       totalFiles++;
+      writtenPaths.push(ms.filePath);
     }
 
     // Write epics
@@ -224,6 +227,7 @@ export async function importFromGitLab(
       const result = await writeFile(epic, epicPath);
       if (!result.ok) return result;
       totalFiles++;
+      writtenPaths.push(epic.filePath);
     }
 
     // Write stories
@@ -232,6 +236,7 @@ export async function importFromGitLab(
       const result = await writeFile(story, storyPath);
       if (!result.ok) return result;
       totalFiles++;
+      writtenPaths.push(story.filePath);
     }
 
     // 11. Save config
@@ -253,6 +258,7 @@ export async function importFromGitLab(
         epics: epics.length,
         stories: stories.length,
         totalFiles,
+        writtenPaths,
       },
     };
   } catch (err) {

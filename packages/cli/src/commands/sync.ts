@@ -105,6 +105,7 @@ export const syncCommand = new Command('sync')
       metaDir,
       event: 'post-sync',
       adapterName: adapter.name,
+      result: result.value,
     });
   });
 

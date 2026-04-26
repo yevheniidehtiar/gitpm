@@ -43,6 +43,7 @@ export async function exportToJira(
       created: { milestones: 0, issues: 0 },
       updated: { milestones: 0, issues: 0 },
       totalChanges: 0,
+      exportedPaths: [],
     };
 
     // 4. Process epics and stories (milestones = sprints are typically
@@ -113,6 +114,7 @@ export async function exportToJira(
             remote_hash: hash,
             synced_at: new Date().toISOString(),
           };
+          result.exportedPaths.push(entity.filePath);
         }
         result.created.issues++;
       } else {
@@ -152,6 +154,7 @@ export async function exportToJira(
               remote_hash: currentHash,
               synced_at: new Date().toISOString(),
             };
+            result.exportedPaths.push(entity.filePath);
           }
           result.updated.issues++;
         }

@@ -7,12 +7,16 @@ export interface ImportResult {
   epics: number;
   stories: number;
   totalFiles: number;
+  /** Relative .meta/ paths of files written during import. */
+  writtenPaths: string[];
 }
 
 export interface ExportResult {
   created: { milestones: number; issues: number };
   updated: { milestones: number; issues: number };
   totalChanges: number;
+  /** Relative .meta/ paths of local entities that were exported to the remote. */
+  exportedPaths: string[];
 }
 
 export interface SyncResult {
@@ -21,6 +25,10 @@ export interface SyncResult {
   conflicts: FieldConflict[];
   resolved: number;
   skipped: number;
+  /** Relative .meta/ paths of local files updated by remote (pull side). */
+  pulledPaths: string[];
+  /** Relative .meta/ paths of local entities sent to remote (push side). */
+  pushedPaths: string[];
 }
 
 export type ConflictStrategy = 'local-wins' | 'remote-wins' | 'ask';

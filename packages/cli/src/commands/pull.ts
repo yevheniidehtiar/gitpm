@@ -70,6 +70,7 @@ export const pullCommand = new Command('pull')
       metaDir,
       event: 'post-sync',
       adapterName: adapter.name,
+      result: result.value,
     });
   });
 
