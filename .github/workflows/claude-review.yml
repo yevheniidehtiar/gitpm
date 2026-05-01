@@ -48,7 +48,7 @@ jobs:
       cache_hit: ${{ steps.cache.outputs.hit }}
       diff_hash: ${{ steps.cache.outputs.new_hash }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
@@ -119,14 +119,14 @@ jobs:
         with:
           bun-version: latest
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         if: steps.cache.outputs.hit != 'true'
         with:
           node-version: '22'
 
       - name: Cache bun install
         if: steps.cache.outputs.hit != 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
@@ -288,7 +288,7 @@ jobs:
 
       - name: Upload review artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: claude-review-pr-${{ github.event.pull_request.number }}
           path: |
@@ -548,12 +548,12 @@ jobs:
       - name: Generate GitHub App Token
         if: steps.precheck.outputs.skip != 'true'
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         if: steps.precheck.outputs.skip != 'true'
         with:
           fetch-depth: 0
@@ -565,14 +565,14 @@ jobs:
         with:
           bun-version: latest
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         if: steps.precheck.outputs.skip != 'true'
         with:
           node-version: '22'
 
       - name: Cache bun install
         if: steps.precheck.outputs.skip != 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
