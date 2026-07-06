@@ -9,3 +9,4 @@ coverage
 packages/ui/playwright-report
 packages/ui/test-results
 packages/ui/public-demo/
+packages/cli/.tmp-integration/
