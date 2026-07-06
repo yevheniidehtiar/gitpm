@@ -12,8 +12,8 @@ milestone_ref:
 github:
   issue_number: 13
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:f2574a91aae46e8e51667809780eea4d313084903e261903e42f6dc3ed9c1fad
-  synced_at: 2026-04-12T11:18:07.981Z
+  last_sync_hash: sha256:0f9f2e94a0e4e80401003e51bc9dd10655a0dacb695a2d141aa6a3f2507f6e5d
+  synced_at: 2026-07-06T17:45:14.135Z
 created_at: 2026-04-04T20:07:29.000Z
 updated_at: 2026-07-06T17:43:40.582Z
 ---
