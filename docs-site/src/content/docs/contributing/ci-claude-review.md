@@ -1,4 +1,9 @@
-# Claude Review + Autofix Loop CI
+---
+title: Claude Review CI Loop
+description: "How the claude-review.yml workflow reviews every PR and auto-fixes failing CI checks."
+sidebar:
+  order: 2
+---
 
 This page documents `.github/workflows/claude-review.yml`, the workflow that runs Claude against every PR push to `master` to (a) post a code review and (b) attempt to auto-fix any failing CI checks.
 

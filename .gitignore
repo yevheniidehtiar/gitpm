@@ -9,3 +9,6 @@ coverage
 packages/ui/playwright-report
 packages/ui/test-results
 packages/ui/public-demo/
+
+# Astro
+.astro/

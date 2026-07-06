@@ -1,4 +1,9 @@
-# Architecture Overview
+---
+title: Architecture
+description: "System architecture, package structure, and code conventions for contributors."
+sidebar:
+  order: 1
+---
 
 This document describes GitPM's system architecture, package structure, and code conventions. It is intended for contributors.
 

@@ -1,0 +1,75 @@
+---
+title: GitPM
+description: Git-native project management — roadmaps, epics, and stories as files in your repo, synced with GitHub, GitLab, and Jira.
+template: splash
+hero:
+  tagline: Project management that lives in your repo. Roadmaps, epics, and stories as Markdown + YAML in <code>.meta/</code> — bidirectionally synced with GitHub, GitLab, and Jira.
+  image:
+    alt: GitPM roadmap timeline
+    file: ../../assets/demo/05-roadmap.png
+  actions:
+    - text: Get Started
+      link: /start/product-tour/
+      icon: right-arrow
+      variant: primary
+    - text: Live Demo
+      link: https://yevheniidehtiar.github.io/gitpm/
+      icon: rocket
+    - text: View on GitHub
+      link: https://github.com/yevheniidehtiar/gitpm
+      icon: github
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Why GitPM?
+
+<CardGrid stagger>
+  <Card title="Full project context for AI agents" icon="seti:markdown">
+    Your roadmap, epics, and tasks live as files next to the code. Claude Code,
+    Cursor, Copilot, or any custom agent reads the entire project state from
+    `.meta/` with **zero API calls** — fully offline and air-gap friendly.
+  </Card>
+  <Card title="Code and context in one PR" icon="pull-request">
+    `.meta/` changes travel with the code. Reviewers see *what* changed and
+    *why* — the story or epic update — in the same diff.
+  </Card>
+  <Card title="Auditable history via Git" icon="seti:git">
+    Every status change, priority update, and scope modification is a Git
+    commit. Full blame, diff, and log on your project management data —
+    something no SaaS tracker offers.
+  </Card>
+  <Card title="Bidirectional sync" icon="random">
+    Keep `.meta/` in sync with GitHub Issues, GitLab Issues, or Jira through a
+    plugin architecture — install only the adapters you need, with field-level
+    conflict resolution.
+  </Card>
+  <Card title="Schema-validated, extensible" icon="approve-check">
+    Every entity is validated with Zod schemas before it hits your tracker.
+    Add project-specific fields (story points, team, …) via
+    `schema-extensions.yaml`.
+  </Card>
+  <Card title="Local web UI" icon="laptop">
+    Browse, filter, and edit the project tree, visualize the roadmap timeline,
+    and trigger sync operations from a local React interface.
+  </Card>
+</CardGrid>
+
+## Quick start
+
+```bash
+# Install the CLI with the sync adapter(s) you need
+npm install -g @gitpm/cli @gitpm/sync-github
+
+# Initialize a new .meta/ tree, or import an existing GitHub project
+gitpm init my-project
+gitpm import --repo owner/repo
+
+# Validate, then keep everything in sync
+gitpm validate
+gitpm sync
+```
+
+Head to the [Product Tour](/start/product-tour/) to see the full workflow, or
+jump straight to the [CLI Reference](/reference/cli/).

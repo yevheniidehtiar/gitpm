@@ -1,6 +1,24 @@
+<div align="center">
+
 # GitPM
 
-Git-native project management — store roadmaps, PRDs, epics, and issues as structured files in your monorepo, with bidirectional GitHub/GitLab sync and a local web UI. Built for AI-agentic workflows where code and project context live in one traversable file tree.
+**Project management that lives in your repo.**
+
+Roadmaps, PRDs, epics, and stories as Markdown + YAML in `.meta/` — bidirectionally synced with GitHub, GitLab, and Jira. Built for AI-agentic workflows where code and project context live in one traversable file tree.
+
+[![Build Matrix](https://github.com/yevheniidehtiar/gitpm/actions/workflows/build-matrix.yml/badge.svg?branch=master)](https://github.com/yevheniidehtiar/gitpm/actions/workflows/build-matrix.yml)
+[![Nightly Integration Tests](https://github.com/yevheniidehtiar/gitpm/actions/workflows/nightly.yml/badge.svg?branch=master)](https://github.com/yevheniidehtiar/gitpm/actions/workflows/nightly.yml)
+[![Release Please](https://github.com/yevheniidehtiar/gitpm/actions/workflows/release-please.yml/badge.svg?branch=master)](https://github.com/yevheniidehtiar/gitpm/actions/workflows/release-please.yml)
+[![npm](https://img.shields.io/npm/v/%40gitpm%2Fcli?label=%40gitpm%2Fcli&logo=npm&color=cb3837)](https://www.npmjs.com/package/@gitpm/cli)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Runtime: Bun](https://img.shields.io/badge/runtime-Bun-black?logo=bun)](https://bun.sh)
+[![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](tsconfig.json)
+
+[**Documentation**](https://gitpm-docs.pages.dev) · [**Live Demo**](https://yevheniidehtiar.github.io/gitpm/) · [**Quick Start**](#quick-start)
+
+<img src="docs/demos/hyper-admin/05-roadmap.png" alt="GitPM roadmap timeline" width="800" />
+
+</div>
 
 ## What is GitPM?
 
@@ -95,7 +113,7 @@ Adapters are auto-detected at runtime — no extra configuration needed. The CLI
 
 Global options: `--meta-dir <path>` (default: `.meta`), `--token <token>`, `--adapter <name>`
 
-See the full [CLI Reference](docs/cli-reference.md) for detailed usage and examples.
+See the full [CLI Reference](https://gitpm-docs.pages.dev/reference/cli/) for detailed usage and examples.
 
 ## Plugin System
 
@@ -186,7 +204,7 @@ Custom fields are validated during parsing, preserved through sync, and appear i
 
 Each entity is a Markdown file with YAML frontmatter containing structured fields like `type`, `id`, `title`, `status`, `priority`, and sync metadata.
 
-See the full [Schema Reference](docs/schema-reference.md) for all entity types and fields.
+See the full [Schema Reference](https://gitpm-docs.pages.dev/reference/schemas/) for all entity types and fields.
 
 ## Sync
 
@@ -200,7 +218,7 @@ GitPM keeps `.meta/` files and your issue tracker in bidirectional sync:
 
 The sync engine uses content hashing for change detection and supports field-level conflict resolution.
 
-See the full [Sync Configuration Guide](docs/sync-guide.md) for setup and customization.
+See the full [Sync Configuration Guide](https://gitpm-docs.pages.dev/guides/sync/) for setup and customization.
 
 ## Web UI
 
@@ -210,6 +228,8 @@ GitPM includes a local web interface for browsing and editing your project tree:
 bun run dev:ui
 ```
 
+<img src="docs/demos/hyper-admin/01-tree-browser.png" alt="GitPM tree browser" width="800" />
+
 Features:
 - **Tree browser** — search, filter, and sort entities by status, type, priority, or assignee
 - **Entity editor** — form-based frontmatter editing with a Markdown body editor
@@ -218,13 +238,17 @@ Features:
 
 ## Documentation
 
+Full documentation lives at **[gitpm-docs.pages.dev](https://gitpm-docs.pages.dev)**.
+
 | Document | Description |
 |----------|-------------|
-| [CLI Reference](docs/cli-reference.md) | Detailed command reference with examples |
-| [Schema Reference](docs/schema-reference.md) | Entity types, frontmatter fields, directory conventions |
-| [Sync Configuration Guide](docs/sync-guide.md) | Setup, configuration, conflict resolution |
-| [Architecture Overview](docs/architecture.md) | System design, packages, conventions (for contributors) |
-| [Migration Guide](docs/migration-guide.md) | Migrating from GitHub Issues, GitLab, or Jira |
+| [Product Tour](https://gitpm-docs.pages.dev/start/product-tour/) | Walkthrough of the core workflow with screenshots |
+| [AI Agent Setup](https://gitpm-docs.pages.dev/start/agent-setup/) | Point Claude Code (or any agent) at your `.meta/` tree |
+| [Migration Guide](https://gitpm-docs.pages.dev/start/migration/) | Migrating from GitHub Issues, GitLab, or Jira |
+| [Sync Configuration Guide](https://gitpm-docs.pages.dev/guides/sync/) | Setup, configuration, conflict resolution |
+| [CLI Reference](https://gitpm-docs.pages.dev/reference/cli/) | Detailed command reference with examples |
+| [Schema Reference](https://gitpm-docs.pages.dev/reference/schemas/) | Entity types, frontmatter fields, directory conventions |
+| [Architecture Overview](https://gitpm-docs.pages.dev/contributing/architecture/) | System design, packages, conventions (for contributors) |
 
 ## Contributing
 
@@ -247,7 +271,7 @@ bun run lint
 bun run dev:ui
 ```
 
-See the [Architecture Overview](docs/architecture.md) for package structure, code conventions, and testing strategy.
+See the [Architecture Overview](https://gitpm-docs.pages.dev/contributing/architecture/) for package structure, code conventions, and testing strategy.
 
 ## License
 

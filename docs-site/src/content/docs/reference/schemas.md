@@ -1,4 +1,9 @@
-# Schema Reference
+---
+title: Schema Reference
+description: "Entity types, frontmatter fields, and directory conventions for the .meta/ tree."
+sidebar:
+  order: 2
+---
 
 All project management data in GitPM is stored as files in the `.meta/` directory. Each entity is a Markdown file with YAML frontmatter, validated against Zod schemas at runtime.
 

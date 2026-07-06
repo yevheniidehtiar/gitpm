@@ -106,14 +106,11 @@ gitpm/
 │           ├── components/
 │           ├── hooks/
 │           └── lib/
-└── docs/
-    ├── demo.md                  # Product demo & use cases
-    ├── architecture.md          # System design & conventions
-    ├── cli-reference.md         # CLI command reference
-    ├── schema-reference.md      # Entity type reference
-    ├── sync-guide.md            # Sync configuration guide
-    ├── migration-guide.md       # Migration from other tools
-    └── schemas/                 # Schema reference docs
+├── docs/
+│   └── demos/                   # Demo screenshots & screencast assets
+└── docs-site/                   # Astro Starlight documentation site
+    ├── astro.config.mjs
+    └── src/content/docs/        # Doc pages (start/, guides/, reference/, contributing/)
 ```
 
 ## Testing Strategy

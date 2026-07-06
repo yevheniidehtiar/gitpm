@@ -1,4 +1,9 @@
-# Migration Guide
+---
+title: Migrating from GitHub, GitLab, or Jira
+description: "Import existing project data into GitPM from GitHub Issues, GitLab, or Jira."
+sidebar:
+  order: 3
+---
 
 This guide covers importing existing project data into GitPM from GitHub Issues, GitLab, or Jira.
 

@@ -1,4 +1,9 @@
-# GitPM — Agent Setup Guide
+---
+title: AI Agent Setup
+description: "Set up AI agents (Claude Code and others) to install GitPM and migrate GitHub Issues into a .meta/ tree."
+sidebar:
+  order: 2
+---
 
 > **For AI agents (Claude Code, etc.):** Follow these steps to install GitPM and migrate a project's GitHub Issues into a git-native `.meta/` project management tree.
 

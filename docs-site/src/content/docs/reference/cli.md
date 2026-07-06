@@ -1,4 +1,9 @@
-# CLI Reference
+---
+title: CLI Reference
+description: "Detailed reference for the six gitpm commands with options and examples."
+sidebar:
+  order: 1
+---
 
 GitPM provides six commands for managing your `.meta/` project tree and syncing with remote platforms.
 

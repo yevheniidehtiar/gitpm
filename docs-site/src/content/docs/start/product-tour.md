@@ -1,4 +1,9 @@
-# GitPM — Product Demo
+---
+title: Product Tour
+description: "A walkthrough of GitPM's core workflow: bootstrap, import, AI-agent editing, sync, conflict resolution, and the web UI."
+sidebar:
+  order: 1
+---
 
 GitPM turns your repository into a project management system. Roadmaps, epics, stories, and milestones live as Markdown files in `.meta/` — version-controlled, AI-readable, and kept in bidirectional sync with GitHub, GitLab, or Jira. No SaaS lock-in. No context switching. Everything in one `git diff`.
 
@@ -190,31 +195,31 @@ bun run dev:ui
 
 Browse all entities with filtering by status, type, priority, and assignee. Search across titles and descriptions.
 
-![Tree Browser](demos/hyper-admin/01-tree-browser.png)
+![Tree Browser](../../../assets/demo/01-tree-browser.png)
 
-![Search & Filter](demos/hyper-admin/02-tree-search.png)
+![Search & Filter](../../../assets/demo/02-tree-search.png)
 
 ### Entity Detail Views
 
 View and edit epics and stories with structured form fields and a Markdown body editor.
 
-![Epic Detail](demos/hyper-admin/03-epic-detail.png)
+![Epic Detail](../../../assets/demo/03-epic-detail.png)
 
-![Story Detail](demos/hyper-admin/04-story-detail.png)
+![Story Detail](../../../assets/demo/04-story-detail.png)
 
 ### Roadmap Timeline
 
 Visualize milestones and epics on an interactive SVG timeline with status indicators.
 
-![Roadmap Timeline](demos/hyper-admin/05-roadmap.png)
+![Roadmap Timeline](../../../assets/demo/05-roadmap.png)
 
-![Roadmap Final](demos/hyper-admin/07-roadmap-final.png)
+![Roadmap Final](../../../assets/demo/07-roadmap-final.png)
 
 ### Sync Dashboard
 
 Monitor sync status and trigger push/pull/sync operations from the UI.
 
-![Sync Dashboard](demos/hyper-admin/06-sync-dashboard.png)
+![Sync Dashboard](../../../assets/demo/06-sync-dashboard.png)
 
 ---
 
@@ -255,4 +260,4 @@ gitpm validate
 bun run dev:ui
 ```
 
-See the full [CLI Reference](cli-reference.md) and [Sync Configuration Guide](sync-guide.md) for detailed usage.
+See the full [CLI Reference](/reference/cli/) and [Sync Configuration Guide](/guides/sync/) for detailed usage.

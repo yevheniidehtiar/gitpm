@@ -1,4 +1,9 @@
-# GitPM Entity Schemas Reference
+---
+title: Entity Schemas Spec
+description: "The exact file format for every entity type in the .meta/ directory."
+sidebar:
+  order: 3
+---
 
 This document defines the exact file format for every entity type in the `.meta/` directory. All entities use Markdown files with YAML frontmatter. Implement these as Zod schemas in `packages/core/src/schemas/`.
 

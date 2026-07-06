@@ -1,4 +1,9 @@
-# Sync Configuration Guide
+---
+title: Sync Configuration
+description: "Bidirectional sync between the .meta/ tree and remote issue trackers: setup, configuration, and daily workflows."
+sidebar:
+  order: 1
+---
 
 GitPM provides bidirectional sync between your `.meta/` file tree and remote issue trackers (GitHub, GitLab, Jira). This guide covers setup, configuration, and day-to-day sync workflows.
 
