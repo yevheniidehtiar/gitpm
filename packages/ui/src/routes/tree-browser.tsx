@@ -2,12 +2,18 @@ import { Link } from '@tanstack/react-router';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EmptyState } from '../components/EmptyState.js';
+import { MiniProgress } from '../components/MiniProgress.js';
 import { PriorityBadge } from '../components/PriorityBadge.js';
 import { Spinner } from '../components/Spinner.js';
 import { StatusBadge } from '../components/StatusBadge.js';
 import { useToast } from '../components/Toast.js';
 import { TypeIcon } from '../components/TypeIcon.js';
-import { type Entity, useCreateEntity, useTree } from '../lib/api.js';
+import {
+  type Entity,
+  useCreateEntity,
+  useProgress,
+  useTree,
+} from '../lib/api.js';
 
 const ROW_HEIGHT = 36;
 
@@ -16,6 +22,7 @@ type SortDir = 'asc' | 'desc';
 
 export function TreeBrowser() {
   const { data: tree, isLoading } = useTree();
+  const { data: progress } = useProgress();
   const createEntity = useCreateEntity();
   const { toast } = useToast();
 
@@ -136,6 +143,19 @@ export function TreeBrowser() {
 
     return rows;
   }, [tree]);
+
+  // Map epic/milestone id -> progress ratio, for the progress bars rendered
+  // on their rows below (mirrors the sidebar lookup in App.tsx).
+  const progressById = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!progress) return map;
+    for (const ms of progress.milestones) {
+      map.set(ms.milestoneId, ms.progress);
+      for (const ep of ms.epics) map.set(ep.epicId, ep.progress);
+    }
+    for (const ep of progress.orphanEpics) map.set(ep.epicId, ep.progress);
+    return map;
+  }, [progress]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -396,16 +416,22 @@ export function TreeBrowser() {
                     </span>
                   </td>
                   <td
-                    className="px-4 py-2 flex-1 min-w-0 truncate"
+                    className="px-4 py-2 flex-1 min-w-0 flex items-center gap-2"
                     style={{ paddingLeft: `${1 + depth * 1.25}rem` }}
                   >
                     <Link
                       to="/entity/$id"
                       params={{ id: e.id }}
-                      className="text-blue-600 hover:underline font-medium"
+                      className="text-blue-600 hover:underline font-medium truncate min-w-0"
                     >
                       {e.title}
                     </Link>
+                    {(e.type === 'epic' || e.type === 'milestone') &&
+                      progressById.has(e.id) && (
+                        <MiniProgress
+                          ratio={progressById.get(e.id) as number}
+                        />
+                      )}
                   </td>
                   <td className="px-4 py-2 w-28 flex-shrink-0">
                     {e.status && <StatusBadge status={e.status} />}

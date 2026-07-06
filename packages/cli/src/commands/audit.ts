@@ -53,6 +53,127 @@ function printReport(report: AuditReport): void {
   printDuplicates(report.duplicates);
 }
 
+// --- Markdown report (for CI artifacts) ---
+
+const STALE_BUCKETS = [
+  { label: '30-59 days', min: 30, max: 60 },
+  { label: '60-89 days', min: 60, max: 90 },
+  { label: '90+ days', min: 90, max: Number.POSITIVE_INFINITY },
+] as const;
+
+function staleBucketLabel(item: AuditItem): string {
+  if (item.daysSinceUpdate == null) return 'Unknown age';
+  if (item.daysSinceUpdate < STALE_BUCKETS[0].min) return '< 30 days';
+  for (const bucket of STALE_BUCKETS) {
+    if (
+      item.daysSinceUpdate >= bucket.min &&
+      item.daysSinceUpdate < bucket.max
+    ) {
+      return bucket.label;
+    }
+  }
+  return STALE_BUCKETS[STALE_BUCKETS.length - 1].label;
+}
+
+function groupStaleByBucket(items: AuditItem[]): [string, AuditItem[]][] {
+  const order = [
+    '< 30 days',
+    ...STALE_BUCKETS.map((b) => b.label),
+    'Unknown age',
+  ];
+  const groups = new Map<string, AuditItem[]>();
+  for (const item of items) {
+    const label = staleBucketLabel(item);
+    const bucket = groups.get(label) ?? [];
+    bucket.push(item);
+    groups.set(label, bucket);
+  }
+  return order
+    .filter((label) => groups.has(label))
+    .map((label) => [label, groups.get(label) as AuditItem[]]);
+}
+
+function escapeMdCell(value: string): string {
+  return value.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+}
+
+function mdTable(headers: string[], rows: string[][]): string {
+  const headerLine = `| ${headers.join(' | ')} |`;
+  const sepLine = `| ${headers.map(() => '---').join(' | ')} |`;
+  const rowLines = rows.map((row) => `| ${row.join(' | ')} |`);
+  return [headerLine, sepLine, ...rowLines].join('\n');
+}
+
+function itemToRow(item: AuditItem): string[] {
+  return [
+    escapeMdCell(item.id),
+    escapeMdCell(item.title),
+    escapeMdCell(relative(process.cwd(), item.filePath)),
+    escapeMdCell(item.reason),
+  ];
+}
+
+function mdItemSection(title: string, items: AuditItem[]): string[] {
+  const lines = [`## ${title} (${items.length})`, ''];
+  if (items.length === 0) {
+    lines.push('None.', '');
+    return lines;
+  }
+  lines.push(
+    mdTable(['ID', 'Title', 'File', 'Reason'], items.map(itemToRow)),
+    '',
+  );
+  return lines;
+}
+
+function buildMarkdownReport(report: AuditReport): string {
+  const lines: string[] = [
+    '# Project Audit',
+    '',
+    `${report.summary.total} entities scanned, ${report.summary.issues} issue(s) found.`,
+    '',
+  ];
+
+  // Stale — tiered by age bucket.
+  lines.push(`## Stale (${report.stale.length})`, '');
+  if (report.stale.length === 0) {
+    lines.push('None.', '');
+  } else {
+    for (const [label, items] of groupStaleByBucket(report.stale)) {
+      lines.push(
+        `### ${label} (${items.length})`,
+        '',
+        mdTable(['ID', 'Title', 'File', 'Reason'], items.map(itemToRow)),
+        '',
+      );
+    }
+  }
+
+  lines.push(...mdItemSection('Orphans', report.orphans));
+
+  lines.push(`## Duplicates (${report.duplicates.length})`, '');
+  if (report.duplicates.length === 0) {
+    lines.push('None.', '');
+  } else {
+    lines.push(
+      mdTable(
+        ['A', 'B', 'Similarity'],
+        report.duplicates.map((d) => [
+          escapeMdCell(`${d.a.title} (${d.a.id})`),
+          escapeMdCell(`${d.b.title} (${d.b.id})`),
+          `${Math.round(d.similarity * 100)}%`,
+        ]),
+      ),
+      '',
+    );
+  }
+
+  lines.push(...mdItemSection('Empty bodies', report.emptyBodies));
+  lines.push(...mdItemSection('Zombie epics', report.zombieEpics));
+
+  return lines.join('\n');
+}
+
 export const auditCommand = new Command('audit')
   .description(
     'Detect stale issues, orphans, duplicates, and project hygiene issues',
@@ -64,6 +185,10 @@ export const auditCommand = new Command('audit')
     90,
   )
   .option('--json', 'Output as JSON')
+  .option(
+    '--markdown',
+    'Output as a Markdown report with age-tiered stale sections (for CI artifacts)',
+  )
   .action(async (opts, cmd) => {
     const metaDir = resolveMetaDir(cmd.optsWithGlobals().metaDir);
 
@@ -83,7 +208,9 @@ export const auditCommand = new Command('audit')
       staleDays: opts.staleDays,
     });
 
-    if (opts.json) {
+    if (opts.markdown) {
+      console.log(buildMarkdownReport(report));
+    } else if (opts.json) {
       console.log(JSON.stringify(report, null, 2));
     } else if (report.summary.issues === 0) {
       printSuccess('No issues found — project is clean!');

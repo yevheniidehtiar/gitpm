@@ -45,6 +45,7 @@ function fullReport() {
         title: 'Stale story',
         reason: '120 days old',
         filePath: '/tmp/.meta/stories/stale.md',
+        daysSinceUpdate: 120,
       },
     ],
     orphans: [
@@ -186,5 +187,84 @@ describe('gitpm audit', () => {
       expect.anything(),
       expect.objectContaining({ staleDays: expect.anything() }),
     );
+  });
+
+  describe('--markdown', () => {
+    it('prints a Markdown report with section headers and tables', async () => {
+      mockAuditTree.mockReturnValue(fullReport());
+
+      await expect(
+        run('--markdown', '--meta-dir', '/tmp/meta'),
+      ).rejects.toThrow('process.exit');
+      expect(exitSpy).toHaveBeenCalledWith(1);
+
+      const logOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+      expect(logOutput).toContain('# Project Audit');
+      expect(logOutput).toContain('## Stale (1)');
+      expect(logOutput).toContain('## Orphans (1)');
+      expect(logOutput).toContain('## Duplicates (2)');
+      expect(logOutput).toContain('## Empty bodies (1)');
+      expect(logOutput).toContain('## Zombie epics (1)');
+      expect(logOutput).toContain('| ID | Title | File | Reason |');
+      expect(logOutput).toContain('Stale story');
+      expect(logOutput).toContain('Duplicate A');
+      expect(logOutput).toContain('92%');
+    });
+
+    it('tiers stale items into age buckets', async () => {
+      mockAuditTree.mockReturnValue({
+        summary: { total: 3, issues: 3 },
+        stale: [
+          {
+            id: 'st_30',
+            title: 'Thirty-something',
+            reason: '45 days since last update',
+            filePath: '/tmp/.meta/stories/a.md',
+            daysSinceUpdate: 45,
+          },
+          {
+            id: 'st_60',
+            title: 'Sixty-something',
+            reason: '75 days since last update',
+            filePath: '/tmp/.meta/stories/b.md',
+            daysSinceUpdate: 75,
+          },
+          {
+            id: 'st_90',
+            title: 'Ninety-plus',
+            reason: '200 days since last update',
+            filePath: '/tmp/.meta/stories/c.md',
+            daysSinceUpdate: 200,
+          },
+        ],
+        orphans: [],
+        emptyBodies: [],
+        zombieEpics: [],
+        duplicates: [],
+      });
+
+      await expect(
+        run('--markdown', '--meta-dir', '/tmp/meta'),
+      ).rejects.toThrow('process.exit');
+
+      const logOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+      expect(logOutput).toContain('### 30-59 days (1)');
+      expect(logOutput).toContain('### 60-89 days (1)');
+      expect(logOutput).toContain('### 90+ days (1)');
+      expect(logOutput).toContain('Thirty-something');
+      expect(logOutput).toContain('Sixty-something');
+      expect(logOutput).toContain('Ninety-plus');
+    });
+
+    it('prints "None." for empty sections', async () => {
+      mockAuditTree.mockReturnValue(emptyReport());
+
+      await run('--markdown', '--meta-dir', '/tmp/meta');
+
+      const logOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+      expect(logOutput).toContain('## Stale (0)');
+      expect(logOutput).toContain('None.');
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
   });
 });

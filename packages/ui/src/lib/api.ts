@@ -140,13 +140,14 @@ export interface MilestoneProgress {
   epics: EpicProgress[];
   total: number;
   done: number;
+  blocked: number;
   progress: number;
 }
 
 export interface ProjectProgress {
   milestones: MilestoneProgress[];
   orphanEpics: EpicProgress[];
-  overall: { total: number; done: number; progress: number };
+  overall: { total: number; done: number; blocked: number; progress: number };
 }
 
 export function useProgress() {
