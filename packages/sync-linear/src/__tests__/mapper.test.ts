@@ -244,6 +244,20 @@ describe('entityToLinearIssue', () => {
     expect(params.targetStateType).toBe('completed');
   });
 
+  it('maps a backlog entity to the backlog state type, not triage', () => {
+    // DEFAULT_STATUS_MAPPING has both `triage: 'backlog'` and
+    // `backlog: 'backlog'`, with 'triage' inserted first. A naive
+    // first-match reverse scan would send every backlog entity into
+    // Linear's Triage state instead of Backlog.
+    const entity = linearIssueToEntity(storyIssue, defaultConfig, TEAM_ID) as {
+      status: 'backlog';
+      type: 'story';
+    };
+    entity.status = 'backlog';
+    const params = entityToLinearIssue(entity as never, defaultConfig);
+    expect(params.targetStateType).toBe('backlog');
+  });
+
   it('maps priority values to their Linear numbers', () => {
     const entity = linearIssueToEntity(storyIssue, defaultConfig, TEAM_ID) as {
       priority: 'critical' | 'high' | 'medium' | 'low';

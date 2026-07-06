@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { join } from 'node:path';
 import type { Epic, Result, Story } from '@gitpm/core';
 import { parseTree, writeFile } from '@gitpm/core';
 import type { LinearCycle, LinearIssue } from './client.js';
@@ -7,12 +6,13 @@ import { LinearClient } from './client.js';
 import { loadConfig } from './config.js';
 import { resolveConflicts } from './conflict.js';
 import { diffByHash, remoteCycleFields, remoteIssueFields } from './diff.js';
-import { buildStateIdMap } from './export.js';
+import { buildLabelIdMap, buildStateIdMap, resolveLabelIds } from './export.js';
 import {
   entityToLinearIssue,
   mapLinearPriority,
   mapLinearState,
 } from './mapper.js';
+import { resolveEntityFilePath } from './paths.js';
 import { computeContentHash, loadState, saveState } from './state.js';
 import type {
   FieldConflict,
@@ -66,6 +66,23 @@ export async function syncWithLinear(
 
     const client = new LinearClient({ apiKey });
     const stateIdMap = await buildStateIdMap(client, teamId);
+
+    // Fetched lazily — only entities that actually carry labels need it, and
+    // building it costs an extra API round-trip.
+    let labelIdMap: Map<string, string> | undefined;
+    const getLabelIdMap = async (): Promise<Map<string, string>> => {
+      if (!labelIdMap) {
+        labelIdMap = await buildLabelIdMap(client, teamId);
+      }
+      return labelIdMap;
+    };
+    const resolveEntityLabelIds = async (
+      labelNames: string[] | undefined,
+    ): Promise<string[] | undefined> => {
+      if (!labelNames || labelNames.length === 0) return undefined;
+      return resolveLabelIds(client, teamId, await getLabelIdMap(), labelNames);
+    };
+
     const result: SyncResult = {
       pushed: { milestones: 0, issues: 0 },
       pulled: { milestones: 0, issues: 0 },
@@ -125,7 +142,10 @@ export async function syncWithLinear(
             (localEntity.type === 'story' || localEntity.type === 'epic')
           ) {
             localEntity.status = 'cancelled';
-            const filePath = join(metaDir, '..', localEntity.filePath);
+            const filePath = resolveEntityFilePath(
+              metaDir,
+              localEntity.filePath,
+            );
             await writeFile(localEntity, filePath);
             const hash = computeContentHash(localEntity);
             state.entities[entityId] = {
@@ -158,12 +178,14 @@ export async function syncWithLinear(
             const stateId = params.targetStateType
               ? stateIdMap[params.targetStateType]
               : undefined;
+            const labelIds = await resolveEntityLabelIds(params.labels);
 
             await client.updateIssue(entry.linear_issue_id, {
               title: params.title,
               description: params.description,
               priority: params.priority,
               stateId,
+              labelIds,
             });
 
             state.entities[entityId] = {
@@ -181,7 +203,10 @@ export async function syncWithLinear(
             (localEntity.type === 'story' || localEntity.type === 'epic')
           ) {
             applyRemoteIssue(localEntity, remoteIssue, config);
-            const filePath = join(metaDir, '..', localEntity.filePath);
+            const filePath = resolveEntityFilePath(
+              metaDir,
+              localEntity.filePath,
+            );
             await writeFile(localEntity, filePath);
             const hash = computeContentHash(localEntity);
             state.entities[entityId] = {
@@ -217,11 +242,13 @@ export async function syncWithLinear(
                 const stateId = params.targetStateType
                   ? stateIdMap[params.targetStateType]
                   : undefined;
+                const labelIds = await resolveEntityLabelIds(params.labels);
                 await client.updateIssue(entry.linear_issue_id, {
                   title: params.title,
                   description: params.description,
                   priority: params.priority,
                   stateId,
+                  labelIds,
                 });
                 state.entities[entityId] = {
                   ...entry,
@@ -231,7 +258,10 @@ export async function syncWithLinear(
                 };
               } else {
                 applyRemoteIssue(localEntity, remoteIssue, config);
-                const filePath = join(metaDir, '..', localEntity.filePath);
+                const filePath = resolveEntityFilePath(
+                  metaDir,
+                  localEntity.filePath,
+                );
                 await writeFile(localEntity, filePath);
                 const hash = computeContentHash(localEntity);
                 state.entities[entityId] = {
@@ -264,6 +294,7 @@ export async function syncWithLinear(
         const stateId = params.targetStateType
           ? stateIdMap[params.targetStateType]
           : undefined;
+        const labelIds = await resolveEntityLabelIds(params.labels);
 
         const created = await client.createIssue({
           teamId,
@@ -271,6 +302,7 @@ export async function syncWithLinear(
           description: params.description,
           priority: params.priority,
           stateId,
+          labelIds,
         });
 
         entity.linear = {
@@ -280,7 +312,7 @@ export async function syncWithLinear(
           last_sync_hash: computeContentHash(entity),
           synced_at: new Date().toISOString(),
         };
-        const filePath = join(metaDir, '..', entity.filePath);
+        const filePath = resolveEntityFilePath(metaDir, entity.filePath);
         await writeFile(entity, filePath);
         const hash = computeContentHash(entity);
         state.entities[entity.id] = {

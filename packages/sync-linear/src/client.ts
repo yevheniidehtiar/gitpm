@@ -106,6 +106,45 @@ export class LinearClient {
     return data.team.projects.nodes;
   }
 
+  async listIssueLabels(teamId: string): Promise<LinearIssueLabel[]> {
+    const query = `
+      query IssueLabels($teamId: String!) {
+        team(id: $teamId) {
+          labels {
+            nodes { id name }
+          }
+        }
+      }
+    `;
+    const data = await this.request<{
+      team: { labels: { nodes: LinearIssueLabel[] } };
+    }>(query, { teamId });
+    return data.team.labels.nodes;
+  }
+
+  async createIssueLabel(
+    teamId: string,
+    name: string,
+  ): Promise<LinearIssueLabel> {
+    const mutation = `
+      mutation IssueLabelCreate($input: IssueLabelCreateInput!) {
+        issueLabelCreate(input: $input) {
+          success
+          issueLabel { id name }
+        }
+      }
+    `;
+    const data = await this.request<{
+      issueLabelCreate: { success: boolean; issueLabel: LinearIssueLabel };
+    }>(mutation, { input: { teamId, name } });
+
+    if (!data.issueLabelCreate.success) {
+      throw new Error('Linear issueLabelCreate mutation reported failure');
+    }
+
+    return data.issueLabelCreate.issueLabel;
+  }
+
   async listCycles(teamId: string): Promise<LinearCycle[]> {
     const query = `
       query Cycles($teamId: String!) {
@@ -266,6 +305,11 @@ export interface LinearProject {
   id: string;
   name: string;
   description?: string | null;
+}
+
+export interface LinearIssueLabel {
+  id: string;
+  name: string;
 }
 
 export interface LinearCycle {

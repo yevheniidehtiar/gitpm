@@ -1,9 +1,9 @@
-import { join } from 'node:path';
 import type { Epic, Result, Story } from '@gitpm/core';
 import { parseTree, writeFile } from '@gitpm/core';
 import { LinearClient } from './client.js';
 import { loadConfig } from './config.js';
 import { entityToLinearIssue } from './mapper.js';
+import { resolveEntityFilePath } from './paths.js';
 import { computeContentHash, loadState, saveState } from './state.js';
 import type {
   ExportResult,
@@ -24,6 +24,48 @@ export async function buildStateIdMap(
     }
   }
   return map;
+}
+
+/** Builds a label-name → label-id map for a team (fetched once per run). */
+export async function buildLabelIdMap(
+  client: LinearClient,
+  teamId: string,
+): Promise<Map<string, string>> {
+  const labels = await client.listIssueLabels(teamId);
+  const map = new Map<string, string>();
+  for (const label of labels) {
+    map.set(label.name, label.id);
+  }
+  return map;
+}
+
+/**
+ * Resolves GitPM label names to Linear label UUIDs (Linear's API requires
+ * label IDs, not names), creating any label on the team that doesn't exist
+ * yet. Mutates `labelIdMap` in place so newly-created labels are reused for
+ * the rest of the run. Returns `undefined` when there are no labels to push
+ * so callers can omit `labelIds` entirely (matches the create/update params
+ * shape, which treats an absent field as "leave unchanged").
+ */
+export async function resolveLabelIds(
+  client: LinearClient,
+  teamId: string,
+  labelIdMap: Map<string, string>,
+  labelNames: string[] | undefined,
+): Promise<string[] | undefined> {
+  if (!labelNames || labelNames.length === 0) return undefined;
+
+  const ids: string[] = [];
+  for (const name of labelNames) {
+    let id = labelIdMap.get(name);
+    if (!id) {
+      const created = await client.createIssueLabel(teamId, name);
+      id = created.id;
+      labelIdMap.set(name, id);
+    }
+    ids.push(id);
+  }
+  return ids;
 }
 
 export async function exportToLinear(
@@ -54,6 +96,17 @@ export async function exportToLinear(
 
     const client = new LinearClient({ apiKey });
     const stateIdMap = await buildStateIdMap(client, teamId);
+
+    // Fetched lazily — only entities that actually carry labels need it, and
+    // building it costs an extra API round-trip.
+    let labelIdMap: Map<string, string> | undefined;
+    const getLabelIdMap = async (): Promise<Map<string, string>> => {
+      if (!labelIdMap) {
+        labelIdMap = await buildLabelIdMap(client, teamId);
+      }
+      return labelIdMap;
+    };
+
     const result: ExportResult = {
       created: { milestones: 0, issues: 0 },
       updated: { milestones: 0, issues: 0 },
@@ -92,6 +145,14 @@ export async function exportToLinear(
           const stateId = params.targetStateType
             ? stateIdMap[params.targetStateType]
             : undefined;
+          const labelIds = params.labels?.length
+            ? await resolveLabelIds(
+                client,
+                teamId,
+                await getLabelIdMap(),
+                params.labels,
+              )
+            : undefined;
 
           const created = await client.createIssue({
             teamId,
@@ -100,6 +161,7 @@ export async function exportToLinear(
             priority: params.priority,
             stateId,
             parentId,
+            labelIds,
           });
 
           entity.linear = {
@@ -109,7 +171,7 @@ export async function exportToLinear(
             last_sync_hash: computeContentHash(entity),
             synced_at: new Date().toISOString(),
           };
-          const filePath = join(metaDir, '..', entity.filePath);
+          const filePath = resolveEntityFilePath(metaDir, entity.filePath);
           await writeFile(entity, filePath);
 
           if (entity.type === 'epic') {
@@ -135,12 +197,21 @@ export async function exportToLinear(
             const stateId = params.targetStateType
               ? stateIdMap[params.targetStateType]
               : undefined;
+            const labelIds = params.labels?.length
+              ? await resolveLabelIds(
+                  client,
+                  teamId,
+                  await getLabelIdMap(),
+                  params.labels,
+                )
+              : undefined;
 
             await client.updateIssue(issueId, {
               title: params.title,
               description: params.description,
               priority: params.priority,
               stateId,
+              labelIds,
             });
 
             entity.linear = {
@@ -150,7 +221,7 @@ export async function exportToLinear(
               last_sync_hash: currentHash,
               synced_at: new Date().toISOString(),
             };
-            const filePath = join(metaDir, '..', entity.filePath);
+            const filePath = resolveEntityFilePath(metaDir, entity.filePath);
             await writeFile(entity, filePath);
 
             state.entities[entity.id] = {

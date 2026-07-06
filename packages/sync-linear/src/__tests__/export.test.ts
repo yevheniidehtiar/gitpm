@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -245,5 +245,109 @@ describe('exportToLinear', () => {
       id: 'issue-1',
       input: { title: 'Updated Title' },
     });
+  });
+
+  it('resolves label names to Linear label IDs and pushes them on create', async () => {
+    await seedTree(metaDir, []);
+    const { createStory } = await import('@gitpm/core');
+    const created = await createStory(metaDir, {
+      title: 'Labelled Story',
+      labels: ['api', 'urgent'],
+    });
+    if (!created.ok) throw created.error;
+
+    let createInput: Record<string, unknown> | undefined;
+    let createdLabelName: string | undefined;
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('WorkflowStates')) return statesResponse();
+      if (body.query.includes('IssueLabels')) {
+        return graphqlResponse({
+          team: { labels: { nodes: [{ id: 'label-api', name: 'api' }] } },
+        });
+      }
+      if (body.query.includes('IssueLabelCreate')) {
+        createdLabelName = body.variables.input.name;
+        return graphqlResponse({
+          issueLabelCreate: {
+            success: true,
+            issueLabel: { id: 'label-urgent', name: 'urgent' },
+          },
+        });
+      }
+      if (body.query.includes('IssueCreate')) {
+        createInput = body.variables.input;
+        return graphqlResponse({
+          issueCreate: {
+            success: true,
+            issue: baseIssue({
+              id: 'issue-300',
+              identifier: 'ENG-300',
+              title: 'Labelled Story',
+              labels: {
+                nodes: [{ name: 'api' }, { name: 'urgent' }],
+              },
+            }),
+          },
+        });
+      }
+      return graphqlResponse({});
+    });
+
+    const result = await exportToLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+
+    expect(result.ok).toBe(true);
+    // The 'urgent' label didn't exist on the team yet, so it must be
+    // created before being referenced by ID.
+    expect(createdLabelName).toBe('urgent');
+    expect(createInput?.labelIds).toEqual(['label-api', 'label-urgent']);
+  });
+
+  it('writes sync metadata back to the real entity file, not a doubled nested path', async () => {
+    await seedTree(metaDir, []);
+    const { createStory } = await import('@gitpm/core');
+    const created = await createStory(metaDir, {
+      title: 'Path Regression Story',
+    });
+    if (!created.ok) throw created.error;
+
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('WorkflowStates')) return statesResponse();
+      if (body.query.includes('IssueCreate')) {
+        return graphqlResponse({
+          issueCreate: {
+            success: true,
+            issue: baseIssue({
+              id: 'issue-400',
+              identifier: 'ENG-400',
+              title: 'Path Regression Story',
+            }),
+          },
+        });
+      }
+      return graphqlResponse({});
+    });
+
+    const result = await exportToLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+    expect(result.ok).toBe(true);
+
+    // The real story file (an absolute path under metaDir, as returned by
+    // `parseTree`/`createStory`) must contain the linear sync metadata.
+    const content = await readFile(created.value.filePath, 'utf-8');
+    expect(content).toContain('issue_id: issue-400');
+
+    // A buggy `join(metaDir, '..', absoluteFilePath)` would have written the
+    // file into a garbage doubled path nested under the repo root instead.
+    const doubledPath = join(metaDir, '..', created.value.filePath);
+    await expect(access(doubledPath)).rejects.toThrow();
   });
 });

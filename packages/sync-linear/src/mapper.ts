@@ -174,13 +174,23 @@ export function entityToLinearIssue(
 ): CreateLinearIssueFromEntity {
   const assignee = entity.type === 'story' ? entity.assignee : entity.owner;
 
-  // Reverse-map GitPM status to a Linear workflow state type
+  // Reverse-map GitPM status to a Linear workflow state type. Multiple state
+  // types can map to the same GitPM status (e.g. both 'triage' and 'backlog'
+  // map to gitpm status 'backlog'), which makes a plain "first match wins"
+  // scan order-dependent and can push entities into the wrong state (e.g.
+  // GitPM 'backlog' landing in Linear's Triage state). Prefer a state type
+  // whose name matches the GitPM status exactly — that mapping is always
+  // unambiguous — before falling back to the first matching entry.
   const reverseMapping = config.status_mapping ?? DEFAULT_STATUS_MAPPING;
   let targetStateType: string | undefined;
-  for (const [stateType, gitpmStatus] of Object.entries(reverseMapping)) {
-    if (gitpmStatus === entity.status) {
-      targetStateType = stateType;
-      break;
+  if (reverseMapping[entity.status] === entity.status) {
+    targetStateType = entity.status;
+  } else {
+    for (const [stateType, gitpmStatus] of Object.entries(reverseMapping)) {
+      if (gitpmStatus === entity.status) {
+        targetStateType = stateType;
+        break;
+      }
     }
   }
 
