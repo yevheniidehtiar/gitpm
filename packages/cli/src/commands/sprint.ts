@@ -1,10 +1,13 @@
-import { relative } from 'node:path';
+import { relative, resolve as resolvePath } from 'node:path';
 import {
   createSprint,
   parseTree,
   type ResolvedSprint,
+  type ResolvedStory,
   resolveRefs,
+  writeFile,
 } from '@gitpm/core';
+import { checkbox } from '@inquirer/prompts';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { resolveMetaDir } from '../utils/config.js';
@@ -20,6 +23,42 @@ function sprintProgress(sprint: ResolvedSprint): {
     (s) => s.status === 'done' || s.status === 'cancelled',
   ).length;
   return { done, total, ratio: total > 0 ? done / total : 0 };
+}
+
+/** Stories eligible to be added to a sprint (not yet started, not archived). */
+function isPickableStory(story: ResolvedStory): boolean {
+  return story.status === 'todo' || story.status === 'backlog';
+}
+
+/** Find a sprint by ID or by file path (relative or absolute). */
+function findSprintByIdOrPath(
+  sprints: ResolvedSprint[],
+  idOrPath: string,
+): ResolvedSprint | undefined {
+  const looksLikePath = idOrPath.includes('/') || idOrPath.endsWith('.md');
+  if (looksLikePath) {
+    const target = resolvePath(process.cwd(), idOrPath);
+    return sprints.find((s) => resolvePath(s.filePath) === target);
+  }
+  return sprints.find((s) => s.id === idOrPath);
+}
+
+function printPointsSummary(
+  totalPoints: number,
+  capacity: number | undefined,
+): void {
+  if (capacity === undefined) {
+    console.log(chalk.dim(`  Points: ${totalPoints} pts (no capacity set)`));
+    return;
+  }
+  const ratio = capacity > 0 ? totalPoints / capacity : totalPoints > 0 ? 1 : 0;
+  const bar = progressBar(Math.min(ratio, 1), 16);
+  const label = `${totalPoints}/${capacity} pts`;
+  if (totalPoints > capacity) {
+    console.log(`  ${bar} ${chalk.red(`${label} — over capacity`)}`);
+  } else {
+    console.log(`  ${bar} ${label}`);
+  }
 }
 
 const sprintCreateCommand = new Command('create')
@@ -173,8 +212,119 @@ const sprintShowCommand = new Command('show')
     console.log();
   });
 
+const sprintPlanCommand = new Command('plan')
+  .description(
+    'Plan a sprint by picking stories to include (interactively, or via --add/--remove)',
+  )
+  .argument('<sprint>', 'Sprint ID or file path')
+  .option(
+    '--add <story-id...>',
+    'Add story IDs to the sprint (non-interactive)',
+  )
+  .option(
+    '--remove <story-id...>',
+    'Remove story IDs from the sprint (non-interactive)',
+  )
+  .action(
+    async (
+      sprintArg: string,
+      opts: { add?: string[]; remove?: string[] },
+      cmd,
+    ) => {
+      const metaDir = resolveMetaDir(cmd.optsWithGlobals().metaDir);
+
+      const parseResult = await parseTree(metaDir);
+      if (!parseResult.ok) {
+        printError(parseResult.error.message);
+        process.exit(1);
+      }
+
+      const resolveResult = resolveRefs(parseResult.value);
+      if (!resolveResult.ok) {
+        printError(resolveResult.error.message);
+        process.exit(1);
+      }
+
+      const sprint = findSprintByIdOrPath(
+        resolveResult.value.sprints,
+        sprintArg,
+      );
+      if (!sprint) {
+        printError(`Sprint not found: ${sprintArg}`);
+        process.exit(1);
+      }
+
+      const allStories = resolveResult.value.stories;
+      const storyById = new Map(allStories.map((s) => [s.id, s]));
+      const currentIds = new Set(sprint.stories.map((ref) => ref.id));
+
+      let nextIds: Set<string>;
+
+      const nonInteractive = Boolean(opts.add?.length || opts.remove?.length);
+      if (nonInteractive) {
+        nextIds = new Set(currentIds);
+        for (const id of opts.add ?? []) nextIds.add(id);
+        for (const id of opts.remove ?? []) nextIds.delete(id);
+      } else {
+        const pickable = allStories.filter(isPickableStory);
+        // Stories already in the sprint that aren't in the pickable list
+        // (e.g. already in_progress/done) are left untouched.
+        const untouchedIds = new Set(
+          [...currentIds].filter(
+            (id) =>
+              !storyById.has(id) ||
+              !isPickableStory(storyById.get(id) as ResolvedStory),
+          ),
+        );
+
+        if (pickable.length === 0) {
+          console.log(
+            chalk.dim('  No todo/backlog stories available to plan.'),
+          );
+          nextIds = currentIds;
+        } else {
+          const selected = await checkbox({
+            message: `Select stories for "${sprint.title}"`,
+            choices: pickable.map((story) => ({
+              name: `${story.title} ${chalk.dim(`[${story.priority}]`)} ${chalk.dim(`(${story.estimate ?? '?'} pts)`)}`,
+              value: story.id,
+              checked: currentIds.has(story.id),
+            })),
+          });
+          nextIds = new Set([...untouchedIds, ...selected]);
+        }
+      }
+
+      const totalPoints = [...nextIds].reduce((sum, id) => {
+        const story = storyById.get(id);
+        return sum + (story?.estimate ?? 0);
+      }, 0);
+
+      const { resolvedStories: _resolvedStories, ...sprintBase } = sprint;
+      const updatedSprint = {
+        ...sprintBase,
+        stories: [...nextIds].map((id) => ({ id })),
+        updated_at: new Date().toISOString(),
+      };
+
+      const writeResult = await writeFile(updatedSprint, sprint.filePath);
+      if (!writeResult.ok) {
+        printError(writeResult.error.message);
+        process.exit(1);
+      }
+
+      console.log();
+      printSuccess(
+        `Updated sprint "${sprint.title}" (${nextIds.size} ${nextIds.size === 1 ? 'story' : 'stories'})`,
+      );
+      printPointsSummary(totalPoints, sprint.capacity);
+      console.log();
+    },
+  );
+
 export const sprintCommand = new Command('sprint')
   .description('Manage sprints (time-boxed iterations)')
   .addCommand(sprintCreateCommand)
   .addCommand(sprintListCommand)
-  .addCommand(sprintShowCommand);
+  .addCommand(sprintShowCommand)
+  .addCommand(sprintPlanCommand);
