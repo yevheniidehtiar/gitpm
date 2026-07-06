@@ -21,6 +21,10 @@ import {
 import type { MockGithubFetchController } from './helpers/mock-github-fetch.js';
 import { installMockGithubFetch } from './helpers/mock-github-fetch.js';
 
+// Integration tests load the real adapter module graph per test; the 5s
+// default flakes under full-suite transform load while passing in isolation.
+vi.setConfig({ testTimeout: 30_000 });
+
 const mockConfirm = vi.fn();
 vi.mock('@inquirer/prompts', () => ({
   confirm: (...args: unknown[]) => mockConfirm(...args),

@@ -27,6 +27,10 @@ import type {
 } from './helpers/mock-github-fetch.js';
 import { installMockGithubFetch } from './helpers/mock-github-fetch.js';
 
+// Integration tests load the real adapter module graph per test; the 5s
+// default flakes under full-suite transform load while passing in isolation.
+vi.setConfig({ testTimeout: 30_000 });
+
 let logSpy: ReturnType<typeof vi.spyOn>;
 let exitSpy: ReturnType<typeof vi.spyOn>;
 let fetchMock: MockGithubFetchController;

@@ -7,6 +7,10 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Re-importing the CLI module graph per test is slow under full-suite
+// transform load; the 5s default flakes there while passing in isolation.
+vi.setConfig({ testTimeout: 30_000 });
+
 let exitSpy: ReturnType<typeof vi.spyOn>;
 let stdoutWriteSpy: ReturnType<typeof vi.spyOn>;
 let stderrWriteSpy: ReturnType<typeof vi.spyOn>;

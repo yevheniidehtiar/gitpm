@@ -23,6 +23,10 @@ import type {
 } from './helpers/mock-github-fetch.js';
 import { installMockGithubFetch } from './helpers/mock-github-fetch.js';
 
+// Integration tests load the real adapter module graph per test; the 5s
+// default flakes under full-suite transform load while passing in isolation.
+vi.setConfig({ testTimeout: 30_000 });
+
 const fixtureIssues = fixtureIssuesJson as GhIssueFixture[];
 const fixtureMilestones = fixtureMilestonesJson as GhMilestoneFixture[];
 

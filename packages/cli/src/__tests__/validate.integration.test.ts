@@ -17,6 +17,10 @@ import {
   writeRoadmapFile,
 } from './helpers/meta-tree.js';
 
+// Integration tests load the real core module graph per test; the 5s
+// default flakes under full-suite transform load while passing in isolation.
+vi.setConfig({ testTimeout: 30_000 });
+
 let logSpy: ReturnType<typeof vi.spyOn>;
 let errorSpy: ReturnType<typeof vi.spyOn>;
 let exitSpy: ReturnType<typeof vi.spyOn>;
