@@ -164,12 +164,14 @@ export interface GraphNode {
   title: string;
   type: string;
   status: string;
+  critical: boolean;
 }
 
 export interface GraphEdge {
   source: string;
   target: string;
   label: string;
+  critical: boolean;
 }
 
 export interface GraphData {
