@@ -140,8 +140,19 @@ function computeEntityEpicProgress(epic: Entity): EpicProgress {
   };
 }
 
-function computeEntityMilestoneProgress(milestone: Entity): MilestoneProgress {
-  const epics = (milestone.resolvedEpics ?? []).map(computeEntityEpicProgress);
+function computeEntityMilestoneProgress(
+  milestone: Entity,
+  allEpics: Entity[],
+): MilestoneProgress {
+  // Do not read `milestone.resolvedEpics`: the resolver populates
+  // `ResolvedMilestone.resolvedEpics` with raw `Epic[]` (no `resolvedStories`),
+  // and that raw shape is what gets serialized into demo-data.json. Instead,
+  // mirror core: derive linked epics from `tree.epics`, which — as the
+  // already-resolved `Entity` shape served by `GET /tree` — carries
+  // `resolvedStories` on each epic.
+  const epics = allEpics
+    .filter((e) => e.milestone_ref?.id === milestone.id)
+    .map(computeEntityEpicProgress);
   const total = epics.reduce((sum, e) => sum + e.total, 0);
   const done = epics.reduce((sum, e) => sum + e.done, 0);
   const blocked = epics.reduce((sum, e) => sum + e.blocked, 0);
@@ -166,7 +177,9 @@ function computeDemoProgress(tree: TreeResponse): ProjectProgress {
       .map((e) => e.id),
   );
 
-  const milestones = tree.milestones.map(computeEntityMilestoneProgress);
+  const milestones = tree.milestones.map((m) =>
+    computeEntityMilestoneProgress(m, tree.epics),
+  );
   const orphanEpics = tree.epics
     .filter((e) => !linkedEpicIds.has(e.id))
     .map(computeEntityEpicProgress);
