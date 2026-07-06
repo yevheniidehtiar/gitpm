@@ -38,7 +38,8 @@ export async function resolveAdapter(
       'No sync adapters installed. Install at least one adapter package, e.g.:\n' +
         '  bun add @gitpm/sync-github\n' +
         '  bun add @gitpm/sync-gitlab\n' +
-        '  bun add @gitpm/sync-jira',
+        '  bun add @gitpm/sync-jira\n' +
+        '  bun add @gitpm/sync-linear',
     );
     process.exit(1);
   }

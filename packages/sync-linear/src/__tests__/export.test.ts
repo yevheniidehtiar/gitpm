@@ -1,0 +1,249 @@
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { exportToLinear } from '../export.js';
+import { importFromLinear } from '../import.js';
+
+const API_KEY = 'lin_api_test_key';
+const TEAM_ID = 'team-1';
+
+const mockFetch = vi.fn();
+
+beforeEach(() => {
+  mockFetch.mockClear();
+  vi.stubGlobal('fetch', mockFetch);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+function graphqlResponse(data: unknown): Response {
+  return new Response(JSON.stringify({ data }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function statesResponse() {
+  return graphqlResponse({
+    team: {
+      states: {
+        nodes: [
+          { id: 'state-unstarted', name: 'Todo', type: 'unstarted' },
+          { id: 'state-started', name: 'In Progress', type: 'started' },
+          { id: 'state-completed', name: 'Done', type: 'completed' },
+        ],
+      },
+    },
+  });
+}
+
+function baseIssue(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: 'issue-1',
+    identifier: 'ENG-1',
+    title: 'Existing Story',
+    description: 'Body',
+    priority: 3,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-02T00:00:00Z',
+    state: { id: 'state-unstarted', name: 'Todo', type: 'unstarted' },
+    assignee: null,
+    labels: { nodes: [] },
+    parent: null,
+    children: { nodes: [] },
+    cycle: null,
+    project: null,
+    ...overrides,
+  };
+}
+
+async function seedTree(
+  metaDir: string,
+  issues: ReturnType<typeof baseIssue>[] = [],
+): Promise<void> {
+  mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+    const body = JSON.parse(init.body as string);
+    if (body.query.includes('query Cycles')) {
+      return graphqlResponse({ team: { cycles: { nodes: [] } } });
+    }
+    if (body.query.includes('query Issues')) {
+      return graphqlResponse({
+        team: {
+          issues: {
+            nodes: issues,
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        },
+      });
+    }
+    return graphqlResponse({});
+  });
+
+  const result = await importFromLinear({
+    apiKey: API_KEY,
+    teamId: TEAM_ID,
+    metaDir,
+  });
+  if (!result.ok) throw result.error;
+  mockFetch.mockReset();
+}
+
+describe('exportToLinear', () => {
+  let tmpDir: string;
+  let metaDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), 'gitpm-linear-export-'));
+    metaDir = join(tmpDir, '.meta');
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns error when tree cannot be parsed (non-existent metaDir)', async () => {
+    const result = await exportToLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it('returns no-op success when tree is in sync with Linear', async () => {
+    await seedTree(metaDir, [baseIssue()]);
+
+    mockFetch.mockResolvedValue(statesResponse());
+
+    const result = await exportToLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.totalChanges).toBe(0);
+    }
+  });
+
+  it('creates a new Linear issue for a locally-created story', async () => {
+    await seedTree(metaDir, []);
+
+    // Manually add a new story not yet known to Linear by writing it via
+    // the same writer helpers the adapter uses internally.
+    const { createStory } = await import('@gitpm/core');
+    const created = await createStory(metaDir, { title: 'Brand New Story' });
+    if (!created.ok) throw created.error;
+
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('WorkflowStates')) return statesResponse();
+      if (body.query.includes('IssueCreate')) {
+        return graphqlResponse({
+          issueCreate: {
+            success: true,
+            issue: baseIssue({
+              id: 'issue-100',
+              identifier: 'ENG-100',
+              title: 'Brand New Story',
+            }),
+          },
+        });
+      }
+      return graphqlResponse({});
+    });
+
+    const result = await exportToLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.created.issues).toBe(1);
+    expect(result.value.exportedPaths.length).toBe(1);
+
+    const stateContent = JSON.parse(
+      await readFile(join(metaDir, 'sync', 'linear-state.json'), 'utf-8'),
+    );
+    const entry = Object.values(stateContent.entities).find(
+      (e: unknown): e is { linear_issue_id: string } =>
+        (e as { linear_issue_id?: string }).linear_issue_id === 'issue-100',
+    );
+    expect(entry).toBeDefined();
+  });
+
+  it('does not call the create/update mutations in dry-run mode', async () => {
+    await seedTree(metaDir, []);
+    const { createStory } = await import('@gitpm/core');
+    const created = await createStory(metaDir, { title: 'Dry Run Story' });
+    if (!created.ok) throw created.error;
+
+    let mutationCalled = false;
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('WorkflowStates')) return statesResponse();
+      if (body.query.includes('mutation')) {
+        mutationCalled = true;
+      }
+      return graphqlResponse({});
+    });
+
+    const result = await exportToLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+      dryRun: true,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.created.issues).toBe(1);
+      expect(result.value.exportedPaths).toHaveLength(0);
+    }
+    expect(mutationCalled).toBe(false);
+  });
+
+  it('updates an existing Linear issue when local content changed', async () => {
+    await seedTree(metaDir, [baseIssue()]);
+
+    const { parseTree, writeFile } = await import('@gitpm/core');
+    const treeResult = await parseTree(metaDir);
+    if (!treeResult.ok) throw treeResult.error;
+    const story = treeResult.value.stories[0];
+    story.title = 'Updated Title';
+    // `story.filePath` from parseTree is already an absolute path.
+    await writeFile(story, story.filePath);
+
+    let updateCalledWith: unknown;
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('WorkflowStates')) return statesResponse();
+      if (body.query.includes('IssueUpdate')) {
+        updateCalledWith = body.variables;
+        return graphqlResponse({ issueUpdate: { success: true } });
+      }
+      return graphqlResponse({});
+    });
+
+    const result = await exportToLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.updated.issues).toBe(1);
+    }
+    expect(updateCalledWith).toMatchObject({
+      id: 'issue-1',
+      input: { title: 'Updated Title' },
+    });
+  });
+});

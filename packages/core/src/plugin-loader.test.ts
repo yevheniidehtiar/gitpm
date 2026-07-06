@@ -62,7 +62,7 @@ describe('GitpmConfig schema', () => {
     const result = gitpmConfigSchema.safeParse({});
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.adapters).toHaveLength(3);
+      expect(result.data.adapters).toHaveLength(4);
       expect(result.data.hooks).toEqual({});
     }
   });
@@ -72,6 +72,7 @@ describe('GitpmConfig schema', () => {
     expect(config.adapters).toContain('@gitpm/sync-github');
     expect(config.adapters).toContain('@gitpm/sync-gitlab');
     expect(config.adapters).toContain('@gitpm/sync-jira');
+    expect(config.adapters).toContain('@gitpm/sync-linear');
     expect(config.hooks).toEqual({});
   });
 });
@@ -92,7 +93,7 @@ describe('loadGitpmConfig', () => {
     const result = await loadGitpmConfig(tmpDir);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.value.adapters).toHaveLength(3);
+      expect(result.value.adapters).toHaveLength(4);
     }
   });
 
