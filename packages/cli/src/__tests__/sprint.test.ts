@@ -8,6 +8,7 @@ const mockParseTree = vi.fn();
 const mockResolveRefs = vi.fn();
 const mockWriteFile = vi.fn();
 const mockCheckbox = vi.fn();
+const mockConfirm = vi.fn();
 
 vi.mock('@gitpm/core', () => ({
   createSprint: (...args: unknown[]) => mockCreateSprint(...args),
@@ -18,6 +19,7 @@ vi.mock('@gitpm/core', () => ({
 
 vi.mock('@inquirer/prompts', () => ({
   checkbox: (...args: unknown[]) => mockCheckbox(...args),
+  confirm: (...args: unknown[]) => mockConfirm(...args),
 }));
 
 let logSpy: ReturnType<typeof vi.spyOn>;
@@ -413,6 +415,7 @@ describe('gitpm sprint plan', () => {
     }) as never);
     mockParseTree.mockResolvedValue({ ok: true, value: {} });
     mockWriteFile.mockResolvedValue({ ok: true, value: undefined });
+    mockConfirm.mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -567,5 +570,83 @@ describe('gitpm sprint plan', () => {
       run('plan', 'sp_1', '--add', 's2', '--meta-dir', '/tmp/m'),
     ).rejects.toThrow('process.exit');
     expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('exits 1 and does not write when --add references an unknown story ID', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+
+    await expect(
+      run('plan', 'sp_1', '--add', 'no-such-story', '--meta-dir', '/tmp/m'),
+    ).rejects.toThrow('process.exit');
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(mockWriteFile).not.toHaveBeenCalled();
+    const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(errOutput).toContain('Unknown story ID');
+    expect(errOutput).toContain('no-such-story');
+  });
+
+  it('exits 1 and does not write when any --add story ID is unknown, even mixed with known ones', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+
+    await expect(
+      run(
+        'plan',
+        'sp_1',
+        '--add',
+        's2',
+        '--add',
+        'ghost-id',
+        '--meta-dir',
+        '/tmp/m',
+      ),
+    ).rejects.toThrow('process.exit');
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(mockWriteFile).not.toHaveBeenCalled();
+  });
+
+  it('shows the running points-vs-capacity total and asks for confirmation before writing', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+    mockCheckbox.mockResolvedValue(['s1', 's2']);
+    mockConfirm.mockResolvedValue(true);
+
+    await run('plan', 'sp_1', '--meta-dir', '/tmp/m');
+
+    expect(mockConfirm).toHaveBeenCalledTimes(1);
+    // Confirmation must happen after the checkbox selection and before the write.
+    const checkboxOrder = mockCheckbox.mock.invocationCallOrder[0];
+    const confirmOrder = mockConfirm.mock.invocationCallOrder[0];
+    const writeOrder = mockWriteFile.mock.invocationCallOrder[0];
+    expect(checkboxOrder).toBeLessThan(confirmOrder);
+    expect(confirmOrder).toBeLessThan(writeOrder);
+
+    // s3 (untouched, in_progress, 8pts) + s1 (5pts) + s2 (3pts) = 16 pts vs capacity 10.
+    const logOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(logOutput).toContain('16/10 pts');
+  });
+
+  it('does not write when the user declines the confirmation prompt', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+    mockCheckbox.mockResolvedValue(['s1', 's2']);
+    mockConfirm.mockResolvedValue(false);
+
+    await run('plan', 'sp_1', '--meta-dir', '/tmp/m');
+
+    expect(mockWriteFile).not.toHaveBeenCalled();
+    const logOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(logOutput).toContain('Cancelled');
   });
 });

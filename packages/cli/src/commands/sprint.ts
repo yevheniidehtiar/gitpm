@@ -7,7 +7,7 @@ import {
   resolveRefs,
   writeFile,
 } from '@gitpm/core';
-import { checkbox } from '@inquirer/prompts';
+import { checkbox, confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { resolveMetaDir } from '../utils/config.js';
@@ -258,12 +258,27 @@ const sprintPlanCommand = new Command('plan')
       const storyById = new Map(allStories.map((s) => [s.id, s]));
       const currentIds = new Set(sprint.stories.map((ref) => ref.id));
 
+      const pointsFor = (ids: Iterable<string>): number =>
+        [...ids].reduce(
+          (sum, id) => sum + (storyById.get(id)?.estimate ?? 0),
+          0,
+        );
+
       let nextIds: Set<string>;
 
       const nonInteractive = Boolean(opts.add?.length || opts.remove?.length);
       if (nonInteractive) {
+        const addIds = opts.add ?? [];
+        const unknownIds = addIds.filter((id) => !storyById.has(id));
+        if (unknownIds.length > 0) {
+          printError(
+            `Unknown story ID${unknownIds.length > 1 ? 's' : ''}: ${unknownIds.join(', ')}`,
+          );
+          process.exit(1);
+        }
+
         nextIds = new Set(currentIds);
-        for (const id of opts.add ?? []) nextIds.add(id);
+        for (const id of addIds) nextIds.add(id);
         for (const id of opts.remove ?? []) nextIds.delete(id);
       } else {
         const pickable = allStories.filter(isPickableStory);
@@ -292,13 +307,23 @@ const sprintPlanCommand = new Command('plan')
             })),
           });
           nextIds = new Set([...untouchedIds, ...selected]);
+
+          // Show the running points-vs-capacity total for the selection
+          // before writing, so the user can back out of an over-capacity plan.
+          console.log();
+          printPointsSummary(pointsFor(nextIds), sprint.capacity);
+          const proceed = await confirm({
+            message: `Save this selection to "${sprint.title}"?`,
+            default: true,
+          });
+          if (!proceed) {
+            console.log(chalk.dim('  Cancelled — no changes written.'));
+            return;
+          }
         }
       }
 
-      const totalPoints = [...nextIds].reduce((sum, id) => {
-        const story = storyById.get(id);
-        return sum + (story?.estimate ?? 0);
-      }, 0);
+      const totalPoints = pointsFor(nextIds);
 
       const { resolvedStories: _resolvedStories, ...sprintBase } = sprint;
       const updatedSprint = {
