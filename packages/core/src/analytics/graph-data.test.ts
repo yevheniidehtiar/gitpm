@@ -554,6 +554,62 @@ describe('buildGraphData', () => {
     });
   });
 
+  it('does not let a cycle-truncated chain outrank a longer real chain', () => {
+    // c0 -> c1 -> c2 -> c3 -> c1 (cycle). The cycle guard makes the c1->c2->c3->c1
+    // step a dead end, so the real reconstructable chain from c0 is only
+    // c0->c1->c2->c3 (3 edges) — it must not be inflated to tie/beat the
+    // genuinely longer 4-edge chain below.
+    const makeStory = (
+      id: string,
+      issueNumber: number,
+      body: string,
+    ): ResolvedTree['stories'][number] =>
+      ({
+        type: 'story' as const,
+        id,
+        title: id,
+        status: 'todo' as const,
+        priority: 'medium' as const,
+        labels: [],
+        assignee: null,
+        estimate: null,
+        epic_ref: null,
+        github: { issue_number: issueNumber, repo: 'org/repo', synced_at: '' },
+        body,
+        filePath: `/${id}.md`,
+        created_at: '',
+        updated_at: '',
+      }) as ResolvedTree['stories'][number];
+
+    const cycle = [
+      makeStory('c0', 10, 'See #11.'),
+      makeStory('c1', 11, 'See #12.'),
+      makeStory('c2', 12, 'See #13.'),
+      makeStory('c3', 13, 'See #11.'),
+    ];
+    const chain = [
+      makeStory('s1', 1, 'See #2.'),
+      makeStory('s2', 2, 'See #3.'),
+      makeStory('s3', 3, 'See #4.'),
+      makeStory('s4', 4, 'See #5.'),
+      makeStory('s5', 5, ''),
+    ];
+
+    const tree = makeTree({
+      stories: [...cycle, ...chain] as ResolvedTree['stories'],
+    });
+
+    const result = buildGraphData(tree);
+    const byId = (id: string) => result.nodes.find((n) => n.id === id);
+
+    for (const id of ['s1', 's2', 's3', 's4', 's5']) {
+      expect(byId(id)?.critical).toBe(true);
+    }
+    for (const id of ['c0', 'c1', 'c2', 'c3']) {
+      expect(byId(id)?.critical).toBe(false);
+    }
+  });
+
   it('handles undefined sprints array (nullish coalescing)', () => {
     const tree = {
       stories: [],

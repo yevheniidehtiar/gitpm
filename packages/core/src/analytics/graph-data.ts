@@ -102,9 +102,12 @@ function computeCriticalPath(
     if (cached) return cached;
 
     // Cycle guard: a node revisited within the current DFS path is a dead
-    // end rather than recursed into again.
+    // end rather than recursed into again. Signal it as unusable (rather
+    // than a real length-0 path) so the edge into it is never chosen as
+    // `best` — otherwise it inflates the caller's reported length by one
+    // for a step that reconstruction can't actually walk.
     if (visiting.has(id)) {
-      return { length: 0, nextEdge: null };
+      return { length: Number.NEGATIVE_INFINITY, nextEdge: null };
     }
 
     visiting.add(id);
@@ -114,6 +117,7 @@ function computeCriticalPath(
     };
     for (const edge of adjacency.get(id) ?? []) {
       const downstream = longestFrom(edge.target);
+      if (downstream.length === Number.NEGATIVE_INFINITY) continue;
       if (downstream.length + 1 > best.length) {
         best = { length: downstream.length + 1, nextEdge: edge };
       }
