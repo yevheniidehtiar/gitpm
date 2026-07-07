@@ -94,7 +94,10 @@ function groupStaleByBucket(items: AuditItem[]): [string, AuditItem[]][] {
 }
 
 function escapeMdCell(value: string): string {
-  return value.replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|')
+    .replace(/\r?\n/g, ' ');
 }
 
 function mdTable(headers: string[], rows: string[][]): string {
