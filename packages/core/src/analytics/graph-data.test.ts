@@ -610,6 +610,64 @@ describe('buildGraphData', () => {
     }
   });
 
+  it('finds the true longest chain through a cycle with two distinct entry points', () => {
+    // A <-> B (2-cycle, mutual references), B -> C -> D, A -> A2 -> A3 -> A4.
+    // The true longest simple path is B->A->A2->A3->A4 (4 edges): entering
+    // the cycle at B and immediately leaving toward A's longer branch. A
+    // node-memoized DFS computes A's best chain once (while B is on the
+    // recursion stack, so A->B is blocked) and wrongly reuses that stale
+    // result when B is later tried as its own start — silently dropping the
+    // B->A edge and reporting the shorter A->B->C->D (3 edges) instead.
+    const makeStory = (
+      id: string,
+      issueNumber: number,
+      body: string,
+    ): ResolvedTree['stories'][number] =>
+      ({
+        type: 'story' as const,
+        id,
+        title: id,
+        status: 'todo' as const,
+        priority: 'medium' as const,
+        labels: [],
+        assignee: null,
+        estimate: null,
+        epic_ref: null,
+        github: { issue_number: issueNumber, repo: 'org/repo', synced_at: '' },
+        body,
+        filePath: `/${id}.md`,
+        created_at: '',
+        updated_at: '',
+      }) as ResolvedTree['stories'][number];
+
+    const stories = [
+      makeStory('a', 1, 'See #2. See #5.'),
+      makeStory('b', 2, 'See #1. See #3.'),
+      makeStory('c', 3, 'See #4.'),
+      makeStory('d', 4, ''),
+      makeStory('a2', 5, 'See #6.'),
+      makeStory('a3', 6, 'See #7.'),
+      makeStory('a4', 7, ''),
+    ];
+
+    const tree = makeTree({
+      stories: stories as ResolvedTree['stories'],
+    });
+
+    const result = buildGraphData(tree);
+    const byId = (id: string) => result.nodes.find((n) => n.id === id);
+    const byEdge = (source: string, target: string) =>
+      result.edges.find((e) => e.source === source && e.target === target);
+
+    for (const id of ['a', 'b', 'a2', 'a3', 'a4']) {
+      expect(byId(id)?.critical).toBe(true);
+    }
+    expect(byEdge('b', 'a')?.critical).toBe(true);
+    expect(byEdge('a', 'a2')?.critical).toBe(true);
+    expect(byEdge('a2', 'a3')?.critical).toBe(true);
+    expect(byEdge('a3', 'a4')?.critical).toBe(true);
+  });
+
   it('handles undefined sprints array (nullish coalescing)', () => {
     const tree = {
       stories: [],

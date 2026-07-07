@@ -66,11 +66,20 @@ function buildReferenceEdges(
 }
 
 /**
- * Finds the longest dependency chain (edges treated as "depends on" arrows)
- * over the subgraph of not-done/cancelled nodes, and returns the set of node
- * ids and edge keys that lie on it. Guards against cycles (possible via
- * `references` edges) with a recursion-stack visited set: a node already on
- * the current path is treated as a dead end rather than recursed into again.
+ * Finds the longest simple dependency chain (edges treated as "depends on"
+ * arrows) over the subgraph of not-done/cancelled nodes, and returns the set
+ * of node ids and edge keys that lie on it. Guards against cycles (possible
+ * via `references` edges) with a recursion-stack visited set: a node already
+ * on the current path is treated as a dead end rather than recursed into
+ * again.
+ *
+ * Deliberately does NOT memoize a node's result across calls: a node's
+ * longest-downstream-chain depends on which ancestors are already on the
+ * current path (because of cycles), so a value computed while some node X
+ * was "visiting" is invalid for a traversal where X is available. Caching it
+ * anyway silently drops edges that are legitimately usable from a different
+ * start/path — see the regression this fixes. Every `longestFrom` call
+ * re-explores its subtree, which is fine at the scale of a `.meta/` tree.
  */
 function computeCriticalPath(
   nodes: GraphNode[],
@@ -88,52 +97,46 @@ function computeCriticalPath(
     }
   }
 
-  const memo = new Map<
-    string,
-    { length: number; nextEdge: GraphEdge | null }
-  >();
   const visiting = new Set<string>();
 
-  function longestFrom(id: string): {
-    length: number;
-    nextEdge: GraphEdge | null;
-  } {
-    const cached = memo.get(id);
-    if (cached) return cached;
-
+  function longestFrom(id: string): { length: number; chain: GraphEdge[] } {
     // Cycle guard: a node revisited within the current DFS path is a dead
     // end rather than recursed into again. Signal it as unusable (rather
     // than a real length-0 path) so the edge into it is never chosen as
     // `best` — otherwise it inflates the caller's reported length by one
-    // for a step that reconstruction can't actually walk.
+    // for a step that can't actually be walked.
     if (visiting.has(id)) {
-      return { length: Number.NEGATIVE_INFINITY, nextEdge: null };
+      return { length: Number.NEGATIVE_INFINITY, chain: [] };
     }
 
     visiting.add(id);
-    let best: { length: number; nextEdge: GraphEdge | null } = {
+    let best: { length: number; chain: GraphEdge[] } = {
       length: 0,
-      nextEdge: null,
+      chain: [],
     };
     for (const edge of adjacency.get(id) ?? []) {
       const downstream = longestFrom(edge.target);
       if (downstream.length === Number.NEGATIVE_INFINITY) continue;
       if (downstream.length + 1 > best.length) {
-        best = { length: downstream.length + 1, nextEdge: edge };
+        best = {
+          length: downstream.length + 1,
+          chain: [edge, ...downstream.chain],
+        };
       }
     }
     visiting.delete(id);
-    memo.set(id, best);
     return best;
   }
 
   let bestStart: string | null = null;
   let bestLength = 0;
+  let bestChain: GraphEdge[] = [];
   for (const id of activeIds) {
     const result = longestFrom(id);
     if (result.length > bestLength) {
       bestLength = result.length;
       bestStart = id;
+      bestChain = result.chain;
     }
   }
 
@@ -143,22 +146,10 @@ function computeCriticalPath(
   // Only mark a critical path when at least one dependency edge is involved
   // — a lone unconnected node isn't a "chain".
   if (bestStart && bestLength > 0) {
-    // `memo` can point back to an already-visited node when the graph has a
-    // cycle (e.g. two entities referencing each other's issue number), so
-    // reconstruction needs its own visited guard to avoid looping forever.
-    const visited = new Set<string>();
     nodeIds.add(bestStart);
-    visited.add(bestStart);
-    let current = bestStart;
-    for (;;) {
-      const step = memo.get(current);
-      if (!step?.nextEdge || visited.has(step.nextEdge.target)) break;
-      edgeKeys.add(
-        `${step.nextEdge.source}->${step.nextEdge.target}|${step.nextEdge.label}`,
-      );
-      nodeIds.add(step.nextEdge.target);
-      visited.add(step.nextEdge.target);
-      current = step.nextEdge.target;
+    for (const edge of bestChain) {
+      edgeKeys.add(`${edge.source}->${edge.target}|${edge.label}`);
+      nodeIds.add(edge.target);
     }
   }
 
