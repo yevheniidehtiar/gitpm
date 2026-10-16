@@ -2,71 +2,15 @@ import type { Epic, Result, Story } from '@gitpm/core';
 import { parseTree, writeFile } from '@gitpm/core';
 import { LinearClient } from './client.js';
 import { loadConfig } from './config.js';
-import { entityToLinearIssue } from './mapper.js';
+import { computeRemoteIssueHash } from './diff.js';
 import { resolveEntityFilePath } from './paths.js';
+import { createPushContext } from './push.js';
 import { computeContentHash, loadState, saveState } from './state.js';
 import type {
   ExportResult,
   LinearExportOptions,
   LinearSyncState,
 } from './types.js';
-
-/** Builds a workflow-state-type → state-id map for a team (fetched once per run). */
-export async function buildStateIdMap(
-  client: LinearClient,
-  teamId: string,
-): Promise<Record<string, string>> {
-  const states = await client.listWorkflowStates(teamId);
-  const map: Record<string, string> = {};
-  for (const state of states) {
-    if (!(state.type in map)) {
-      map[state.type] = state.id;
-    }
-  }
-  return map;
-}
-
-/** Builds a label-name → label-id map for a team (fetched once per run). */
-export async function buildLabelIdMap(
-  client: LinearClient,
-  teamId: string,
-): Promise<Map<string, string>> {
-  const labels = await client.listIssueLabels(teamId);
-  const map = new Map<string, string>();
-  for (const label of labels) {
-    map.set(label.name, label.id);
-  }
-  return map;
-}
-
-/**
- * Resolves GitPM label names to Linear label UUIDs (Linear's API requires
- * label IDs, not names), creating any label on the team that doesn't exist
- * yet. Mutates `labelIdMap` in place so newly-created labels are reused for
- * the rest of the run. Returns `undefined` when there are no labels to push
- * so callers can omit `labelIds` entirely (matches the create/update params
- * shape, which treats an absent field as "leave unchanged").
- */
-export async function resolveLabelIds(
-  client: LinearClient,
-  teamId: string,
-  labelIdMap: Map<string, string>,
-  labelNames: string[] | undefined,
-): Promise<string[] | undefined> {
-  if (!labelNames || labelNames.length === 0) return undefined;
-
-  const ids: string[] = [];
-  for (const name of labelNames) {
-    let id = labelIdMap.get(name);
-    if (!id) {
-      const created = await client.createIssueLabel(teamId, name);
-      id = created.id;
-      labelIdMap.set(name, id);
-    }
-    ids.push(id);
-  }
-  return ids;
-}
 
 export async function exportToLinear(
   options: LinearExportOptions,
@@ -95,17 +39,7 @@ export async function exportToLinear(
         };
 
     const client = new LinearClient({ apiKey });
-    const stateIdMap = await buildStateIdMap(client, teamId);
-
-    // Fetched lazily — only entities that actually carry labels need it, and
-    // building it costs an extra API round-trip.
-    let labelIdMap: Map<string, string> | undefined;
-    const getLabelIdMap = async (): Promise<Map<string, string>> => {
-      if (!labelIdMap) {
-        labelIdMap = await buildLabelIdMap(client, teamId);
-      }
-      return labelIdMap;
-    };
+    const push = await createPushContext(client, teamId, config);
 
     const result: ExportResult = {
       created: { milestones: 0, issues: 0 },
@@ -114,11 +48,11 @@ export async function exportToLinear(
       exportedPaths: [],
     };
 
-    // 4. Process epics and stories (milestones = cycles are typically
-    //    managed on the Linear side, so we skip creating cycles)
+    // 4. Process epics and stories (milestones = cycles are managed on the
+    //    Linear side, so we skip creating cycles). Epics come first so that
+    //    stories created in the same run can be parented to them.
     const allIssueEntities: (Epic | Story)[] = [...tree.epics, ...tree.stories];
 
-    // Build epic id → linear issue id map for parent linking
     const epicIdToLinearId = new Map<string, string>();
     for (const epic of tree.epics) {
       const linearId =
@@ -135,34 +69,11 @@ export async function exportToLinear(
       if (!issueId) {
         // New entity — create issue on Linear
         if (!dryRun) {
-          const params = entityToLinearIssue(entity, config);
-
-          let parentId: string | undefined;
-          if (entity.type === 'story' && entity.epic_ref?.id) {
-            parentId = epicIdToLinearId.get(entity.epic_ref.id);
-          }
-
-          const stateId = params.targetStateType
-            ? stateIdMap[params.targetStateType]
-            : undefined;
-          const labelIds = params.labels?.length
-            ? await resolveLabelIds(
-                client,
-                teamId,
-                await getLabelIdMap(),
-                params.labels,
-              )
-            : undefined;
-
-          const created = await client.createIssue({
-            teamId,
-            title: params.title,
-            description: params.description,
-            priority: params.priority,
-            stateId,
-            parentId,
-            labelIds,
-          });
+          const parentId =
+            entity.type === 'story' && entity.epic_ref?.id
+              ? epicIdToLinearId.get(entity.epic_ref.id)
+              : undefined;
+          const created = await push.createIssue(entity, parentId);
 
           entity.linear = {
             issue_id: created.id,
@@ -171,71 +82,58 @@ export async function exportToLinear(
             last_sync_hash: computeContentHash(entity),
             synced_at: new Date().toISOString(),
           };
-          const filePath = resolveEntityFilePath(metaDir, entity.filePath);
-          await writeFile(entity, filePath);
+          await writeFile(
+            entity,
+            resolveEntityFilePath(metaDir, entity.filePath),
+          );
 
           if (entity.type === 'epic') {
             epicIdToLinearId.set(entity.id, created.id);
           }
 
-          const hash = computeContentHash(entity);
           state.entities[entity.id] = {
             linear_issue_id: created.id,
-            local_hash: hash,
-            remote_hash: hash,
+            local_hash: computeContentHash(entity),
+            remote_hash: computeRemoteIssueHash(created, config),
             synced_at: new Date().toISOString(),
           };
           result.exportedPaths.push(entity.filePath);
         }
         result.created.issues++;
-      } else {
-        // Existing entity — check for local changes
-        const currentHash = computeContentHash(entity);
-        if (entityState && currentHash !== entityState.local_hash) {
-          if (!dryRun) {
-            const params = entityToLinearIssue(entity, config);
-            const stateId = params.targetStateType
-              ? stateIdMap[params.targetStateType]
-              : undefined;
-            const labelIds = params.labels?.length
-              ? await resolveLabelIds(
-                  client,
-                  teamId,
-                  await getLabelIdMap(),
-                  params.labels,
-                )
-              : undefined;
-
-            await client.updateIssue(issueId, {
-              title: params.title,
-              description: params.description,
-              priority: params.priority,
-              stateId,
-              labelIds,
-            });
-
-            entity.linear = {
-              ...entity.linear,
-              issue_id: issueId,
-              team_id: teamId,
-              last_sync_hash: currentHash,
-              synced_at: new Date().toISOString(),
-            };
-            const filePath = resolveEntityFilePath(metaDir, entity.filePath);
-            await writeFile(entity, filePath);
-
-            state.entities[entity.id] = {
-              ...entityState,
-              linear_issue_id: issueId,
-              local_hash: currentHash,
-              remote_hash: currentHash,
-              synced_at: new Date().toISOString(),
-            };
-            result.exportedPaths.push(entity.filePath);
-          }
-          result.updated.issues++;
-        }
+        continue;
       }
+
+      // Existing entity — push when it changed locally, or when it has a
+      // Linear id but no state entry (push is local → remote, so the local
+      // copy is authoritative and the state entry is reseeded from it).
+      const currentHash = computeContentHash(entity);
+      if (entityState && currentHash === entityState.local_hash) continue;
+
+      if (!dryRun) {
+        const updated = await push.updateIssue(issueId, entity);
+
+        entity.linear = {
+          ...entity.linear,
+          issue_id: issueId,
+          team_id: teamId,
+          last_sync_hash: currentHash,
+          synced_at: new Date().toISOString(),
+        };
+        await writeFile(
+          entity,
+          resolveEntityFilePath(metaDir, entity.filePath),
+        );
+
+        state.entities[entity.id] = {
+          ...entityState,
+          linear_issue_id: issueId,
+          local_hash: currentHash,
+          remote_hash: computeRemoteIssueHash(updated, config),
+          synced_at: new Date().toISOString(),
+        };
+        result.exportedPaths.push(entity.filePath);
+      }
+      result.updated.issues++;
     }
 
     // 5. Handle locally deleted entities
@@ -248,13 +146,10 @@ export async function exportToLinear(
 
     for (const [entityId, entry] of Object.entries(state.entities)) {
       if (!currentEntityIds.has(entityId)) {
-        if (!dryRun && entry.linear_issue_id) {
-          const completedStateId = stateIdMap.completed;
-          if (completedStateId) {
-            await client.updateIssue(entry.linear_issue_id, {
-              stateId: completedStateId,
-            });
-          }
+        if (!dryRun && entry.linear_issue_id && push.completedStateId) {
+          await client.updateIssue(entry.linear_issue_id, {
+            stateId: push.completedStateId,
+          });
         }
         delete state.entities[entityId];
         result.totalChanges++;
@@ -270,7 +165,8 @@ export async function exportToLinear(
     // 6. Save updated sync state
     if (!dryRun) {
       state.last_sync = new Date().toISOString();
-      await saveState(metaDir, state);
+      const saveResult = await saveState(metaDir, state);
+      if (!saveResult.ok) return saveResult;
     }
 
     return { ok: true, value: result };

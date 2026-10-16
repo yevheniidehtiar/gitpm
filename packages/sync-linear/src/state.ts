@@ -85,9 +85,16 @@ function normalizeWhitespace(text: string): string {
     .trim();
 }
 
+/**
+ * Seeds sync state after an import. `remoteHashes` maps entity id to
+ * `computeRemoteIssueHash` of the issue the entity came from; entities
+ * without one (e.g. cycle milestones, which sync never diffs) fall back to
+ * the local hash.
+ */
 export function createInitialState(
   teamId: string,
   entities: ParsedEntity[],
+  remoteHashes: ReadonlyMap<string, string> = new Map(),
 ): LinearSyncState {
   const now = new Date().toISOString();
   const stateEntities: Record<string, LinearSyncStateEntry> = {};
@@ -101,7 +108,7 @@ export function createInitialState(
 
     const entry: LinearSyncStateEntry = {
       local_hash: hash,
-      remote_hash: hash,
+      remote_hash: remoteHashes.get(id) ?? hash,
       synced_at: now,
     };
 

@@ -140,18 +140,16 @@ export function linearIssueToEntity(
 export function determineFilePath(
   entity: Story | Epic | Milestone,
   parentEpicSlug?: string,
+  slug: string = toSlug(entity.title),
 ): string {
   if (entity.type === 'milestone') {
-    const slug = toSlug(entity.title);
     return `.meta/roadmap/milestones/${slug}.md`;
   }
 
   if (entity.type === 'epic') {
-    const slug = toSlug(entity.title);
     return `.meta/epics/${slug}/epic.md`;
   }
 
-  const slug = toSlug(entity.title);
   if (parentEpicSlug) {
     return `.meta/epics/${parentEpicSlug}/stories/${slug}.md`;
   }
@@ -160,11 +158,12 @@ export function determineFilePath(
 
 export interface CreateLinearIssueFromEntity {
   title: string;
-  description?: string;
+  /** Always set; an empty string clears the remote description. */
+  description: string;
   priority?: number;
-  labels?: string[];
+  /** Always set; an empty list clears the remote labels. */
+  labels: string[];
   assignee?: string;
-  parentId?: string;
   targetStateType?: string;
 }
 
@@ -196,8 +195,8 @@ export function entityToLinearIssue(
 
   return {
     title: entity.title,
-    description: entity.body || undefined,
-    labels: entity.labels?.length ? [...entity.labels] : undefined,
+    description: entity.body ?? '',
+    labels: [...(entity.labels ?? [])],
     assignee: assignee ?? undefined,
     priority: mapPriorityToLinear(entity.priority),
     targetStateType,
@@ -215,14 +214,4 @@ function mapPriorityToLinear(priority: Priority): number {
     default:
       return 3;
   }
-}
-
-export function milestoneToLinearCycle(milestone: Milestone): {
-  name: string;
-  endsAt?: string;
-} {
-  return {
-    name: milestone.title,
-    endsAt: milestone.target_date ?? undefined,
-  };
 }

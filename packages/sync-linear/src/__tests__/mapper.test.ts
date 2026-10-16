@@ -8,7 +8,6 @@ import {
   linearIssueToEntity,
   mapLinearPriority,
   mapLinearState,
-  milestoneToLinearCycle,
 } from '../mapper.js';
 import type { LinearConfig } from '../types.js';
 
@@ -275,14 +274,5 @@ describe('entityToLinearIssue', () => {
     expect(entityToLinearIssue(entity as never, defaultConfig).priority).toBe(
       3,
     );
-  });
-});
-
-describe('milestoneToLinearCycle', () => {
-  it('maps milestone to cycle params', () => {
-    const ms = linearCycleToMilestone(baseCycle, TEAM_ID);
-    const params = milestoneToLinearCycle(ms);
-    expect(params.name).toBe('Cycle 1');
-    expect(params.endsAt).toBe('2026-01-14T00:00:00Z');
   });
 });

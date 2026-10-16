@@ -9,11 +9,12 @@ import type {
 } from '@gitpm/core';
 import { toSlug, writeFile } from '@gitpm/core';
 import { nanoid } from 'nanoid';
+import type { LinearIssue } from './client.js';
 import { LinearClient } from './client.js';
 import { createDefaultConfig, saveConfig } from './config.js';
+import { computeRemoteIssueHash } from './diff.js';
 import {
   determineFilePath,
-  isEpicIssue,
   linearCycleToMilestone,
   linearIssueToEntity,
 } from './mapper.js';
@@ -32,19 +33,43 @@ export async function importFromLinear(
 
     const client = new LinearClient({ apiKey });
 
+    // File paths are derived from titles, which Linear does not require to
+    // be unique. Disambiguate with the issue identifier / cycle number so no
+    // entity silently overwrites another on disk.
+    const usedPaths = new Set<string>();
+    const claimPath = (
+      build: (slug: string) => string,
+      title: string,
+      suffix: string,
+    ): { slug: string; path: string } => {
+      const base = toSlug(title);
+      const candidates = [base, `${base}-${toSlug(suffix)}`];
+      for (let n = 2; ; n++) {
+        const slug = candidates.shift() ?? `${base}-${toSlug(suffix)}-${n}`;
+        const path = build(slug);
+        if (!usedPaths.has(path)) {
+          usedPaths.add(path);
+          return { slug, path };
+        }
+      }
+    };
+
     // 1. Fetch cycles → milestones
     const milestones: Milestone[] = [];
-    const cycleIdToMilestoneId = new Map<string, string>();
 
     const cycles = await client.listCycles(teamId);
     for (const cycle of cycles) {
       const ms = linearCycleToMilestone(cycle, teamId);
+      ms.filePath = claimPath(
+        (slug) => determineFilePath(ms, undefined, slug),
+        ms.title,
+        `cycle-${cycle.number}`,
+      ).path;
       const hash = computeContentHash(ms);
       if (ms.linear) {
         ms.linear.last_sync_hash = hash;
       }
       milestones.push(ms);
-      cycleIdToMilestoneId.set(cycle.id, ms.id);
     }
 
     // 2. Build config
@@ -53,72 +78,52 @@ export async function importFromLinear(
     // 3. Fetch all issues for the team
     const issues = await client.listIssues(teamId);
 
-    // 4. Separate epics and stories
+    // 4. Separate epics and stories (an issue with sub-issues is an epic)
     const epics: Epic[] = [];
     const stories: Story[] = [];
-    const issueIdToEntity = new Map<string, Epic | Story>();
+    const remoteHashes = new Map<string, string>();
+    const epicByIssueId = new Map<string, { epic: Epic; slug: string }>();
+    const storyIssues: Array<{ issue: LinearIssue; story: Story }> = [];
 
-    // First pass: identify epics (issues with sub-issues)
     for (const issue of issues) {
       const entity = linearIssueToEntity(issue, config, teamId);
-      issueIdToEntity.set(issue.id, entity);
-
+      remoteHashes.set(entity.id, computeRemoteIssueHash(issue, config));
       if (entity.type === 'epic') {
-        epics.push(entity);
-      }
-    }
-
-    // Build epic id → entity map
-    const epicIdToEpic = new Map<string, Epic>();
-    for (const issue of issues) {
-      if (isEpicIssue(issue)) {
-        const entity = issueIdToEntity.get(issue.id);
-        if (entity?.type === 'epic') {
-          epicIdToEpic.set(issue.id, entity);
-        }
-      }
-    }
-
-    // Second pass: stories — resolve epic refs via the parent field
-    for (const issue of issues) {
-      const entity = issueIdToEntity.get(issue.id);
-      if (!entity || entity.type !== 'story') continue;
-
-      let parentEpicSlug: string | undefined;
-
-      const parentId = issue.parent?.id;
-      if (parentId) {
-        const parentEpic = epicIdToEpic.get(parentId);
-        if (parentEpic) {
-          entity.epic_ref = { id: parentEpic.id } as EntityRef;
-          parentEpicSlug = toSlug(parentEpic.title);
-        }
-      }
-
-      // Link cycle → milestone
-      if (issue.cycle && cycleIdToMilestoneId.has(issue.cycle.id)) {
+        const { slug, path } = claimPath(
+          (s) => determineFilePath(entity, undefined, s),
+          entity.title,
+          issue.identifier,
+        );
+        entity.filePath = path;
         if (entity.linear) {
-          entity.linear.cycle_id = issue.cycle.id;
+          entity.linear.last_sync_hash = computeContentHash(entity);
         }
+        epics.push(entity);
+        epicByIssueId.set(issue.id, { epic: entity, slug });
+      } else {
+        storyIssues.push({ issue, story: entity });
       }
-
-      entity.filePath = determineFilePath(entity, parentEpicSlug);
-
-      const hash = computeContentHash(entity);
-      if (entity.linear) {
-        entity.linear.last_sync_hash = hash;
-      }
-
-      stories.push(entity);
     }
 
-    // Update epic file paths and hashes
-    for (const epic of epics) {
-      epic.filePath = determineFilePath(epic);
-      const hash = computeContentHash(epic);
-      if (epic.linear) {
-        epic.linear.last_sync_hash = hash;
+    // Stories — resolve epic refs via the parent field
+    for (const { issue, story } of storyIssues) {
+      const parent = issue.parent?.id
+        ? epicByIssueId.get(issue.parent.id)
+        : undefined;
+      if (parent) {
+        story.epic_ref = { id: parent.epic.id } as EntityRef;
       }
+
+      story.filePath = claimPath(
+        (s) => determineFilePath(story, parent?.slug, s),
+        story.title,
+        issue.identifier,
+      ).path;
+
+      if (story.linear) {
+        story.linear.last_sync_hash = computeContentHash(story);
+      }
+      stories.push(story);
     }
 
     // 5. Build roadmap
@@ -177,7 +182,7 @@ export async function importFromLinear(
 
     // 8. Save initial sync state
     const allEntities = [...milestones, ...epics, ...stories, roadmap];
-    const syncState = createInitialState(teamId, allEntities);
+    const syncState = createInitialState(teamId, allEntities, remoteHashes);
     const stateResult = await saveState(metaDir, syncState);
     if (!stateResult.ok) return stateResult;
     totalFiles++;

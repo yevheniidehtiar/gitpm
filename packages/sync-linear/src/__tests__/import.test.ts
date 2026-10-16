@@ -77,7 +77,14 @@ function issuesResponse(issues: unknown[]) {
 }
 
 function cyclesResponse(cycles: unknown[]) {
-  return graphqlResponse({ team: { cycles: { nodes: cycles } } });
+  return graphqlResponse({
+    team: {
+      cycles: {
+        nodes: cycles,
+        pageInfo: { hasNextPage: false, endCursor: null },
+      },
+    },
+  });
 }
 
 describe('importFromLinear', () => {
@@ -197,6 +204,44 @@ describe('importFromLinear', () => {
 
     const storyPath = join(metaDir, 'stories/standalone-task.md');
     await expect(stat(storyPath)).resolves.toBeTruthy();
+  });
+
+  it('gives issues with duplicate titles distinct files', async () => {
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('query Cycles')) return cyclesResponse([]);
+      if (body.query.includes('query Issues')) {
+        return issuesResponse([
+          buildIssue({ id: 'issue-1', identifier: 'ENG-1', title: 'Fix bug' }),
+          buildIssue({ id: 'issue-2', identifier: 'ENG-2', title: 'Fix bug' }),
+        ]);
+      }
+      return graphqlResponse({});
+    });
+
+    const result = await importFromLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(new Set(result.value.writtenPaths).size).toBe(
+      result.value.writtenPaths.length,
+    );
+    expect(result.value.writtenPaths).toContain('.meta/stories/fix-bug.md');
+    expect(result.value.writtenPaths).toContain(
+      '.meta/stories/fix-bug-eng-2.md',
+    );
+
+    const { parseTree } = await import('@gitpm/core');
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw tree.error;
+    expect(tree.value.stories.map((s) => s.linear?.identifier).sort()).toEqual([
+      'ENG-1',
+      'ENG-2',
+    ]);
   });
 
   it('returns an error result when the Linear API call fails', async () => {

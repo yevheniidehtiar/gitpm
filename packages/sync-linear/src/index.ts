@@ -1,25 +1,26 @@
 export { linearAdapter } from './adapter.js';
-
 export type {
   CreateLinearIssueParams,
+  LinearApiError,
   LinearClientOptions,
   LinearCycle,
   LinearIssue,
   LinearProject,
   LinearTeam,
+  LinearUser,
   LinearWorkflowState,
   UpdateLinearIssueParams,
 } from './client.js';
-export { LinearClient } from './client.js';
+export { isNotFoundError, LinearClient } from './client.js';
 export { createDefaultConfig, loadConfig, saveConfig } from './config.js';
 export { applyResolutions, resolveConflicts } from './conflict.js';
 export {
+  computeRemoteIssueHash,
   diffByHash,
   diffEntity,
-  remoteCycleFields,
   remoteIssueFields,
 } from './diff.js';
-export { buildStateIdMap, exportToLinear } from './export.js';
+export { exportToLinear } from './export.js';
 export { importFromLinear } from './import.js';
 export type { CreateLinearIssueFromEntity } from './mapper.js';
 export {
@@ -30,7 +31,6 @@ export {
   linearIssueToEntity,
   mapLinearPriority,
   mapLinearState,
-  milestoneToLinearCycle,
 } from './mapper.js';
 
 export {

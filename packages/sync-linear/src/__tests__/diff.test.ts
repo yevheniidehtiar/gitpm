@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { LinearCycle, LinearIssue } from '../client.js';
+import type { LinearIssue } from '../client.js';
 import {
+  computeRemoteIssueHash,
   diffByHash,
   diffEntity,
-  remoteCycleFields,
   remoteIssueFields,
 } from '../diff.js';
 import type { LinearConfig, LinearSyncStateEntry } from '../types.js';
@@ -45,30 +45,35 @@ describe('remoteIssueFields', () => {
   });
 });
 
-describe('remoteCycleFields', () => {
-  it('extracts comparable fields from a Linear cycle', () => {
-    const cycle: LinearCycle = {
-      id: '1',
-      number: 1,
-      name: 'Cycle 1',
-      endsAt: '2026-01-14T00:00:00Z',
-    };
+describe('computeRemoteIssueHash', () => {
+  const issue: LinearIssue = {
+    id: '1',
+    identifier: 'ENG-1',
+    title: 'Test Issue',
+    description: 'A description',
+    priority: 2,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-02T00:00:00Z',
+    state: { id: 's1', name: 'Todo', type: 'unstarted' },
+    assignee: null,
+    labels: { nodes: [{ name: 'b' }, { name: 'a' }] },
+  };
 
-    const fields = remoteCycleFields(cycle);
-    expect(fields.title).toBe('Cycle 1');
-    expect(fields.status).toBe('in_progress');
-    expect(fields.target_date).toBe('2026-01-14T00:00:00Z');
+  it('ignores label order and non-synced fields', () => {
+    const reordered: LinearIssue = {
+      ...issue,
+      updatedAt: '2026-02-01T00:00:00Z',
+      labels: { nodes: [{ name: 'a' }, { name: 'b' }] },
+    };
+    expect(computeRemoteIssueHash(reordered, config)).toBe(
+      computeRemoteIssueHash(issue, config),
+    );
   });
 
-  it('handles a completed cycle', () => {
-    const cycle: LinearCycle = {
-      id: '2',
-      number: 2,
-      completedAt: '2026-01-14T00:00:00Z',
-    };
-    const fields = remoteCycleFields(cycle);
-    expect(fields.status).toBe('done');
-    expect(fields.title).toBe('Cycle 2');
+  it('changes when a synced field changes', () => {
+    expect(
+      computeRemoteIssueHash({ ...issue, title: 'Other' }, config),
+    ).not.toBe(computeRemoteIssueHash(issue, config));
   });
 });
 

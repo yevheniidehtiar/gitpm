@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { exportToLinear } from '../export.js';
 import { importFromLinear } from '../import.js';
+import { syncWithLinear } from '../sync.js';
 
 const API_KEY = 'lin_api_test_key';
 const TEAM_ID = 'team-1';
@@ -35,6 +36,7 @@ function statesResponse() {
           { id: 'state-started', name: 'In Progress', type: 'started' },
           { id: 'state-completed', name: 'Done', type: 'completed' },
         ],
+        pageInfo: { hasNextPage: false, endCursor: null },
       },
     },
   });
@@ -67,7 +69,14 @@ async function seedTree(
   mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
     const body = JSON.parse(init.body as string);
     if (body.query.includes('query Cycles')) {
-      return graphqlResponse({ team: { cycles: { nodes: [] } } });
+      return graphqlResponse({
+        team: {
+          cycles: {
+            nodes: [],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        },
+      });
     }
     if (body.query.includes('query Issues')) {
       return graphqlResponse({
@@ -178,6 +187,68 @@ describe('exportToLinear', () => {
     expect(entry).toBeDefined();
   });
 
+  it('leaves nothing to sync right after a push', async () => {
+    await seedTree(metaDir, []);
+    const { createStory } = await import('@gitpm/core');
+    const created = await createStory(metaDir, {
+      title: 'Pushed Story',
+      labels: ['api'],
+    });
+    if (!created.ok) throw created.error;
+
+    const remote = baseIssue({
+      id: 'issue-200',
+      identifier: 'ENG-200',
+      title: 'Pushed Story',
+      description: '',
+      state: { id: 'state-backlog', name: 'Backlog', type: 'backlog' },
+      labels: { nodes: [{ name: 'api' }] },
+    });
+    const mutations: string[] = [];
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('mutation')) mutations.push(body.query);
+      if (body.query.includes('WorkflowStates')) return statesResponse();
+      if (body.query.includes('IssueLabels')) {
+        return graphqlResponse({
+          issueLabels: {
+            nodes: [{ id: 'label-api', name: 'api' }],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        });
+      }
+      if (body.query.includes('IssueCreate')) {
+        return graphqlResponse({
+          issueCreate: { success: true, issue: remote },
+        });
+      }
+      if (body.query.includes('query Issue(')) {
+        return graphqlResponse({ issue: remote });
+      }
+      return graphqlResponse({});
+    });
+
+    const pushed = await exportToLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+    expect(pushed.ok).toBe(true);
+    expect(mutations).toHaveLength(1);
+
+    const synced = await syncWithLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+    expect(synced.ok).toBe(true);
+    if (!synced.ok) return;
+    expect(synced.value.pushed.issues).toBe(0);
+    expect(synced.value.pulled.issues).toBe(0);
+    expect(synced.value.conflicts).toHaveLength(0);
+    expect(mutations).toHaveLength(1);
+  });
+
   it('does not call the create/update mutations in dry-run mode', async () => {
     await seedTree(metaDir, []);
     const { createStory } = await import('@gitpm/core');
@@ -226,7 +297,9 @@ describe('exportToLinear', () => {
       if (body.query.includes('WorkflowStates')) return statesResponse();
       if (body.query.includes('IssueUpdate')) {
         updateCalledWith = body.variables;
-        return graphqlResponse({ issueUpdate: { success: true } });
+        return graphqlResponse({
+          issueUpdate: { success: true, issue: baseIssue() },
+        });
       }
       return graphqlResponse({});
     });
@@ -263,7 +336,10 @@ describe('exportToLinear', () => {
       if (body.query.includes('WorkflowStates')) return statesResponse();
       if (body.query.includes('IssueLabels')) {
         return graphqlResponse({
-          team: { labels: { nodes: [{ id: 'label-api', name: 'api' }] } },
+          issueLabels: {
+            nodes: [{ id: 'label-api', name: 'api' }],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
         });
       }
       if (body.query.includes('IssueLabelCreate')) {

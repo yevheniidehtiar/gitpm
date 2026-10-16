@@ -1,125 +1,213 @@
 export interface LinearClientOptions {
   apiKey: string;
   apiUrl?: string;
+  /** Max retries after a 429 response (default 3). */
+  maxRetries?: number;
+}
+
+interface GraphQLError {
+  message: string;
+  extensions?: { code?: string; type?: string };
 }
 
 interface GraphQLResponse<T> {
   data?: T;
-  errors?: Array<{ message: string }>;
+  errors?: GraphQLError[];
 }
+
+interface Connection<T> {
+  nodes: T[];
+  pageInfo: { hasNextPage: boolean; endCursor: string | null };
+}
+
+/** An Error carrying the HTTP status and GraphQL errors returned by Linear. */
+export type LinearApiError = Error & {
+  status?: number;
+  graphqlErrors?: GraphQLError[];
+};
+
+function linearApiError(
+  message: string,
+  extra: { status?: number; graphqlErrors?: GraphQLError[] },
+): LinearApiError {
+  return Object.assign(new Error(message), extra);
+}
+
+/** True only when Linear reports that the requested entity does not exist. */
+export function isNotFoundError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const gqlErrors = (err as LinearApiError).graphqlErrors ?? [];
+  return gqlErrors.some((e) => /entity not found/i.test(e.message));
+}
+
+const PAGE_SIZE = 100;
+const DEFAULT_RETRY_DELAY_MS = 1000;
 
 export class LinearClient {
   private apiUrl: string;
   private apiKey: string;
+  private maxRetries: number;
 
   constructor(options: LinearClientOptions) {
     this.apiUrl = options.apiUrl ?? 'https://api.linear.app/graphql';
     this.apiKey = options.apiKey;
+    this.maxRetries = options.maxRetries ?? 3;
   }
 
   private async request<T>(
     query: string,
     variables?: Record<string, unknown>,
   ): Promise<T> {
-    const response = await fetch(this.apiUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: this.apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query, variables }),
-    });
+    let attempt = 0;
+    while (true) {
+      const response = await fetch(this.apiUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: this.apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query, variables }),
+      });
 
-    await this.checkRateLimit(response);
+      if (response.status === 429 && attempt < this.maxRetries) {
+        attempt++;
+        const waitMs = retryDelayMs(response, attempt);
+        console.warn(
+          `Linear rate limit hit. Retrying in ${Math.ceil(waitMs / 1000)}s (attempt ${attempt}/${this.maxRetries}).`,
+        );
+        await sleep(waitMs);
+        continue;
+      }
 
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(
-        `Linear API error ${response.status}: ${response.statusText} — ${body}`,
-      );
+      if (!response.ok) {
+        const body = await response.text();
+        throw linearApiError(
+          `Linear API error ${response.status}: ${response.statusText} — ${body}`,
+          { status: response.status },
+        );
+      }
+
+      const json = (await response.json()) as GraphQLResponse<T>;
+      if (json.errors && json.errors.length > 0) {
+        throw linearApiError(
+          `Linear API error: ${json.errors.map((e) => e.message).join('; ')}`,
+          { status: response.status, graphqlErrors: json.errors },
+        );
+      }
+
+      return json.data as T;
     }
-
-    const json = (await response.json()) as GraphQLResponse<T>;
-    if (json.errors && json.errors.length > 0) {
-      throw new Error(
-        `Linear API error: ${json.errors.map((e) => e.message).join('; ')}`,
-      );
-    }
-
-    return json.data as T;
   }
 
-  private async checkRateLimit(response: Response): Promise<void> {
-    const retryAfter = response.headers.get('Retry-After');
-    if (response.status === 429 && retryAfter) {
-      const waitMs = Number.parseInt(retryAfter, 10) * 1000;
-      if (waitMs > 0) {
-        console.warn(
-          `Linear rate limit hit. Sleeping ${Math.ceil(waitMs / 1000)}s.`,
-        );
-        await new Promise((resolve) => setTimeout(resolve, waitMs));
-      }
+  /**
+   * Fetches every page of a connection. The query must declare
+   * `$first: Int!` and `$after: String`; `select` picks the connection.
+   */
+  private async paginate<T, R>(
+    query: string,
+    variables: Record<string, unknown>,
+    select: (data: R) => Connection<T>,
+  ): Promise<T[]> {
+    const results: T[] = [];
+    let after: string | undefined;
+    while (true) {
+      const data = await this.request<R>(query, {
+        ...variables,
+        first: PAGE_SIZE,
+        after,
+      });
+      const page = select(data);
+      results.push(...page.nodes);
+      if (!page.pageInfo.hasNextPage || !page.pageInfo.endCursor) break;
+      after = page.pageInfo.endCursor;
     }
+    return results;
   }
 
   async listTeams(): Promise<LinearTeam[]> {
     const query = `
-      query Teams {
-        teams {
+      query Teams($first: Int!, $after: String) {
+        teams(first: $first, after: $after) {
           nodes { id name key }
+          pageInfo { hasNextPage endCursor }
         }
       }
     `;
-    const data = await this.request<{ teams: { nodes: LinearTeam[] } }>(query);
-    return data.teams.nodes;
+    return this.paginate<LinearTeam, { teams: Connection<LinearTeam> }>(
+      query,
+      {},
+      (d) => d.teams,
+    );
   }
 
   async listWorkflowStates(teamId: string): Promise<LinearWorkflowState[]> {
     const query = `
-      query WorkflowStates($teamId: String!) {
+      query WorkflowStates($teamId: String!, $first: Int!, $after: String) {
         team(id: $teamId) {
-          states {
+          states(first: $first, after: $after) {
             nodes { id name type position }
+            pageInfo { hasNextPage endCursor }
           }
         }
       }
     `;
-    const data = await this.request<{
-      team: { states: { nodes: LinearWorkflowState[] } };
-    }>(query, { teamId });
-    return data.team.states.nodes;
+    return this.paginate<
+      LinearWorkflowState,
+      { team: { states: Connection<LinearWorkflowState> } }
+    >(query, { teamId }, (d) => d.team.states);
   }
 
   async listProjects(teamId: string): Promise<LinearProject[]> {
     const query = `
-      query Projects($teamId: String!) {
+      query Projects($teamId: String!, $first: Int!, $after: String) {
         team(id: $teamId) {
-          projects {
+          projects(first: $first, after: $after) {
             nodes { id name description }
+            pageInfo { hasNextPage endCursor }
           }
         }
       }
     `;
-    const data = await this.request<{
-      team: { projects: { nodes: LinearProject[] } };
-    }>(query, { teamId });
-    return data.team.projects.nodes;
+    return this.paginate<
+      LinearProject,
+      { team: { projects: Connection<LinearProject> } }
+    >(query, { teamId }, (d) => d.team.projects);
   }
 
+  /** Lists labels usable by the team: its own labels plus workspace labels. */
   async listIssueLabels(teamId: string): Promise<LinearIssueLabel[]> {
     const query = `
-      query IssueLabels($teamId: String!) {
-        team(id: $teamId) {
-          labels {
-            nodes { id name }
-          }
+      query IssueLabels($teamId: ID!, $first: Int!, $after: String) {
+        issueLabels(
+          first: $first
+          after: $after
+          filter: { or: [{ team: { id: { eq: $teamId } } }, { team: { null: true } }] }
+        ) {
+          nodes { id name }
+          pageInfo { hasNextPage endCursor }
         }
       }
     `;
-    const data = await this.request<{
-      team: { labels: { nodes: LinearIssueLabel[] } };
-    }>(query, { teamId });
-    return data.team.labels.nodes;
+    return this.paginate<
+      LinearIssueLabel,
+      { issueLabels: Connection<LinearIssueLabel> }
+    >(query, { teamId }, (d) => d.issueLabels);
+  }
+
+  async listUsers(): Promise<LinearUser[]> {
+    const query = `
+      query Users($first: Int!, $after: String) {
+        users(first: $first, after: $after) {
+          nodes { id name displayName }
+          pageInfo { hasNextPage endCursor }
+        }
+      }
+    `;
+    return this.paginate<LinearUser, { users: Connection<LinearUser> }>(
+      query,
+      {},
+      (d) => d.users,
+    );
   }
 
   async createIssueLabel(
@@ -147,55 +235,43 @@ export class LinearClient {
 
   async listCycles(teamId: string): Promise<LinearCycle[]> {
     const query = `
-      query Cycles($teamId: String!) {
+      query Cycles($teamId: String!, $first: Int!, $after: String) {
         team(id: $teamId) {
-          cycles {
+          cycles(first: $first, after: $after) {
             nodes { id number name startsAt endsAt completedAt }
+            pageInfo { hasNextPage endCursor }
           }
         }
       }
     `;
-    const data = await this.request<{
-      team: { cycles: { nodes: LinearCycle[] } };
-    }>(query, { teamId });
-    return data.team.cycles.nodes;
+    return this.paginate<
+      LinearCycle,
+      { team: { cycles: Connection<LinearCycle> } }
+    >(query, { teamId }, (d) => d.team.cycles);
   }
 
   async listIssues(teamId: string): Promise<LinearIssue[]> {
-    const results: LinearIssue[] = [];
-    let cursor: string | undefined;
-    const pageSize = 50;
-
-    while (true) {
-      const query = `
-        query Issues($teamId: String!, $after: String, $first: Int!) {
-          team(id: $teamId) {
-            issues(first: $first, after: $after) {
-              nodes { ${ISSUE_FIELDS} }
-              pageInfo { hasNextPage endCursor }
-            }
+    const query = `
+      query Issues($teamId: String!, $after: String, $first: Int!) {
+        team(id: $teamId) {
+          issues(first: $first, after: $after) {
+            nodes { ${ISSUE_FIELDS} }
+            pageInfo { hasNextPage endCursor }
           }
         }
-      `;
-      const data = await this.request<{
-        team: {
-          issues: {
-            nodes: LinearIssue[];
-            pageInfo: { hasNextPage: boolean; endCursor: string | null };
-          };
-        };
-      }>(query, { teamId, after: cursor, first: pageSize });
-
-      const page = data.team.issues;
-      results.push(...page.nodes);
-
-      if (!page.pageInfo.hasNextPage || !page.pageInfo.endCursor) break;
-      cursor = page.pageInfo.endCursor;
-    }
-
-    return results;
+      }
+    `;
+    return this.paginate<
+      LinearIssue,
+      { team: { issues: Connection<LinearIssue> } }
+    >(query, { teamId }, (d) => d.team.issues);
   }
 
+  /**
+   * Returns `null` only when Linear reports the issue does not exist. Any
+   * other failure (auth, network, rate limit, server error) is rethrown so
+   * callers never mistake an outage for a remote deletion.
+   */
   async getIssue(issueId: string): Promise<LinearIssue | null> {
     const query = `
       query Issue($id: String!) {
@@ -207,8 +283,9 @@ export class LinearClient {
         id: issueId,
       });
       return data.issue ?? null;
-    } catch {
-      return null;
+    } catch (err) {
+      if (isNotFoundError(err)) return null;
+      throw err;
     }
   }
 
@@ -231,6 +308,7 @@ export class LinearClient {
       ...(params.stateId && { stateId: params.stateId }),
       ...(params.parentId && { parentId: params.parentId }),
       ...(params.labelIds && { labelIds: params.labelIds }),
+      ...(params.assigneeId && { assigneeId: params.assigneeId }),
     };
 
     const data = await this.request<{
@@ -244,14 +322,16 @@ export class LinearClient {
     return data.issueCreate.issue;
   }
 
+  /** Updates an issue and returns its state after the update. */
   async updateIssue(
     issueId: string,
     params: UpdateLinearIssueParams,
-  ): Promise<void> {
+  ): Promise<LinearIssue> {
     const mutation = `
       mutation IssueUpdate($id: String!, $input: IssueUpdateInput!) {
         issueUpdate(id: $id, input: $input) {
           success
+          issue { ${ISSUE_FIELDS} }
         }
       }
     `;
@@ -262,12 +342,31 @@ export class LinearClient {
     if (params.priority !== undefined) input.priority = params.priority;
     if (params.stateId !== undefined) input.stateId = params.stateId;
     if (params.labelIds !== undefined) input.labelIds = params.labelIds;
+    if (params.assigneeId !== undefined) input.assigneeId = params.assigneeId;
 
-    await this.request<{ issueUpdate: { success: boolean } }>(mutation, {
-      id: issueId,
-      input,
-    });
+    const data = await this.request<{
+      issueUpdate: { success: boolean; issue: LinearIssue };
+    }>(mutation, { id: issueId, input });
+
+    if (!data.issueUpdate.success) {
+      throw new Error('Linear issueUpdate mutation reported failure');
+    }
+
+    return data.issueUpdate.issue;
   }
+}
+
+function retryDelayMs(response: Response, attempt: number): number {
+  const retryAfter = Number.parseInt(
+    response.headers.get('Retry-After') ?? '',
+    10,
+  );
+  if (Number.isFinite(retryAfter) && retryAfter >= 0) return retryAfter * 1000;
+  return DEFAULT_RETRY_DELAY_MS * 2 ** (attempt - 1);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 const ISSUE_FIELDS = `
@@ -312,6 +411,12 @@ export interface LinearIssueLabel {
   name: string;
 }
 
+export interface LinearUser {
+  id: string;
+  name: string;
+  displayName?: string;
+}
+
 export interface LinearCycle {
   id: string;
   number: number;
@@ -346,6 +451,7 @@ export interface CreateLinearIssueParams {
   stateId?: string;
   parentId?: string;
   labelIds?: string[];
+  assigneeId?: string;
 }
 
 export interface UpdateLinearIssueParams {
@@ -354,4 +460,6 @@ export interface UpdateLinearIssueParams {
   priority?: number;
   stateId?: string;
   labelIds?: string[];
+  /** `null` unassigns the issue. */
+  assigneeId?: string | null;
 }

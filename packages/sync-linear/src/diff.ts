@@ -1,5 +1,6 @@
+import { createHash } from 'node:crypto';
 import type { ParsedEntity } from '@gitpm/core';
-import type { LinearCycle, LinearIssue } from './client.js';
+import type { LinearIssue } from './client.js';
 import { mapLinearPriority, mapLinearState } from './mapper.js';
 import type {
   DiffResult,
@@ -57,14 +58,16 @@ export function remoteIssueFields(
   };
 }
 
-export function remoteCycleFields(cycle: LinearCycle): Record<string, unknown> {
-  const status = cycle.completedAt ? 'done' : 'in_progress';
-  return {
-    title: cycle.name ?? `Cycle ${cycle.number}`,
-    status,
-    target_date: cycle.endsAt ?? null,
-    body: '',
-  };
+/**
+ * Hash of an issue's syncable fields as Linear reports them. This is the
+ * only function that may produce or be compared against `remote_hash`.
+ */
+export function computeRemoteIssueHash(
+  issue: LinearIssue,
+  config?: Pick<LinearConfig, 'status_mapping'>,
+): string {
+  const json = JSON.stringify(remoteIssueFields(issue, config));
+  return `sha256:${createHash('sha256').update(json).digest('hex')}`;
 }
 
 function diffFields(
