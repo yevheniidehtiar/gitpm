@@ -1,0 +1,186 @@
+name: Claude Autofix
+
+# Runs only when there is something to fix:
+#   - a CI workflow failed on a same-repo PR (workflow_run), or
+#   - Claude Review left inline comments (workflow_dispatch from
+#     claude-review.yml).
+# One fix pass per trigger, no polling. The fix is pushed back to the PR
+# branch, which re-runs CI; if that fails again this workflow fires again,
+# bounded by a cap on consecutive autofix commits.
+#
+# NOTE: workflow_run and workflow_dispatch always use this file as it is
+# on master, so changes here only take effect after they merge.
+# See docs/ci-claude-review.md.
+
+on:
+  workflow_run:
+    workflows: ['PR Validation', 'Build Matrix']
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: PR number
+        required: true
+      branch:
+        description: PR head branch
+        required: true
+      sha:
+        description: Head SHA the review ran on
+        required: true
+
+# Queue (don't cancel) per branch: a second trigger for the same commit
+# then sees the branch has moved on and exits.
+concurrency:
+  group: claude-autofix-${{ github.event.workflow_run.head_branch || inputs.branch }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  autofix:
+    name: Claude Autofix
+    # workflow_run runs with secrets in the base repo: never act on forks.
+    if: |
+      github.event_name == 'workflow_dispatch' || (
+        github.event.workflow_run.conclusion == 'failure' &&
+        github.event.workflow_run.event == 'pull_request' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.pull_requests[0] != null
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+      actions: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ inputs.pr || github.event.workflow_run.pull_requests[0].number }}
+      BRANCH: ${{ inputs.branch || github.event.workflow_run.head_branch }}
+      SHA: ${{ inputs.sha || github.event.workflow_run.head_sha }}
+      MAX_STREAK: 5
+      AUTOFIX_EMAIL: claude-autofix@users.noreply.github.com
+    steps:
+      # Everything that can say "nothing to do" runs here, before the App
+      # token, checkout and installs.
+      - name: Gather context
+        id: ctx
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/autofix
+          skip() { echo "$1"; echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0; }
+
+          read -r STATE HEAD < <(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '"\(.state) \(.head.sha)"')
+          [ "$STATE" = open ] || skip "PR #$PR_NUMBER is $STATE — skipping."
+          [ "$HEAD" = "$SHA" ] || skip "Branch moved on ($SHA → $HEAD) — CI will re-run there. Skipping."
+
+          # Count trailing autofix commits; each fix re-triggers CI, so this
+          # is what bounds repeated attempts.
+          STREAK=$(gh api "repos/$REPO/pulls/$PR_NUMBER/commits" --paginate --jq '.[].commit.author.email' \
+            | jq -Rs --arg bot "$AUTOFIX_EMAIL" 'split("\n") | map(select(length > 0)) | reverse
+                | (map(. == $bot) | index(false)) // length')
+          if [ "$STREAK" -ge "$MAX_STREAK" ]; then
+            echo "::warning::$STREAK consecutive autofix commits — stopping. Manual intervention required."
+            skip "Autofix cap reached."
+          fi
+
+          gh api "repos/$REPO/commits/$SHA/check-runs" --paginate --jq '.check_runs[]' \
+            | jq -s '[.[] | select(.conclusion == "failure" or .conclusion == "timed_out")
+                | {name, conclusion, url: .html_url, title: .output.title, summary: .output.summary}]' \
+            > /tmp/autofix/failing-checks.json
+
+          # Review comments are only addressed on human pushes, so autofix
+          # never chases its own output.
+          AUTHOR=$(gh api "repos/$REPO/commits/$SHA" --jq '.commit.author.email')
+          if [ "$AUTHOR" != "$AUTOFIX_EMAIL" ]; then
+            gh api "repos/$REPO/pulls/$PR_NUMBER/comments" --paginate \
+              --jq "[.[] | select(.user.login == \"github-actions[bot]\" and .commit_id == \"$SHA\") | {path, line, body}]" \
+              | jq -s 'add // []' > /tmp/autofix/review-comments.json
+          else
+            echo '[]' > /tmp/autofix/review-comments.json
+          fi
+
+          FAILING=$(jq length /tmp/autofix/failing-checks.json)
+          COMMENTS=$(jq length /tmp/autofix/review-comments.json)
+          echo "PR #$PR_NUMBER $SHA: failing_checks=$FAILING review_comments=$COMMENTS autofix_streak=$STREAK"
+          [ "$FAILING" -gt 0 ] || [ "$COMMENTS" -gt 0 ] || skip "Nothing to fix."
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      # App token, not GITHUB_TOKEN: pushes made with GITHUB_TOKEN don't
+      # trigger CI, so a fix would never be re-checked.
+      - name: Generate GitHub App token
+        if: steps.ctx.outputs.skip != 'true'
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v4
+        if: steps.ctx.outputs.skip != 'true'
+        with:
+          ref: ${{ env.BRANCH }}
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: oven-sh/setup-bun@v2
+        if: steps.ctx.outputs.skip != 'true'
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        if: steps.ctx.outputs.skip != 'true'
+        with:
+          node-version: '22'
+
+      - name: Cache bun install
+        if: steps.ctx.outputs.skip != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies and Claude Code
+        if: steps.ctx.outputs.skip != 'true'
+        run: |
+          [ "$(git rev-parse HEAD)" = "$SHA" ] || { echo "Branch moved during setup — skipping."; exit 1; }
+          bun install
+          npm install -g @anthropic-ai/claude-code
+          git config user.name "claude-autofix[bot]"
+          git config user.email "$AUTOFIX_EMAIL"
+
+      - name: Fix
+        if: steps.ctx.outputs.skip != 'true'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          claude -p "You are the autofix step of a gitpm PR's CI.
+          - /tmp/autofix/failing-checks.json lists failing CI checks (may be empty). For each, read the logs (gh run view / the check url) and fix the root cause. Never weaken or delete tests to make them pass.
+          - /tmp/autofix/review-comments.json holds inline comments from the automated /code-review on this commit (may be empty). Fix the ones that are real bugs or AGENTS.md convention violations; ignore ones you judge wrong.
+          - Follow AGENTS.md conventions. Verify with: bun run lint && bun run build && bun run test.
+          - Do NOT commit, push, or comment on GitHub; the workflow commits your working-tree changes. If nothing should change, leave the tree clean." \
+            --max-turns 30 --dangerously-skip-permissions \
+            || echo "::warning::Claude exited non-zero"
+
+          if [ -z "$(git status --porcelain --untracked-files=no)" ]; then
+            printf '## Claude Autofix\n\nNo fix produced. Manual intervention required.\n' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # Tracked files only, so stray build output or secrets never get staged.
+          git add -u
+          git commit -m "fix: autofix failing checks" \
+            -m "Automated by claude-autofix[bot]: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          for attempt in 1 2 3 4 5; do
+            git push origin "HEAD:$BRANCH" && break
+            [ "$attempt" -eq 5 ] && { echo "::error::push failed after 5 attempts"; exit 1; }
+            sleep $((2 ** attempt))
+          done
+          printf '## Claude Autofix\n\nPushed a fix to %s; CI will re-run.\n' "$BRANCH" >> "$GITHUB_STEP_SUMMARY"
