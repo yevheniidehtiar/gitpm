@@ -1,6 +1,24 @@
+<div align="center">
+
 # GitPM
 
-Git-native project management — store roadmaps, PRDs, epics, and issues as structured files in your monorepo, with bidirectional GitHub/GitLab sync and a local web UI. Built for AI-agentic workflows where code and project context live in one traversable file tree.
+**Project management that lives in your repo.**
+
+Roadmaps, PRDs, epics, and stories as Markdown + YAML in `.meta/` — bidirectionally synced with GitHub, GitLab, and Jira. Built for AI-agentic workflows where code and project context live in one traversable file tree.
+
+[![Build Matrix](https://github.com/yevheniidehtiar/gitpm/actions/workflows/build-matrix.yml/badge.svg?branch=master)](https://github.com/yevheniidehtiar/gitpm/actions/workflows/build-matrix.yml)
+[![Nightly Integration Tests](https://github.com/yevheniidehtiar/gitpm/actions/workflows/nightly.yml/badge.svg?branch=master)](https://github.com/yevheniidehtiar/gitpm/actions/workflows/nightly.yml)
+[![Release Please](https://github.com/yevheniidehtiar/gitpm/actions/workflows/release-please.yml/badge.svg?branch=master)](https://github.com/yevheniidehtiar/gitpm/actions/workflows/release-please.yml)
+[![npm](https://img.shields.io/npm/v/%40gitpm%2Fcli?label=%40gitpm%2Fcli&logo=npm&color=cb3837)](https://www.npmjs.com/package/@gitpm/cli)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Runtime: Bun](https://img.shields.io/badge/runtime-Bun-black?logo=bun)](https://bun.sh)
+[![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](tsconfig.json)
+
+[**Documentation**](https://yevheniidehtiar.github.io/gitpm/) · [**Live Demo**](https://yevheniidehtiar.github.io/gitpm/demo/) · [**Quick Start**](#quick-start) · [**For AI agents**](AGENTS.md)
+
+<img src="docs/demos/hyper-admin/05-roadmap.png" alt="GitPM roadmap timeline" width="800" />
+
+</div>
 
 ## What is GitPM?
 
@@ -39,7 +57,7 @@ gitpm import --repo owner/repo
 gitpm validate
 
 # Edit files in .meta/ (or use the web UI)
-gitpm dev:ui
+# Browse and edit in the web UI from a clone of this repo: bun run dev:ui (see "Web UI" below)
 
 # Push local changes to GitHub
 gitpm push
@@ -76,7 +94,7 @@ Adapters are auto-detected at runtime — no extra configuration needed. The CLI
 - **File-based project management** — roadmaps, epics, stories, milestones, and PRDs as Markdown + YAML frontmatter in `.meta/`
 - **Bidirectional sync** — keep `.meta/` in sync with GitHub Issues, GitLab Issues, or Jira
 - **Plugin architecture** — install only the sync adapters you need; write custom adapters for any platform
-- **CLI-first** — 18 commands: six core (`init`, `validate`, `import`, `push`, `pull`, `sync`), tree editing (`query`, `show`, `set`, `create`, `move`, `archive`, `commit`) and planning (`status`, `sprint`, `next`, `audit`, `quality`)
+- **CLI-first** — 19 commands: six core (`init`, `validate`, `import`, `push`, `pull`, `sync`), tree editing (`query`, `show`, `set`, `create`, `move`, `archive`, `commit`), planning (`status`, `sprint`, `next`, `audit`, `quality`) and `context` (a project summary for AI agents)
 - **Local web UI** — browse, edit, and visualize your project tree with a React-based interface
 - **AI-agent friendly** — structured files in your repo give AI agents full project context; this repo ships an [`AGENTS.md`](AGENTS.md) you can copy
 - **Schema-validated** — all entities are validated with Zod schemas; catch errors before they hit your tracker
@@ -95,7 +113,7 @@ Adapters are auto-detected at runtime — no extra configuration needed. The CLI
 | `gitpm pull` | Pull remote changes into local `.meta/` |
 | `gitpm sync` | Bidirectional sync between `.meta/` and the remote |
 
-Twelve more commands edit the tree (`query`, `show`, `set`, `create`, `move`, `archive`, `commit`) and support planning (`status`, `sprint`, `next`, `audit`, `quality`). Run `gitpm --help` for the list.
+Thirteen more commands edit the tree (`query`, `show`, `set`, `create`, `move`, `archive`, `commit`), support planning (`status`, `sprint`, `next`, `audit`, `quality`) and generate a project summary for AI agents (`context`). Run `gitpm --help` for the list.
 
 Global options: `--meta-dir <path>` (default: `.meta`), `--token <token>`, `--adapter <name>`
 
@@ -214,7 +232,10 @@ GitPM includes a local web interface for browsing and editing your project tree:
 bun run dev:ui
 ```
 
+<img src="docs/demos/hyper-admin/01-tree-browser.png" alt="GitPM tree browser" width="800" />
+
 Features:
+
 - **Tree browser** — search, filter, and sort entities by status, type, priority, or assignee
 - **Entity editor** — form-based frontmatter editing with a Markdown body editor
 - **Roadmap timeline** — visual timeline of milestones and epics
@@ -222,8 +243,13 @@ Features:
 
 ## Documentation
 
+Read the docs at **<https://yevheniidehtiar.github.io/gitpm/>**. The live UI demo, running on this repo's own `.meta/` tree, is at **<https://yevheniidehtiar.github.io/gitpm/demo/>** (it moved from `/gitpm/` when the docs site launched).
+
+The same pages live in [`docs/`](docs/):
+
 | Document | Description |
 |----------|-------------|
+| [Getting Started](docs/getting-started.md) | Install, tokens, init or import, first push |
 | [CLI Reference](docs/cli-reference.md) | Detailed command reference with examples |
 | [Schema Reference](docs/schema-reference.md) | Entity types, frontmatter fields, directory conventions |
 | [Sync Configuration Guide](docs/sync-guide.md) | Setup, configuration, conflict resolution |

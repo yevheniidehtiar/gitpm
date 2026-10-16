@@ -9,3 +9,6 @@ coverage
 packages/ui/playwright-report
 packages/ui/test-results
 packages/ui/public-demo/
+# Zensical docs build output and build cache
+/site/
+/.cache/
