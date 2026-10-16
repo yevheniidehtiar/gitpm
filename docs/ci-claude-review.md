@@ -14,7 +14,7 @@ Runs [`anthropics/claude-code-action@v1`](https://github.com/anthropics/claude-c
 - `--allowedTools "mcp__github_inline_comment__create_inline_comment"` is required: the action only starts the inline-comment MCP server when that tool is allowed.
 - The review reads `CLAUDE.md`, which imports `AGENTS.md`, so it applies the repo conventions automatically.
 - **Advisory only.** The check passes regardless of findings; it fails only if the action itself errors.
-- Skipped for fork and Dependabot PRs (neither gets repo secrets), drafts, and docs-only (`docs/`, `zensical.toml`), `.meta/`, `LICENSE`, `.gitignore` and `.editorconfig` changes. **Caveat:** if "Claude Review" ever becomes a required status check, replace `paths-ignore` with a per-job paths filter, since required checks that never run block merge.
+- Skipped for fork PRs (no secrets), PRs opened or pushed by bots (Dependabot gets no secrets, release-please PRs are only version bumps, and `claude-code-action` refuses non-human actors), drafts, and docs-only (`docs/`, `zensical.toml`), `.meta/`, `LICENSE`, `.gitignore` and `.editorconfig` changes. **Caveat:** if "Claude Review" ever becomes a required status check, replace `paths-ignore` with a per-job paths filter, since required checks that never run block merge.
 - Concurrency group `claude-review-<pr>` with `cancel-in-progress: true`: only the latest push is reviewed.
 
 ## Acting on findings

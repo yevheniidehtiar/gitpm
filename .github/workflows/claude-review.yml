@@ -31,12 +31,14 @@ permissions:
 jobs:
   review:
     name: Claude Review
-    # Secrets are withheld from fork and Dependabot PRs, and drafts aren't
-    # ready for review.
+    # Skip forks (no secrets), drafts, and bot PRs or pushes: Dependabot
+    # gets no secrets, release-please PRs are only version bumps, and
+    # claude-code-action refuses non-human actors anyway.
     if: |
       github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.actor != 'dependabot[bot]'
+      github.event.pull_request.user.type != 'Bot' &&
+      !endsWith(github.actor, '[bot]')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
