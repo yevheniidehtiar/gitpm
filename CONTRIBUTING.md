@@ -28,6 +28,7 @@ GitPM is a monorepo with the following packages:
 - `packages/sync-github` — GitHub sync adapter
 - `packages/sync-gitlab` — GitLab sync adapter
 - `packages/sync-jira` — Jira sync adapter
+- `packages/sync-linear` — Linear sync adapter
 - `packages/cli` — CLI entry point
 - `packages/ui` — React web interface
 

@@ -94,7 +94,7 @@ Adapters are auto-detected at runtime — no extra configuration needed. The CLI
 - **File-based project management** — roadmaps, epics, stories, milestones, and PRDs as Markdown + YAML frontmatter in `.meta/`
 - **Bidirectional sync** — keep `.meta/` in sync with GitHub Issues, GitLab Issues, or Jira
 - **Plugin architecture** — install only the sync adapters you need; write custom adapters for any platform
-- **CLI-first** — 18 commands: six core (`init`, `validate`, `import`, `push`, `pull`, `sync`), tree editing (`query`, `show`, `set`, `create`, `move`, `archive`, `commit`) and planning (`status`, `sprint`, `next`, `audit`, `quality`)
+- **CLI-first** — 19 commands: six core (`init`, `validate`, `import`, `push`, `pull`, `sync`), tree editing (`query`, `show`, `set`, `create`, `move`, `archive`, `commit`), planning (`status`, `sprint`, `next`, `audit`, `quality`) and `context` (a project summary for AI agents)
 - **Local web UI** — browse, edit, and visualize your project tree with a React-based interface
 - **AI-agent friendly** — structured files in your repo give AI agents full project context; this repo ships an [`AGENTS.md`](AGENTS.md) you can copy
 - **Schema-validated** — all entities are validated with Zod schemas; catch errors before they hit your tracker
@@ -113,7 +113,7 @@ Adapters are auto-detected at runtime — no extra configuration needed. The CLI
 | `gitpm pull` | Pull remote changes into local `.meta/` |
 | `gitpm sync` | Bidirectional sync between `.meta/` and the remote |
 
-Twelve more commands edit the tree (`query`, `show`, `set`, `create`, `move`, `archive`, `commit`) and support planning (`status`, `sprint`, `next`, `audit`, `quality`). Run `gitpm --help` for the list.
+Thirteen more commands edit the tree (`query`, `show`, `set`, `create`, `move`, `archive`, `commit`), support planning (`status`, `sprint`, `next`, `audit`, `quality`) and generate a project summary for AI agents (`context`). Run `gitpm --help` for the list.
 
 Global options: `--meta-dir <path>` (default: `.meta`), `--token <token>`, `--adapter <name>`
 

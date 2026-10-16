@@ -18,7 +18,7 @@ gitpm import --source gitlab --project mygroup/myproject --token "glpat-..."
 gitpm import --source jira --project PROJ --base-url https://mycompany.atlassian.net --token "your-api-token"
 ```
 
-Never commit tokens or write them into `.meta/sync/*.yaml`.
+The Linear adapter reads `LINEAR_API_KEY` from the environment. Never commit tokens or write them into `.meta/sync/*.yaml`.
 
 ### 2. Import your project
 
