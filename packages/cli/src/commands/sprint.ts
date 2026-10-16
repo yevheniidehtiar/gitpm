@@ -263,15 +263,18 @@ const sprintPlanCommand = new Command('plan')
       const storyById = new Map(allStories.map((s) => [s.id, s]));
       const currentIds = new Set(sprint.stories.map((ref) => ref.id));
 
-      // Story ID -> titles of the *other* sprints that already reference it.
-      // Assigning a story to more than one sprint is allowed (e.g. carry-over),
-      // but double-counts its points, so we surface it to the user.
+      // Story ID -> titles of the *other* active sprints that already
+      // reference it. Assigning a story to more than one sprint is allowed
+      // (e.g. carry-over), but double-counts its points, so we surface it to
+      // the user. Finished (done/cancelled) sprints are ignored: carrying a
+      // story over from a closed sprint is the expected case.
       const otherSprintsByStory = new Map<string, string[]>();
       for (const other of resolveResult.value.sprints) {
         if (other.id === sprint.id) continue;
+        if (other.status === 'done' || other.status === 'cancelled') continue;
         for (const ref of other.stories) {
           const titles = otherSprintsByStory.get(ref.id) ?? [];
-          titles.push(other.title);
+          if (!titles.includes(other.title)) titles.push(other.title);
           otherSprintsByStory.set(ref.id, titles);
         }
       }
@@ -287,8 +290,12 @@ const sprintPlanCommand = new Command('plan')
           if (currentIds.has(id)) continue;
           const others = otherSprintsByStory.get(id);
           if (others) {
+            const title = storyById.get(id)?.title ?? id;
+            const names = others.map((t) => `"${t}"`).join(', ');
             printWarning(
-              `Story "${storyById.get(id)?.title ?? id}" is already in sprint ${others.map((t) => `"${t}"`).join(', ')}; its points will count toward both.`,
+              others.length === 1
+                ? `Story "${title}" is already in sprint ${names}; its points will count toward both.`
+                : `Story "${title}" is already in ${others.length} other sprints (${names}); its points will count toward all of them.`,
             );
           }
         }
@@ -365,7 +372,13 @@ const sprintPlanCommand = new Command('plan')
 
       // Preserve existing ref objects (including any `path` hint) and their
       // order; newly added stories are appended as bare `{ id }` refs.
-      const keptRefs = sprint.stories.filter((ref) => nextIds.has(ref.id));
+      // Duplicate refs to the same story collapse to the first occurrence.
+      const seenIds = new Set<string>();
+      const keptRefs = sprint.stories.filter((ref) => {
+        if (!nextIds.has(ref.id) || seenIds.has(ref.id)) return false;
+        seenIds.add(ref.id);
+        return true;
+      });
       const addedRefs = [...nextIds]
         .filter((id) => !currentIds.has(id))
         .map((id) => ({ id }));

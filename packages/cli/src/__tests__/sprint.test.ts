@@ -573,6 +573,106 @@ describe('gitpm sprint plan', () => {
     ]);
   });
 
+  it('collapses duplicate refs to the first occurrence, keeping its path', async () => {
+    const sprint = planSprint({
+      stories: [
+        { id: 's1', path: '../stories/s1.md' },
+        { id: 's3' },
+        { id: 's1' },
+      ],
+    });
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [sprint], stories: allStories },
+    });
+
+    await run('plan', 'sp_1', '--add', 's2', '--meta-dir', '/tmp/m');
+
+    expect(writtenSprint().stories).toEqual([
+      { id: 's1', path: '../stories/s1.md' },
+      { id: 's3' },
+      { id: 's2' },
+    ]);
+  });
+
+  it('ignores done and cancelled sprints when warning about cross-sprint stories', async () => {
+    const done = planSprint({
+      id: 'sp_0',
+      title: 'Sprint 0',
+      status: 'done',
+      stories: [{ id: 's2' }],
+    });
+    const cancelled = planSprint({
+      id: 'sp_x',
+      title: 'Sprint X',
+      status: 'cancelled',
+      stories: [{ id: 's2' }],
+    });
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: {
+        sprints: [planSprint(), done, cancelled],
+        stories: allStories,
+      },
+    });
+
+    await run('plan', 'sp_1', '--add', 's2', '--meta-dir', '/tmp/m');
+
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not label picker choices with done/cancelled sprints', async () => {
+    const done = planSprint({
+      id: 'sp_0',
+      title: 'Sprint 0',
+      status: 'done',
+      stories: [{ id: 's2' }],
+    });
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint(), done], stories: allStories },
+    });
+    mockCheckbox.mockResolvedValue(['s1']);
+
+    await run('plan', 'sp_1', '--meta-dir', '/tmp/m');
+
+    const choices = mockCheckbox.mock.calls[0][0].choices as {
+      name: string;
+      value: string;
+    }[];
+    expect(choices.find((c) => c.value === 's2')?.name).not.toContain(
+      'Sprint 0',
+    );
+  });
+
+  it('words the warning for a story already in several active sprints', async () => {
+    const sp2 = planSprint({
+      id: 'sp_2',
+      title: 'Sprint 2',
+      stories: [{ id: 's2' }],
+    });
+    const sp3 = planSprint({
+      id: 'sp_3',
+      title: 'Sprint 3',
+      status: 'in_progress',
+      stories: [{ id: 's2' }, { id: 's2' }],
+    });
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint(), sp2, sp3], stories: allStories },
+    });
+
+    await run('plan', 'sp_1', '--add', 's2', '--meta-dir', '/tmp/m');
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    const warnOutput = warnSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(warnOutput).toContain(
+      'already in 2 other sprints ("Sprint 2", "Sprint 3")',
+    );
+    expect(warnOutput).toContain('count toward all of them');
+    expect(warnOutput).not.toContain('both');
+  });
+
   it('does not warn when the story is only in the sprint being planned', async () => {
     mockResolveRefs.mockReturnValue({
       ok: true,
