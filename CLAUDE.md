@@ -21,13 +21,14 @@
 | `Explore` agent | Broad codebase research across many files or uncertain scope |
 | `simplify` skill | Review changed code for reuse, quality and efficiency |
 | `/commit` | Conventional-commit message from the staged diff, then commit |
+| `/code-review <n>` | Built-in bug-focused review, the same one CI runs on every PR. Add `--comment` to post inline comments, `--fix` to apply. |
 | `/review-pr <n>` | Structured PR review: diff, conventions, simplify, CI status |
 | `/prepare-release` | Pre-release audit: verification gate, classify commits, predict bumps |
 | `mcp__github__*` | Read PRs, issues and checks freely (`pull_request_read`, `list_commits`). Write (`pull_request_review_write`) only after confirming with the user. |
 
 ## Review in CI
 
-`.github/workflows/claude-review.yml` runs `/review-pr` headless on every PR and gates on severity. When you change `.claude/commands/review-pr.md`, keep `docs/ci-claude-review.md` accurate.
+`.github/workflows/claude-review.yml` runs the official `/code-review` skill on every PR and posts inline comments. It is advisory and never fails the check on findings, and nothing fixes them automatically: use `/code-review <n> --fix` locally. When you change the workflow, keep `docs/ci-claude-review.md` accurate.
 
 ## Path-scoped rules
 
