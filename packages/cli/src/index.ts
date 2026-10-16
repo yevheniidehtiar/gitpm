@@ -5,6 +5,7 @@ import { Command } from 'commander';
 import { archiveCommand } from './commands/archive.js';
 import { auditCommand } from './commands/audit.js';
 import { commitCommand } from './commands/commit.js';
+import { contextCommand } from './commands/context.js';
 import { createCommand } from './commands/create.js';
 import { importCommand } from './commands/import.js';
 import { initCommand } from './commands/init.js';
@@ -53,5 +54,6 @@ program.addCommand(statusCommand);
 program.addCommand(sprintCommand);
 program.addCommand(auditCommand);
 program.addCommand(archiveCommand);
+program.addCommand(contextCommand);
 
 program.parse();
