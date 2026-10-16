@@ -10,6 +10,9 @@ concurrency:
   group: matrix-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   test-bun:
     name: Bun (latest)

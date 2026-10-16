@@ -1,5 +1,8 @@
 version: 2
 updates:
+  # Minor/patch bumps are grouped so they land in one PR. Major bumps are
+  # left out of the groups, so each arrives as its own PR and one breaking
+  # upgrade (e.g. zod 4) can't block every safe update behind it.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -8,8 +11,10 @@ updates:
     groups:
       production-dependencies:
         dependency-type: "production"
+        update-types: ["minor", "patch"]
       development-dependencies:
         dependency-type: "development"
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -20,3 +25,4 @@ updates:
       actions:
         patterns:
           - "*"
+        update-types: ["minor", "patch"]
