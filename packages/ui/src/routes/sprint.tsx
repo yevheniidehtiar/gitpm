@@ -39,6 +39,63 @@ function SprintProgress({ done, total }: { done: number; total: number }) {
   );
 }
 
+function SprintCapacity({
+  sprintId,
+  points,
+  capacity,
+}: {
+  sprintId: string;
+  points: number;
+  capacity?: number;
+}) {
+  if (capacity === undefined) {
+    return (
+      <p
+        className="text-xs text-gray-400 mt-1"
+        data-testid={`sprint-capacity-${sprintId}`}
+      >
+        {points} pts
+      </p>
+    );
+  }
+
+  const overCapacity = points > capacity;
+  const ratio = capacity > 0 ? points / capacity : points > 0 ? 1 : 0;
+  const pct = Math.min(Math.round(ratio * 100), 100);
+  const barColor = overCapacity ? 'bg-red-500' : 'bg-blue-500';
+
+  return (
+    <div className="mt-1">
+      <div className="flex items-center gap-2">
+        <div
+          className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden"
+          data-testid={`sprint-capacity-bar-${sprintId}`}
+          data-over-capacity={overCapacity}
+        >
+          <div
+            className={`h-full rounded-full ${barColor}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span
+          className={`text-xs ${overCapacity ? 'text-red-600 font-medium' : 'text-gray-500'}`}
+          data-testid={`sprint-capacity-${sprintId}`}
+        >
+          {points}/{capacity} pts
+        </span>
+      </div>
+      {overCapacity && (
+        <p
+          className="text-xs text-red-600 font-medium mt-0.5"
+          data-testid={`sprint-over-capacity-${sprintId}`}
+        >
+          Over capacity
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function SprintView() {
   const { data: tree, isLoading } = useTree();
 
@@ -89,6 +146,10 @@ export function SprintView() {
           const done = sprintStories.filter(
             (s) => s.status === 'done' || s.status === 'cancelled',
           ).length;
+          const points = sprintStories.reduce(
+            (sum, s) => sum + (s.estimate ?? 0),
+            0,
+          );
 
           return (
             <div
@@ -108,11 +169,11 @@ export function SprintView() {
                 <div className="mt-2">
                   <SprintProgress done={done} total={sprintStories.length} />
                 </div>
-                {sp.capacity && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Capacity: {sp.capacity} pts
-                  </p>
-                )}
+                <SprintCapacity
+                  sprintId={sp.id}
+                  points={points}
+                  capacity={sp.capacity}
+                />
               </div>
               {/* Stories */}
               <div className="flex-1 p-2 space-y-1 overflow-y-auto max-h-96">

@@ -14,6 +14,8 @@ export interface AuditItem {
   type: string;
   filePath: string;
   reason: string;
+  /** Numeric days since `updated_at`, when known (currently only set for stale items). */
+  daysSinceUpdate?: number;
 }
 
 export interface DuplicatePair {
@@ -96,6 +98,7 @@ function findStale(
         type: 'story',
         filePath: s.filePath,
         reason: days >= 0 ? `${days} days since last update` : 'no update date',
+        ...(days >= 0 ? { daysSinceUpdate: days } : {}),
       };
     });
 }

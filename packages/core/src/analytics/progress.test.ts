@@ -129,6 +129,39 @@ describe('computeMilestoneProgress', () => {
     expect(result.progress).toBe(0.75);
     expect(result.epics).toHaveLength(2);
   });
+
+  it('rolls up blocked counts from linked epics', () => {
+    const ms: ResolvedMilestone = {
+      type: 'milestone',
+      id: 'ms-1',
+      title: 'v1.0',
+      status: 'in_progress',
+      body: '',
+      filePath: '/tmp/ms.md',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+      resolvedEpics: [],
+    } as ResolvedMilestone;
+
+    const epics: ResolvedEpic[] = [
+      makeEpic(
+        [
+          makeStory({ status: 'todo', assignee: null }),
+          makeStory({ status: 'todo', assignee: null }),
+        ],
+        { milestone_ref: { id: 'ms-1' } },
+      ),
+      makeEpic([makeStory({ status: 'backlog', assignee: null })], {
+        milestone_ref: { id: 'ms-1' },
+      }),
+      makeEpic([makeStory({ status: 'todo', assignee: null })], {
+        milestone_ref: { id: 'other' },
+      }),
+    ];
+
+    const result = computeMilestoneProgress(ms, epics);
+    expect(result.blocked).toBe(3);
+  });
 });
 
 describe('computeProjectProgress', () => {
@@ -172,6 +205,44 @@ describe('computeProjectProgress', () => {
     expect(result.overall.total).toBe(2);
     expect(result.overall.done).toBe(1);
     expect(result.overall.progress).toBe(0.5);
+  });
+
+  it('rolls up blocked counts from milestone-linked and orphan epics', () => {
+    const tree: ResolvedTree = {
+      stories: [],
+      epics: [
+        makeEpic([makeStory({ status: 'todo', assignee: null })], {
+          id: 'linked',
+          milestone_ref: { id: 'ms-1' },
+        }),
+        makeEpic([makeStory({ status: 'backlog', assignee: null })], {
+          id: 'orphan',
+          milestone_ref: null,
+        }),
+      ],
+      milestones: [
+        {
+          type: 'milestone',
+          id: 'ms-1',
+          title: 'v1.0',
+          status: 'in_progress',
+          body: '',
+          filePath: '/tmp/ms.md',
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+          resolvedEpics: [],
+        } as ResolvedMilestone,
+      ],
+      roadmaps: [],
+      prds: [],
+      sprints: [],
+      errors: [],
+    };
+
+    const result = computeProjectProgress(tree);
+    expect(result.milestones[0].blocked).toBe(1);
+    expect(result.orphanEpics[0].blocked).toBe(1);
+    expect(result.overall.blocked).toBe(2);
   });
 
   it('handles empty tree', () => {

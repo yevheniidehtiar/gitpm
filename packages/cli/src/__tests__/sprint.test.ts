@@ -6,15 +6,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mockCreateSprint = vi.fn();
 const mockParseTree = vi.fn();
 const mockResolveRefs = vi.fn();
+const mockWriteFile = vi.fn();
+const mockCheckbox = vi.fn();
+const mockConfirm = vi.fn();
 
 vi.mock('@gitpm/core', () => ({
   createSprint: (...args: unknown[]) => mockCreateSprint(...args),
   parseTree: (...args: unknown[]) => mockParseTree(...args),
   resolveRefs: (...args: unknown[]) => mockResolveRefs(...args),
+  writeFile: (...args: unknown[]) => mockWriteFile(...args),
+}));
+
+vi.mock('@inquirer/prompts', () => ({
+  checkbox: (...args: unknown[]) => mockCheckbox(...args),
+  confirm: (...args: unknown[]) => mockConfirm(...args),
 }));
 
 let logSpy: ReturnType<typeof vi.spyOn>;
 let errorSpy: ReturnType<typeof vi.spyOn>;
+let warnSpy: ReturnType<typeof vi.spyOn>;
 let exitSpy: ReturnType<typeof vi.spyOn>;
 
 async function run(...args: string[]) {
@@ -350,5 +360,489 @@ describe('gitpm sprint show', () => {
     expect(logOutput).toContain('Cancelled');
     expect(logOutput).toContain('InProgress');
     expect(logOutput).toContain('Other');
+  });
+});
+
+describe('gitpm sprint plan', () => {
+  function planSprint(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'sp_1',
+      type: 'sprint',
+      title: 'Sprint 1',
+      status: 'todo',
+      start_date: '2026-04-01',
+      end_date: '2026-04-14',
+      capacity: 10,
+      stories: [{ id: 's1' }, { id: 's3' }],
+      resolvedStories: [],
+      filePath: '/tmp/m/sprints/sprint-1.md',
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+      ...overrides,
+    };
+  }
+
+  const allStories = [
+    {
+      id: 's1',
+      title: 'Story 1',
+      status: 'todo',
+      priority: 'high',
+      estimate: 5,
+    },
+    {
+      id: 's2',
+      title: 'Story 2',
+      status: 'backlog',
+      priority: 'medium',
+      estimate: 3,
+    },
+    {
+      id: 's3',
+      title: 'Story 3',
+      status: 'in_progress',
+      priority: 'low',
+      estimate: 8,
+    },
+  ];
+
+  beforeEach(() => {
+    vi.resetModules();
+    vi.resetAllMocks();
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('process.exit');
+    }) as never);
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockParseTree.mockResolvedValue({ ok: true, value: {} });
+    mockWriteFile.mockResolvedValue({ ok: true, value: undefined });
+    mockConfirm.mockResolvedValue(true);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** The single sprint entity passed to writeFile. */
+  function writtenSprint(): Record<string, unknown> {
+    expect(mockWriteFile).toHaveBeenCalledTimes(1);
+    return mockWriteFile.mock.calls[0][0] as Record<string, unknown>;
+  }
+
+  it('exits 1 when parseTree fails', async () => {
+    mockParseTree.mockResolvedValue({
+      ok: false,
+      error: { message: 'parse err' },
+    });
+    await expect(run('plan', 'sp_1', '--meta-dir', '/tmp/m')).rejects.toThrow(
+      'process.exit',
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('exits 1 when resolveRefs fails', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: false,
+      error: { message: 'resolve err' },
+    });
+    await expect(run('plan', 'sp_1', '--meta-dir', '/tmp/m')).rejects.toThrow(
+      'process.exit',
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('exits 1 when sprint is not found by id', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [], stories: allStories },
+    });
+
+    await expect(
+      run('plan', 'missing', '--meta-dir', '/tmp/m'),
+    ).rejects.toThrow('process.exit');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(errOutput).toContain('Sprint not found');
+  });
+
+  it('finds the sprint by file path when given a path argument', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+
+    await run(
+      'plan',
+      '/tmp/m/sprints/sprint-1.md',
+      '--add',
+      's2',
+      '--meta-dir',
+      '/tmp/m',
+    );
+
+    expect(mockWriteFile).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'sp_1' }),
+      '/tmp/m/sprints/sprint-1.md',
+    );
+  });
+
+  it('--add appends story IDs without prompting', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+
+    await run('plan', 'sp_1', '--add', 's2', '--meta-dir', '/tmp/m');
+
+    expect(mockCheckbox).not.toHaveBeenCalled();
+    expect(mockWriteFile.mock.calls[0][1]).toBe('/tmp/m/sprints/sprint-1.md');
+    // Exact match: no resolvedStories leak, no extra/duplicate refs.
+    const { resolvedStories: _resolved, ...base } = planSprint();
+    const written = writtenSprint();
+    expect(written).toEqual({
+      ...base,
+      stories: [{ id: 's1' }, { id: 's3' }, { id: 's2' }],
+      updated_at: expect.any(String),
+    });
+    expect(written.updated_at).not.toBe(base.updated_at);
+
+    const logOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(logOutput).toContain('3 stories');
+    // 5 + 8 + 3 = 16 pts vs capacity 10 -> over capacity
+    expect(logOutput).toContain('16/10 pts');
+    expect(logOutput).toContain('over capacity');
+  });
+
+  it('--remove drops story IDs without prompting', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+
+    await run('plan', 'sp_1', '--remove', 's1', '--meta-dir', '/tmp/m');
+
+    expect(mockCheckbox).not.toHaveBeenCalled();
+    const written = writtenSprint();
+    expect(written).not.toHaveProperty('resolvedStories');
+    expect(written.stories).toEqual([{ id: 's3' }]);
+  });
+
+  it('preserves existing ref objects (including path) and their order', async () => {
+    const sprint = planSprint({
+      stories: [
+        { id: 's3', path: '../stories/s3.md' },
+        { id: 's1', path: '../stories/s1.md' },
+      ],
+    });
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [sprint], stories: allStories },
+    });
+
+    await run('plan', 'sp_1', '--add', 's2', '--meta-dir', '/tmp/m');
+
+    expect(writtenSprint().stories).toEqual([
+      { id: 's3', path: '../stories/s3.md' },
+      { id: 's1', path: '../stories/s1.md' },
+      { id: 's2' },
+    ]);
+  });
+
+  it('warns when --add assigns a story already in another sprint', async () => {
+    const other = planSprint({
+      id: 'sp_2',
+      title: 'Sprint 2',
+      stories: [{ id: 's2' }],
+      filePath: '/tmp/m/sprints/sprint-2.md',
+    });
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint(), other], stories: allStories },
+    });
+
+    await run('plan', 'sp_1', '--add', 's2', '--meta-dir', '/tmp/m');
+
+    const warnOutput = warnSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(warnOutput).toContain('Story 2');
+    expect(warnOutput).toContain('Sprint 2');
+    expect(writtenSprint().stories).toEqual([
+      { id: 's1' },
+      { id: 's3' },
+      { id: 's2' },
+    ]);
+  });
+
+  it('collapses duplicate refs to the first occurrence, keeping its path', async () => {
+    const sprint = planSprint({
+      stories: [
+        { id: 's1', path: '../stories/s1.md' },
+        { id: 's3' },
+        { id: 's1' },
+      ],
+    });
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [sprint], stories: allStories },
+    });
+
+    await run('plan', 'sp_1', '--add', 's2', '--meta-dir', '/tmp/m');
+
+    expect(writtenSprint().stories).toEqual([
+      { id: 's1', path: '../stories/s1.md' },
+      { id: 's3' },
+      { id: 's2' },
+    ]);
+  });
+
+  it('ignores done and cancelled sprints when warning about cross-sprint stories', async () => {
+    const done = planSprint({
+      id: 'sp_0',
+      title: 'Sprint 0',
+      status: 'done',
+      stories: [{ id: 's2' }],
+    });
+    const cancelled = planSprint({
+      id: 'sp_x',
+      title: 'Sprint X',
+      status: 'cancelled',
+      stories: [{ id: 's2' }],
+    });
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: {
+        sprints: [planSprint(), done, cancelled],
+        stories: allStories,
+      },
+    });
+
+    await run('plan', 'sp_1', '--add', 's2', '--meta-dir', '/tmp/m');
+
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not label picker choices with done/cancelled sprints', async () => {
+    const done = planSprint({
+      id: 'sp_0',
+      title: 'Sprint 0',
+      status: 'done',
+      stories: [{ id: 's2' }],
+    });
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint(), done], stories: allStories },
+    });
+    mockCheckbox.mockResolvedValue(['s1']);
+
+    await run('plan', 'sp_1', '--meta-dir', '/tmp/m');
+
+    const choices = mockCheckbox.mock.calls[0][0].choices as {
+      name: string;
+      value: string;
+    }[];
+    expect(choices.find((c) => c.value === 's2')?.name).not.toContain(
+      'Sprint 0',
+    );
+  });
+
+  it('words the warning for a story already in several active sprints', async () => {
+    const sp2 = planSprint({
+      id: 'sp_2',
+      title: 'Sprint 2',
+      stories: [{ id: 's2' }],
+    });
+    const sp3 = planSprint({
+      id: 'sp_3',
+      title: 'Sprint 3',
+      status: 'in_progress',
+      stories: [{ id: 's2' }, { id: 's2' }],
+    });
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint(), sp2, sp3], stories: allStories },
+    });
+
+    await run('plan', 'sp_1', '--add', 's2', '--meta-dir', '/tmp/m');
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    const warnOutput = warnSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(warnOutput).toContain(
+      'already in 2 other sprints ("Sprint 2", "Sprint 3")',
+    );
+    expect(warnOutput).toContain('count toward all of them');
+    expect(warnOutput).not.toContain('both');
+  });
+
+  it('does not warn when the story is only in the sprint being planned', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+
+    await run('plan', 'sp_1', '--add', 's2', '--meta-dir', '/tmp/m');
+
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('labels picker choices that are already in another sprint', async () => {
+    const other = planSprint({
+      id: 'sp_2',
+      title: 'Sprint 2',
+      stories: [{ id: 's2' }],
+    });
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint(), other], stories: allStories },
+    });
+    mockCheckbox.mockResolvedValue(['s1']);
+
+    await run('plan', 'sp_1', '--meta-dir', '/tmp/m');
+
+    const choices = mockCheckbox.mock.calls[0][0].choices as {
+      name: string;
+      value: string;
+    }[];
+    expect(choices.find((c) => c.value === 's2')?.name).toContain(
+      'in Sprint 2',
+    );
+    expect(choices.find((c) => c.value === 's1')?.name).not.toContain('in ');
+  });
+
+  it('removes a preselected story that the user unchecks, keeping untouched ones', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+    // s1 is preselected (already in sprint); user unchecks it and picks s2.
+    mockCheckbox.mockResolvedValue(['s2']);
+
+    await run('plan', 'sp_1', '--meta-dir', '/tmp/m');
+
+    const written = writtenSprint();
+    expect(written).not.toHaveProperty('resolvedStories');
+    expect(written.stories).toEqual([{ id: 's3' }, { id: 's2' }]);
+  });
+
+  it('prompts interactively with only todo/backlog stories when no flags given', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+    mockCheckbox.mockResolvedValue(['s1', 's2']);
+
+    await run('plan', 'sp_1', '--meta-dir', '/tmp/m');
+
+    expect(mockCheckbox).toHaveBeenCalledTimes(1);
+    const call = mockCheckbox.mock.calls[0][0];
+    const values = call.choices.map((c: { value: string }) => c.value);
+    expect(values).toEqual(['s1', 's2']);
+    // s1 was already in the sprint, so it should be preselected.
+    expect(
+      call.choices.find((c: { value: string }) => c.value === 's1').checked,
+    ).toBe(true);
+    expect(
+      call.choices.find((c: { value: string }) => c.value === 's2').checked,
+    ).toBe(false);
+
+    // s3 (in_progress, not pickable) stays in the sprint untouched, plus the
+    // selected s1 and s2. Existing refs keep their order; s2 is appended.
+    const written = writtenSprint();
+    expect(written).not.toHaveProperty('resolvedStories');
+    expect(written.stories).toEqual([{ id: 's1' }, { id: 's3' }, { id: 's2' }]);
+    expect(mockWriteFile.mock.calls[0][1]).toBe('/tmp/m/sprints/sprint-1.md');
+  });
+
+  it('exits 1 when writeFile fails', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+    mockWriteFile.mockResolvedValue({
+      ok: false,
+      error: { message: 'write err' },
+    });
+
+    await expect(
+      run('plan', 'sp_1', '--add', 's2', '--meta-dir', '/tmp/m'),
+    ).rejects.toThrow('process.exit');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it('exits 1 and does not write when --add references an unknown story ID', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+
+    await expect(
+      run('plan', 'sp_1', '--add', 'no-such-story', '--meta-dir', '/tmp/m'),
+    ).rejects.toThrow('process.exit');
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(mockWriteFile).not.toHaveBeenCalled();
+    const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(errOutput).toContain('Unknown story ID');
+    expect(errOutput).toContain('no-such-story');
+  });
+
+  it('exits 1 and does not write when any --add story ID is unknown, even mixed with known ones', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+
+    await expect(
+      run(
+        'plan',
+        'sp_1',
+        '--add',
+        's2',
+        '--add',
+        'ghost-id',
+        '--meta-dir',
+        '/tmp/m',
+      ),
+    ).rejects.toThrow('process.exit');
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(mockWriteFile).not.toHaveBeenCalled();
+  });
+
+  it('shows the running points-vs-capacity total and asks for confirmation before writing', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+    mockCheckbox.mockResolvedValue(['s1', 's2']);
+    mockConfirm.mockResolvedValue(true);
+
+    await run('plan', 'sp_1', '--meta-dir', '/tmp/m');
+
+    expect(mockConfirm).toHaveBeenCalledTimes(1);
+    // Confirmation must happen after the checkbox selection and before the write.
+    const checkboxOrder = mockCheckbox.mock.invocationCallOrder[0];
+    const confirmOrder = mockConfirm.mock.invocationCallOrder[0];
+    const writeOrder = mockWriteFile.mock.invocationCallOrder[0];
+    expect(checkboxOrder).toBeLessThan(confirmOrder);
+    expect(confirmOrder).toBeLessThan(writeOrder);
+
+    // s3 (untouched, in_progress, 8pts) + s1 (5pts) + s2 (3pts) = 16 pts vs capacity 10.
+    const logOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(logOutput).toContain('16/10 pts');
+  });
+
+  it('does not write when the user declines the confirmation prompt', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+    mockCheckbox.mockResolvedValue(['s1', 's2']);
+    mockConfirm.mockResolvedValue(false);
+
+    await run('plan', 'sp_1', '--meta-dir', '/tmp/m');
+
+    expect(mockWriteFile).not.toHaveBeenCalled();
+    const logOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(logOutput).toContain('Cancelled');
   });
 });
