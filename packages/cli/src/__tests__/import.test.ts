@@ -141,6 +141,23 @@ describe('gitpm import', () => {
     );
   });
 
+  it('passes --team and --api-key to the adapter as teamId and apiKey', async () => {
+    mockAdapterImport.mockResolvedValue({ ok: true, value: importSummary });
+
+    await run(
+      '--team',
+      'team-123',
+      '--api-key',
+      'lin_api_x',
+      '--meta-dir',
+      '/tmp/meta',
+    );
+
+    expect(mockAdapterImport).toHaveBeenCalledWith(
+      expect.objectContaining({ teamId: 'team-123', apiKey: 'lin_api_x' }),
+    );
+  });
+
   it('exits with code 1 for invalid link strategy', async () => {
     await expect(
       run(

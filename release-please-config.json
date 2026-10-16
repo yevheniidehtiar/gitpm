@@ -24,6 +24,10 @@
       "package-name": "@gitpm/sync-jira",
       "changelog-path": "CHANGELOG.md"
     },
+    "packages/sync-linear": {
+      "package-name": "@gitpm/sync-linear",
+      "changelog-path": "CHANGELOG.md"
+    },
     "packages/cli": {
       "package-name": "@gitpm/cli",
       "changelog-path": "CHANGELOG.md"

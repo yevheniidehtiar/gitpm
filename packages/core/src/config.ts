@@ -15,7 +15,12 @@ export const HOOK_EVENTS = hookEventSchema.options;
 export const gitpmConfigSchema = z.object({
   adapters: z
     .array(z.string())
-    .default(['@gitpm/sync-github', '@gitpm/sync-gitlab', '@gitpm/sync-jira']),
+    .default([
+      '@gitpm/sync-github',
+      '@gitpm/sync-gitlab',
+      '@gitpm/sync-jira',
+      '@gitpm/sync-linear',
+    ]),
   hooks: z
     .record(hookEventSchema, z.union([z.string(), z.array(z.string())]))
     .default({}),

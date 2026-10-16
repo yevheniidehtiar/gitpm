@@ -5,6 +5,7 @@ import {
   gitHubSyncSchema,
   gitLabSyncSchema,
   jiraSyncSchema,
+  linearSyncSchema,
   statusSchema,
 } from './common.js';
 
@@ -20,6 +21,7 @@ export const sprintFrontmatterSchema = z.object({
   github: gitHubSyncSchema.optional(),
   jira: jiraSyncSchema.optional(),
   gitlab: gitLabSyncSchema.optional(),
+  linear: linearSyncSchema.optional(),
   created_at: z.string(),
   updated_at: z.string(),
 });
