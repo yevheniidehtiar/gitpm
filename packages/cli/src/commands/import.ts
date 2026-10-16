@@ -26,7 +26,7 @@ export const importCommand = new Command('import')
   .description('Import project data from a remote platform into .meta/')
   .option(
     '--source <source>',
-    'Source platform: github, gitlab, or jira (default: github)',
+    'Source platform: github, gitlab, jira, or linear (default: github)',
     'github',
   )
   .option('--repo <owner/repo>', 'GitHub repository (owner/repo)')
@@ -36,6 +36,11 @@ export const importCommand = new Command('import')
   )
   .option('--token <token>', 'Personal access token')
   .option('--base-url <url>', 'GitLab base URL (default: https://gitlab.com)')
+  .option('--team <id>', 'Linear team ID')
+  .option(
+    '--api-key <key>',
+    'Linear API key (default: LINEAR_API_KEY environment variable)',
+  )
   .option(
     '--link-strategy <strategy>',
     'Epic-story linkage strategy (default: all)',
@@ -120,6 +125,8 @@ export const importCommand = new Command('import')
           ? Number.parseInt(opts.project, 10)
           : undefined,
       baseUrl: opts.baseUrl,
+      teamId: opts.team,
+      apiKey: opts.apiKey,
       metaDir,
       linkStrategy,
     });

@@ -11,6 +11,11 @@ import { printError, printSuccess } from '../utils/output.js';
 export const pushCommand = new Command('push')
   .description('Push local .meta/ changes to remote platform')
   .option('--token <token>', 'Personal access token')
+  .option('--team <id>', 'Linear team ID')
+  .option(
+    '--api-key <key>',
+    'Linear API key (default: LINEAR_API_KEY environment variable)',
+  )
   .option('--dry-run', 'Preview changes without pushing')
   .option('--yes', 'Skip confirmation prompt')
   .option('--adapter <name>', 'Force a specific adapter (e.g. github, gitlab)')
@@ -30,6 +35,8 @@ export const pushCommand = new Command('push')
       const result = await adapter.export({
         token,
         metaDir,
+        teamId: opts.team,
+        apiKey: opts.apiKey,
         dryRun: true,
       });
 
@@ -48,6 +55,8 @@ export const pushCommand = new Command('push')
     const preview = await adapter.export({
       token,
       metaDir,
+      teamId: opts.team,
+      apiKey: opts.apiKey,
       dryRun: true,
     });
 
@@ -91,6 +100,8 @@ export const pushCommand = new Command('push')
     const result = await adapter.export({
       token,
       metaDir,
+      teamId: opts.team,
+      apiKey: opts.apiKey,
       dryRun: false,
     });
 
