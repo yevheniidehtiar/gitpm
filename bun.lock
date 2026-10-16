@@ -30,11 +30,13 @@
         "@gitpm/sync-github": "workspace:*",
         "@gitpm/sync-gitlab": "workspace:*",
         "@gitpm/sync-jira": "workspace:*",
+        "@gitpm/sync-linear": "workspace:*",
       },
       "optionalPeers": [
         "@gitpm/sync-github",
         "@gitpm/sync-gitlab",
         "@gitpm/sync-jira",
+        "@gitpm/sync-linear",
       ],
     },
     "packages/core": {

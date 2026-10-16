@@ -60,6 +60,11 @@ jobs:
         working-directory: packages/sync-jira
         continue-on-error: true
 
+      - name: Publish @gitpm/sync-linear
+        run: npm publish --access public
+        working-directory: packages/sync-linear
+        continue-on-error: true
+
       - name: Publish @gitpm/cli
         run: npm publish --access public
         working-directory: packages/cli
