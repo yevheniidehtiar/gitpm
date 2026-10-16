@@ -69,7 +69,16 @@ export class LinearClient {
         body: JSON.stringify({ query, variables }),
       });
 
-      if (response.status === 429 && attempt < this.maxRetries) {
+      // Linear reports some GraphQL errors (not-found, RATELIMITED, ...)
+      // with a non-2xx status, so the body is parsed regardless of status.
+      const text = await response.text();
+      const json = parseGraphQLBody<T>(text);
+      const errors = json?.errors?.length ? json.errors : undefined;
+
+      if (
+        (response.status === 429 || isRateLimited(errors)) &&
+        attempt < this.maxRetries
+      ) {
         attempt++;
         const waitMs = retryDelayMs(response, attempt);
         console.warn(
@@ -80,18 +89,23 @@ export class LinearClient {
       }
 
       if (!response.ok) {
-        const body = await response.text();
+        const detail = errors ? errors.map((e) => e.message).join('; ') : text;
         throw linearApiError(
-          `Linear API error ${response.status}: ${response.statusText} — ${body}`,
-          { status: response.status },
+          `Linear API error ${response.status}: ${response.statusText} — ${detail}`,
+          { status: response.status, graphqlErrors: errors },
         );
       }
 
-      const json = (await response.json()) as GraphQLResponse<T>;
-      if (json.errors && json.errors.length > 0) {
+      if (errors) {
         throw linearApiError(
-          `Linear API error: ${json.errors.map((e) => e.message).join('; ')}`,
-          { status: response.status, graphqlErrors: json.errors },
+          `Linear API error: ${errors.map((e) => e.message).join('; ')}`,
+          { status: response.status, graphqlErrors: errors },
+        );
+      }
+      if (!json) {
+        throw linearApiError(
+          `Linear API error: response is not valid JSON — ${text}`,
+          { status: response.status },
         );
       }
 
@@ -354,6 +368,21 @@ export class LinearClient {
 
     return data.issueUpdate.issue;
   }
+}
+
+function parseGraphQLBody<T>(text: string): GraphQLResponse<T> | undefined {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return parsed !== null && typeof parsed === 'object'
+      ? (parsed as GraphQLResponse<T>)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isRateLimited(errors: GraphQLError[] | undefined): boolean {
+  return (errors ?? []).some((e) => e.extensions?.code === 'RATELIMITED');
 }
 
 function retryDelayMs(response: Response, attempt: number): number {

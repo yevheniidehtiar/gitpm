@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LinearIssue, LinearTeam } from '../client.js';
-import { LinearClient } from '../client.js';
+import type { LinearApiError, LinearIssue, LinearTeam } from '../client.js';
+import { isNotFoundError, LinearClient } from '../client.js';
 
 const mockFetch = vi.fn();
 
@@ -222,6 +222,42 @@ describe('LinearClient', () => {
       await expect(client.getIssue('issue-1')).rejects.toThrow('fetch failed');
     });
 
+    it('returns null for an HTTP 400 carrying "Entity not found"', async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            errors: [
+              {
+                message: 'Entity not found: Issue',
+                extensions: { code: 'INVALID_INPUT' },
+              },
+            ],
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const client = createClient();
+      expect(await client.getIssue('missing')).toBeNull();
+    });
+
+    it('exposes GraphQL errors from non-2xx responses', async () => {
+      mockFetch.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ errors: [{ message: 'Entity not found: Issue' }] }),
+          { status: 400 },
+        ),
+      );
+
+      const client = createClient();
+      const err = await client
+        .updateIssue('missing', { title: 'x' })
+        .catch((e: unknown) => e);
+      expect(isNotFoundError(err)).toBe(true);
+      expect((err as LinearApiError).status).toBe(400);
+      expect((err as LinearApiError).graphqlErrors).toHaveLength(1);
+    });
+
     it('propagates unrelated GraphQL errors', async () => {
       mockFetch.mockResolvedValueOnce(graphqlErrorResponse('Internal error'));
 
@@ -354,6 +390,33 @@ describe('LinearClient', () => {
       const client = createClient();
       const teams = await client.listTeams();
       expect(teams).toHaveLength(1);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('retries an HTTP 400 with a RATELIMITED extensions code', async () => {
+      const ratelimited400 = () =>
+        new Response(
+          JSON.stringify({
+            errors: [
+              {
+                message: 'Rate limit exceeded',
+                extensions: { code: 'RATELIMITED' },
+              },
+            ],
+          }),
+          { status: 400, headers: { 'Retry-After': '0' } },
+        );
+      mockFetch.mockResolvedValueOnce(ratelimited400()).mockResolvedValueOnce(
+        graphqlResponse({
+          teams: {
+            nodes: [{ id: 't1', name: 'Engineering', key: 'ENG' }],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        }),
+      );
+
+      const client = createClient();
+      expect(await client.listTeams()).toHaveLength(1);
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
