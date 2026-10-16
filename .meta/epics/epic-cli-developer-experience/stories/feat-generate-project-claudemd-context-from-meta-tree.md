@@ -2,7 +2,7 @@
 type: story
 id: cIpMgWUs7J41
 title: "feat: generate project CLAUDE.md context from .meta/ tree"
-status: in_review
+status: done
 priority: medium
 assignee: null
 labels:
@@ -17,7 +17,7 @@ github:
   last_sync_hash: sha256:05f30d4d30824fbc2f33414458de02e78ba967ac2d480acb0f4ea4381ca2b525
   synced_at: 2026-10-16T21:52:53.875Z
 created_at: 2026-04-05T09:49:47.000Z
-updated_at: 2026-07-06T17:52:58.555Z
+updated_at: 2026-10-16T22:21:22.723Z
 ---
 
 ## Motivation

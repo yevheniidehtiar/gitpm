@@ -2,7 +2,7 @@
 type: story
 id: yHwzPUzLd9a2
 title: "feat: add sprint planning view (group stories into time-boxed iterations)"
-status: in_review
+status: done
 priority: medium
 assignee: null
 labels:
@@ -19,7 +19,7 @@ github:
   last_sync_hash: sha256:dd51f3f9597fc8c6da8806b3fd5b0d94aa1c6b75b6754cf66cb38da7bd012523
   synced_at: 2026-10-16T21:52:51.355Z
 created_at: 2026-04-05T09:49:46.000Z
-updated_at: 2026-07-06T18:03:51.967Z
+updated_at: 2026-10-16T22:21:22.186Z
 ---
 
 ## Motivation
