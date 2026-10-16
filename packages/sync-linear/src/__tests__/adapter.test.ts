@@ -14,10 +14,12 @@ const mockFetch = vi.fn();
 beforeEach(() => {
   mockFetch.mockClear();
   vi.stubGlobal('fetch', mockFetch);
+  vi.stubEnv('LINEAR_API_KEY', '');
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });
 
 function graphqlResponse(data: unknown, status = 200): Response {
@@ -30,9 +32,9 @@ function graphqlResponse(data: unknown, status = 200): Response {
 function emptyListsResponse(): Response {
   return graphqlResponse({
     team: {
-      cycles: { nodes: [] },
+      cycles: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
       issues: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
-      states: { nodes: [] },
+      states: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
     },
   });
 }
@@ -105,15 +107,37 @@ describe('linearAdapter', () => {
       expect(result.ok).toBe(true);
     });
 
-    it('falls back to options.token when apiKey is missing', async () => {
+    it('never uses the generic token (e.g. a GitHub PAT) as the API key', async () => {
       mockFetch.mockImplementation(async () => emptyListsResponse());
 
       const result = await linearAdapter.import({
         metaDir,
-        token: API_KEY,
+        token: 'ghp_github_token',
+        teamId: TEAM_ID,
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.message).toContain('Linear API key is required');
+      }
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('reads the API key from LINEAR_API_KEY', async () => {
+      vi.stubEnv('LINEAR_API_KEY', 'lin_api_from_env');
+      mockFetch.mockImplementation(async () => emptyListsResponse());
+
+      const result = await linearAdapter.import({
+        metaDir,
+        token: 'ghp_github_token',
         teamId: TEAM_ID,
       });
       expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalled();
+      for (const [, init] of mockFetch.mock.calls) {
+        expect((init as RequestInit).headers).toMatchObject({
+          Authorization: 'lin_api_from_env',
+        });
+      }
     });
   });
 
@@ -206,18 +230,19 @@ describe('linearAdapter', () => {
       }
     });
 
-    it('falls back to options.token for sync when apiKey is missing', async () => {
+    it('does not send the generic token to Linear on sync', async () => {
       const config = createDefaultConfig(TEAM_ID);
       await saveConfig(metaDir, config);
 
       const result = await linearAdapter.sync({
         metaDir,
-        token: API_KEY,
+        token: 'ghp_github_token',
       });
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.error.message).toContain('No Linear sync state found');
+        expect(result.error.message).toContain('Linear API key is required');
       }
+      expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 });
