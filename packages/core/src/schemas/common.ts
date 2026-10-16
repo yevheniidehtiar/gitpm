@@ -56,6 +56,17 @@ export const gitLabSyncSchema = z.object({
 });
 export type GitLabSync = z.infer<typeof gitLabSyncSchema>;
 
+export const linearSyncSchema = z.object({
+  issue_id: z.string().optional(),
+  identifier: z.string().optional(),
+  team_id: z.string(),
+  cycle_id: z.string().optional(),
+  /** Optional for pre-sync entities (imported or hand-written before first push). */
+  last_sync_hash: z.string().optional(),
+  synced_at: z.string(),
+});
+export type LinearSync = z.infer<typeof linearSyncSchema>;
+
 export type Result<T, E = Error> =
   | { ok: true; value: T }
   | { ok: false; error: E };

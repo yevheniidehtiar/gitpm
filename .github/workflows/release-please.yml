@@ -102,6 +102,7 @@ jobs:
                   --filter '@gitpm/sync-github' \
                   --filter '@gitpm/sync-gitlab' \
                   --filter '@gitpm/sync-jira' \
+                  --filter '@gitpm/sync-linear' \
                   --filter '@gitpm/cli' \
                   build
 

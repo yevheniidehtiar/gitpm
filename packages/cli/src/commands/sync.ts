@@ -20,6 +20,11 @@ export const syncCommand = new Command('sync')
     'Conflict resolution strategy (local-wins, remote-wins, ask)',
     'ask',
   )
+  .option('--team <id>', 'Linear team ID')
+  .option(
+    '--api-key <key>',
+    'Linear API key (default: LINEAR_API_KEY environment variable)',
+  )
   .option('--dry-run', 'Preview changes without syncing')
   .option('--yes', 'Skip confirmation prompt')
   .option('--adapter <name>', 'Force a specific adapter (e.g. github, gitlab)')
@@ -46,6 +51,8 @@ export const syncCommand = new Command('sync')
       const result = await adapter.sync({
         token,
         metaDir,
+        teamId: opts.team,
+        apiKey: opts.apiKey,
         strategy,
         dryRun: true,
       });
@@ -87,6 +94,8 @@ export const syncCommand = new Command('sync')
     const result = await adapter.sync({
       token,
       metaDir,
+      teamId: opts.team,
+      apiKey: opts.apiKey,
       strategy,
     });
 

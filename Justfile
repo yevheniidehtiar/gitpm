@@ -77,5 +77,6 @@ publish-all: build
     cd packages/sync-github  && npm publish --access public
     cd packages/sync-gitlab  && npm publish --access public
     cd packages/sync-jira    && npm publish --access public
+    cd packages/sync-linear  && npm publish --access public
     cd packages/cli          && npm publish --access public
     cd packages/ui           && npm publish --access public
