@@ -1,0 +1,130 @@
+# Zensical configuration template for an open-source library / CLI / SDK.
+# Replace every {{PLACEHOLDER}}. Verified against zensical 0.0.71 (see
+# references/zensical.md). Keys not listed here are optional.
+
+[project]
+site_name = "{{PROJECT_NAME}}"
+site_description = "{{ONE_SENTENCE_WHAT_IT_DOES}}"
+site_author = "{{AUTHOR_OR_ORG}}"
+
+# Must be the FULL public URL including the sub-path for GitHub project pages,
+# e.g. https://org.github.io/repo/ . Needed for navigation.instant, the sitemap
+# and canonical links. A wrong value here is the #1 cause of broken assets.
+site_url = "{{SITE_URL}}"
+
+# Enables the repo link in the header and the edit/view buttons below.
+repo_url = "{{REPO_URL}}"
+repo_name = "{{ORG}}/{{REPO}}"
+# Branch + docs folder used to build "Edit this page" links.
+edit_uri = "edit/{{DEFAULT_BRANCH}}/docs/"
+
+copyright = "Copyright &copy; {{YEAR}} {{AUTHOR_OR_ORG}}"
+
+# Make broken links and anchors fail the build (same as `zensical build --strict`).
+strict = true
+
+# Nav: at most ~7 top-level items. Titles come from each page's H1 unless
+# overridden with { "Title" = "path.md" }. Delete sections you do not need.
+nav = [
+  { "Home" = "index.md" },
+  { "Getting started" = [
+    "getting-started/index.md",
+    "getting-started/installation.md",
+    "getting-started/quickstart.md",
+  ] },
+  { "Guides" = [
+    "guides/index.md",
+    # "guides/<one-task-per-page>.md",
+  ] },
+  { "Reference" = [
+    "reference/index.md",
+    # "reference/cli.md",
+    # "reference/configuration.md",
+    # "reference/api.md",
+  ] },
+  { "Concepts" = [
+    "concepts/index.md",
+    # "concepts/architecture.md",
+  ] },
+  { "Contributing" = "contributing.md" },
+  # External links are allowed: any entry that is not a Markdown page is a URL.
+  # { "Changelog" = "{{REPO_URL}}/releases" },
+]
+
+[project.theme]
+# "modern" is the default look; "classic" keeps the Material for MkDocs look.
+# variant = "classic"
+language = "en"
+features = [
+  "content.action.edit",         # visible "Edit this page" button (needs repo_url)
+  "content.code.annotate",       # numbered annotations inside code blocks
+  "content.code.copy",           # copy button on every code block
+  "content.tabs.link",           # keep the same tab (pip/uv/npm) selected across the site
+  "navigation.footer",           # previous/next links in the footer
+  "navigation.indexes",          # section index.md acts as the section landing page
+  "navigation.instant",          # SPA-style page loads (needs site_url)
+  "navigation.instant.prefetch",
+  "navigation.path",             # breadcrumbs
+  "navigation.sections",         # top-level groups rendered as sidebar headings
+  "navigation.tabs",             # top-level sections as header tabs on wide screens
+  "navigation.top",              # back-to-top button
+  "navigation.tracking",         # URL follows the active heading
+  "search.highlight",
+  "toc.follow",
+]
+# logo = "assets/logo.svg"
+# favicon = "assets/favicon.png"
+
+# Light / dark toggle that follows the OS by default.
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to system preference"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "{{REPO_URL}}"
+
+# Link validation (these are the defaults; shown so you know what strict checks).
+[project.validation]
+invalid_links = true
+invalid_link_anchors = true
+
+[project.markdown_extensions]
+abbr = {}
+admonition = {}                  # !!! note / tip / warning blocks
+attr_list = {}                   # { .class } on elements; required by grids and buttons
+def_list = {}
+footnotes = {}
+md_in_html = {}                  # markdown inside <div markdown>; required by grid cards
+toc.permalink = true             # clickable # anchor on every heading
+pymdownx.betterem = {}
+pymdownx.details = {}            # ??? collapsible admonitions
+pymdownx.emoji.emoji_generator = "zensical.extensions.emoji.to_svg"
+pymdownx.emoji.emoji_index = "zensical.extensions.emoji.twemoji"
+pymdownx.highlight.anchor_linenums = true
+pymdownx.highlight.line_spans = "__span"
+pymdownx.highlight.pygments_lang_class = true
+pymdownx.inlinehilite = {}
+pymdownx.keys = {}
+pymdownx.mark = {}
+# Include code from real files so examples cannot rot: --8<-- "examples/hello.py"
+pymdownx.snippets.base_path = ["."]
+pymdownx.superfences.custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+]
+pymdownx.tabbed.alternate_style = true
+pymdownx.tabbed.combine_header_slug = true
+pymdownx.tasklist.custom_checkbox = true
