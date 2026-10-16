@@ -8,6 +8,7 @@ import {
   type ResolvedMilestone,
   type ResolvedSprint,
   type ResolvedTree,
+  type Result,
   resolveRefs,
 } from '@gitpm/core';
 import { Command } from 'commander';
@@ -21,17 +22,23 @@ const DONE_STATUSES = new Set(['done', 'cancelled']);
 const ACTIVE_STATUSES = new Set(['in_progress', 'in_review']);
 const MAX_UNASSIGNED_ITEMS = 10;
 
-type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };
-
 /**
  * Neutralise a user-controlled title before embedding it in generated
- * markdown: drop HTML comments and stray comment delimiters (so titles cannot
- * forge or break the gitpm context markers) and collapse whitespace to one line.
+ * markdown so it cannot forge or break the gitpm context markers: strip HTML
+ * comments repeatedly until none remain (a single pass can be defeated by
+ * inputs that re-form a delimiter once the inner comment is removed), escape
+ * any remaining angle brackets, and collapse whitespace to one line.
  */
 export function sanitizeTitle(title: string): string {
-  return title
-    .replace(/<!--[\s\S]*?-->/g, ' ')
-    .replace(/<!--|-->/g, '')
+  let current = title;
+  let previous: string;
+  do {
+    previous = current;
+    current = current.replace(/<!--[\s\S]*?-->/g, ' ');
+  } while (current !== previous);
+  return current
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -65,7 +72,7 @@ function findCurrentSprint(
   today: string,
 ): ResolvedSprint | undefined {
   const inRange = tree.sprints.filter((s) => {
-    if (s.status === 'cancelled') return false;
+    if (DONE_STATUSES.has(s.status)) return false;
     const start = s.start_date.slice(0, 10);
     const end = s.end_date.slice(0, 10);
     return today >= start && today <= end;
@@ -166,14 +173,36 @@ export function renderContext(
   return lines.join('\n');
 }
 
-function countOccurrences(haystack: string, needle: string): number {
-  return haystack.split(needle).length - 1;
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+interface MarkerMatch {
+  start: number;
+  end: number;
 }
 
 /**
- * Splice the generated section into CLAUDE.md content. Requires either no
- * markers (block is appended) or exactly one start marker followed by exactly
- * one end marker. Any other arrangement is rejected so user content is never
+ * Find occurrences of `marker` that sit alone on their own line (surrounding
+ * spaces/tabs allowed). Inline mentions inside prose are ignored. The match
+ * span excludes the line terminator.
+ */
+function findOwnLineMarkers(haystack: string, marker: string): MarkerMatch[] {
+  const pattern = new RegExp(
+    `^[ \\t]*${escapeRegExp(marker)}[ \\t]*(?=\\r?$)`,
+    'gm',
+  );
+  return [...haystack.matchAll(pattern)].map((m) => ({
+    start: m.index,
+    end: m.index + m[0].length,
+  }));
+}
+
+/**
+ * Splice the generated section into CLAUDE.md content. Only markers alone on
+ * their own line are recognised. Requires either no such markers (block is
+ * appended) or exactly one start-marker line followed by exactly one
+ * end-marker line. Any other arrangement is rejected so user content is never
  * silently overwritten.
  */
 export function spliceIntoClaudeMd(
@@ -181,31 +210,34 @@ export function spliceIntoClaudeMd(
   section: string,
 ): Result<string> {
   const block = `${CONTEXT_START_MARKER}\n\n${section}\n${CONTEXT_END_MARKER}`;
-  const startCount = countOccurrences(existing, CONTEXT_START_MARKER);
-  const endCount = countOccurrences(existing, CONTEXT_END_MARKER);
+  const starts = findOwnLineMarkers(existing, CONTEXT_START_MARKER);
+  const ends = findOwnLineMarkers(existing, CONTEXT_END_MARKER);
 
-  if (startCount === 0 && endCount === 0) {
+  if (starts.length === 0 && ends.length === 0) {
     const trimmed = existing.replace(/\n+$/, '');
     const separator = trimmed.length > 0 ? '\n\n' : '';
     return { ok: true, value: `${trimmed}${separator}${block}\n` };
   }
 
-  const startIdx = existing.indexOf(CONTEXT_START_MARKER);
-  const endIdx = existing.indexOf(
-    CONTEXT_END_MARKER,
-    startIdx + CONTEXT_START_MARKER.length,
-  );
-  if (startCount !== 1 || endCount !== 1 || startIdx === -1 || endIdx === -1) {
+  const [start] = starts;
+  const [end] = ends;
+  if (
+    starts.length !== 1 ||
+    ends.length !== 1 ||
+    start === undefined ||
+    end === undefined ||
+    end.start < start.end
+  ) {
     return {
       ok: false,
       error: new Error(
-        `CLAUDE.md has unbalanced gitpm context markers (found ${startCount} start, ${endCount} end; expected exactly one "${CONTEXT_START_MARKER}" followed by one "${CONTEXT_END_MARKER}"). Fix the markers manually and re-run.`,
+        `CLAUDE.md has unbalanced gitpm context markers (found ${starts.length} start, ${ends.length} end on their own lines; expected exactly one "${CONTEXT_START_MARKER}" line followed by one "${CONTEXT_END_MARKER}" line). Fix the markers manually and re-run.`,
       ),
     };
   }
 
-  const before = existing.slice(0, startIdx);
-  const after = existing.slice(endIdx + CONTEXT_END_MARKER.length);
+  const before = existing.slice(0, start.start);
+  const after = existing.slice(end.end);
   return { ok: true, value: `${before}${block}${after}` };
 }
 
