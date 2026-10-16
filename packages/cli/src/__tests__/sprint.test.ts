@@ -24,6 +24,7 @@ vi.mock('@inquirer/prompts', () => ({
 
 let logSpy: ReturnType<typeof vi.spyOn>;
 let errorSpy: ReturnType<typeof vi.spyOn>;
+let warnSpy: ReturnType<typeof vi.spyOn>;
 let exitSpy: ReturnType<typeof vi.spyOn>;
 
 async function run(...args: string[]) {
@@ -413,6 +414,7 @@ describe('gitpm sprint plan', () => {
     exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {
       throw new Error('process.exit');
     }) as never);
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     mockParseTree.mockResolvedValue({ ok: true, value: {} });
     mockWriteFile.mockResolvedValue({ ok: true, value: undefined });
     mockConfirm.mockResolvedValue(true);
@@ -421,6 +423,12 @@ describe('gitpm sprint plan', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
+
+  /** The single sprint entity passed to writeFile. */
+  function writtenSprint(): Record<string, unknown> {
+    expect(mockWriteFile).toHaveBeenCalledTimes(1);
+    return mockWriteFile.mock.calls[0][0] as Record<string, unknown>;
+  }
 
   it('exits 1 when parseTree fails', async () => {
     mockParseTree.mockResolvedValue({
@@ -488,16 +496,16 @@ describe('gitpm sprint plan', () => {
     await run('plan', 'sp_1', '--add', 's2', '--meta-dir', '/tmp/m');
 
     expect(mockCheckbox).not.toHaveBeenCalled();
-    expect(mockWriteFile).toHaveBeenCalledWith(
-      expect.objectContaining({
-        stories: expect.arrayContaining([
-          { id: 's1' },
-          { id: 's3' },
-          { id: 's2' },
-        ]),
-      }),
-      '/tmp/m/sprints/sprint-1.md',
-    );
+    expect(mockWriteFile.mock.calls[0][1]).toBe('/tmp/m/sprints/sprint-1.md');
+    // Exact match: no resolvedStories leak, no extra/duplicate refs.
+    const { resolvedStories: _resolved, ...base } = planSprint();
+    const written = writtenSprint();
+    expect(written).toEqual({
+      ...base,
+      stories: [{ id: 's1' }, { id: 's3' }, { id: 's2' }],
+      updated_at: expect.any(String),
+    });
+    expect(written.updated_at).not.toBe(base.updated_at);
 
     const logOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
     expect(logOutput).toContain('3 stories');
@@ -515,10 +523,104 @@ describe('gitpm sprint plan', () => {
     await run('plan', 'sp_1', '--remove', 's1', '--meta-dir', '/tmp/m');
 
     expect(mockCheckbox).not.toHaveBeenCalled();
-    expect(mockWriteFile).toHaveBeenCalledWith(
-      expect.objectContaining({ stories: [{ id: 's3' }] }),
-      '/tmp/m/sprints/sprint-1.md',
+    const written = writtenSprint();
+    expect(written).not.toHaveProperty('resolvedStories');
+    expect(written.stories).toEqual([{ id: 's3' }]);
+  });
+
+  it('preserves existing ref objects (including path) and their order', async () => {
+    const sprint = planSprint({
+      stories: [
+        { id: 's3', path: '../stories/s3.md' },
+        { id: 's1', path: '../stories/s1.md' },
+      ],
+    });
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [sprint], stories: allStories },
+    });
+
+    await run('plan', 'sp_1', '--add', 's2', '--meta-dir', '/tmp/m');
+
+    expect(writtenSprint().stories).toEqual([
+      { id: 's3', path: '../stories/s3.md' },
+      { id: 's1', path: '../stories/s1.md' },
+      { id: 's2' },
+    ]);
+  });
+
+  it('warns when --add assigns a story already in another sprint', async () => {
+    const other = planSprint({
+      id: 'sp_2',
+      title: 'Sprint 2',
+      stories: [{ id: 's2' }],
+      filePath: '/tmp/m/sprints/sprint-2.md',
+    });
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint(), other], stories: allStories },
+    });
+
+    await run('plan', 'sp_1', '--add', 's2', '--meta-dir', '/tmp/m');
+
+    const warnOutput = warnSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(warnOutput).toContain('Story 2');
+    expect(warnOutput).toContain('Sprint 2');
+    expect(writtenSprint().stories).toEqual([
+      { id: 's1' },
+      { id: 's3' },
+      { id: 's2' },
+    ]);
+  });
+
+  it('does not warn when the story is only in the sprint being planned', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+
+    await run('plan', 'sp_1', '--add', 's2', '--meta-dir', '/tmp/m');
+
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('labels picker choices that are already in another sprint', async () => {
+    const other = planSprint({
+      id: 'sp_2',
+      title: 'Sprint 2',
+      stories: [{ id: 's2' }],
+    });
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint(), other], stories: allStories },
+    });
+    mockCheckbox.mockResolvedValue(['s1']);
+
+    await run('plan', 'sp_1', '--meta-dir', '/tmp/m');
+
+    const choices = mockCheckbox.mock.calls[0][0].choices as {
+      name: string;
+      value: string;
+    }[];
+    expect(choices.find((c) => c.value === 's2')?.name).toContain(
+      'in Sprint 2',
     );
+    expect(choices.find((c) => c.value === 's1')?.name).not.toContain('in ');
+  });
+
+  it('removes a preselected story that the user unchecks, keeping untouched ones', async () => {
+    mockResolveRefs.mockReturnValue({
+      ok: true,
+      value: { sprints: [planSprint()], stories: allStories },
+    });
+    // s1 is preselected (already in sprint); user unchecks it and picks s2.
+    mockCheckbox.mockResolvedValue(['s2']);
+
+    await run('plan', 'sp_1', '--meta-dir', '/tmp/m');
+
+    const written = writtenSprint();
+    expect(written).not.toHaveProperty('resolvedStories');
+    expect(written.stories).toEqual([{ id: 's3' }, { id: 's2' }]);
   });
 
   it('prompts interactively with only todo/backlog stories when no flags given', async () => {
@@ -543,17 +645,11 @@ describe('gitpm sprint plan', () => {
     ).toBe(false);
 
     // s3 (in_progress, not pickable) stays in the sprint untouched, plus the
-    // selected s1 and s2.
-    expect(mockWriteFile).toHaveBeenCalledWith(
-      expect.objectContaining({
-        stories: expect.arrayContaining([
-          { id: 's3' },
-          { id: 's1' },
-          { id: 's2' },
-        ]),
-      }),
-      '/tmp/m/sprints/sprint-1.md',
-    );
+    // selected s1 and s2. Existing refs keep their order; s2 is appended.
+    const written = writtenSprint();
+    expect(written).not.toHaveProperty('resolvedStories');
+    expect(written.stories).toEqual([{ id: 's1' }, { id: 's3' }, { id: 's2' }]);
+    expect(mockWriteFile.mock.calls[0][1]).toBe('/tmp/m/sprints/sprint-1.md');
   });
 
   it('exits 1 when writeFile fails', async () => {

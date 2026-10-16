@@ -11,7 +11,12 @@ import { checkbox, confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { resolveMetaDir } from '../utils/config.js';
-import { printError, printSuccess, progressBar } from '../utils/output.js';
+import {
+  printError,
+  printSuccess,
+  printWarning,
+  progressBar,
+} from '../utils/output.js';
 
 function sprintProgress(sprint: ResolvedSprint): {
   done: number;
@@ -258,11 +263,36 @@ const sprintPlanCommand = new Command('plan')
       const storyById = new Map(allStories.map((s) => [s.id, s]));
       const currentIds = new Set(sprint.stories.map((ref) => ref.id));
 
+      // Story ID -> titles of the *other* sprints that already reference it.
+      // Assigning a story to more than one sprint is allowed (e.g. carry-over),
+      // but double-counts its points, so we surface it to the user.
+      const otherSprintsByStory = new Map<string, string[]>();
+      for (const other of resolveResult.value.sprints) {
+        if (other.id === sprint.id) continue;
+        for (const ref of other.stories) {
+          const titles = otherSprintsByStory.get(ref.id) ?? [];
+          titles.push(other.title);
+          otherSprintsByStory.set(ref.id, titles);
+        }
+      }
+
       const pointsFor = (ids: Iterable<string>): number =>
         [...ids].reduce(
           (sum, id) => sum + (storyById.get(id)?.estimate ?? 0),
           0,
         );
+
+      const warnAlreadyPlanned = (ids: Iterable<string>): void => {
+        for (const id of ids) {
+          if (currentIds.has(id)) continue;
+          const others = otherSprintsByStory.get(id);
+          if (others) {
+            printWarning(
+              `Story "${storyById.get(id)?.title ?? id}" is already in sprint ${others.map((t) => `"${t}"`).join(', ')}; its points will count toward both.`,
+            );
+          }
+        }
+      };
 
       let nextIds: Set<string>;
 
@@ -280,6 +310,7 @@ const sprintPlanCommand = new Command('plan')
         nextIds = new Set(currentIds);
         for (const id of addIds) nextIds.add(id);
         for (const id of opts.remove ?? []) nextIds.delete(id);
+        warnAlreadyPlanned(nextIds);
       } else {
         const pickable = allStories.filter(isPickableStory);
         // Stories already in the sprint that aren't in the pickable list
@@ -300,13 +331,20 @@ const sprintPlanCommand = new Command('plan')
         } else {
           const selected = await checkbox({
             message: `Select stories for "${sprint.title}"`,
-            choices: pickable.map((story) => ({
-              name: `${story.title} ${chalk.dim(`[${story.priority}]`)} ${chalk.dim(`(${story.estimate ?? '?'} pts)`)}`,
-              value: story.id,
-              checked: currentIds.has(story.id),
-            })),
+            choices: pickable.map((story) => {
+              const others = otherSprintsByStory.get(story.id);
+              const inOthers = others
+                ? ` ${chalk.yellow(`(in ${others.join(', ')})`)}`
+                : '';
+              return {
+                name: `${story.title} ${chalk.dim(`[${story.priority}]`)} ${chalk.dim(`(${story.estimate ?? '?'} pts)`)}${inOthers}`,
+                value: story.id,
+                checked: currentIds.has(story.id),
+              };
+            }),
           });
           nextIds = new Set([...untouchedIds, ...selected]);
+          warnAlreadyPlanned(nextIds);
 
           // Show the running points-vs-capacity total for the selection
           // before writing, so the user can back out of an over-capacity plan.
@@ -325,10 +363,17 @@ const sprintPlanCommand = new Command('plan')
 
       const totalPoints = pointsFor(nextIds);
 
+      // Preserve existing ref objects (including any `path` hint) and their
+      // order; newly added stories are appended as bare `{ id }` refs.
+      const keptRefs = sprint.stories.filter((ref) => nextIds.has(ref.id));
+      const addedRefs = [...nextIds]
+        .filter((id) => !currentIds.has(id))
+        .map((id) => ({ id }));
+
       const { resolvedStories: _resolvedStories, ...sprintBase } = sprint;
       const updatedSprint = {
         ...sprintBase,
-        stories: [...nextIds].map((id) => ({ id })),
+        stories: [...keptRefs, ...addedRefs],
         updated_at: new Date().toISOString(),
       };
 
