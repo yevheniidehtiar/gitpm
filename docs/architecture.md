@@ -27,7 +27,7 @@ This document describes GitPM's system architecture, package structure, and code
 | `packages/sync-github` | `@gitpm/sync-github` | Bidirectional sync with GitHub Issues/Milestones/Projects | `@octokit/rest`, `@gitpm/core` |
 | `packages/sync-gitlab` | `@gitpm/sync-gitlab` | Bidirectional sync with GitLab Issues/Milestones | `@gitpm/core` |
 | `packages/sync-jira` | `@gitpm/sync-jira` | Bidirectional sync with Jira Cloud | `@gitpm/core` |
-| `packages/cli` | `gitpm` | CLI entry point with six commands | `commander`, `chalk`, `ora`, `@gitpm/core`, sync packages |
+| `packages/cli` | `gitpm` | CLI entry point with 18 commands (tree editing, sync, planning) | `commander`, `chalk`, `ora`, `@gitpm/core`, sync packages |
 | `packages/ui` | `@gitpm/ui` | Local React web UI for browsing and editing | `react`, `tailwindcss`, `@tanstack/router`, `@tanstack/query`, `hono` |
 
 ### Dependency Graph
@@ -106,11 +106,15 @@ Field-level diffing identifies exactly which fields changed (title, status, prio
 
 ```
 gitpm/
-├── CLAUDE.md                    # Project conventions (this file)
+├── AGENTS.md                    # Agent instructions (tool-neutral contract)
+├── CLAUDE.md                    # Claude Code notes (imports AGENTS.md)
 ├── package.json                 # Bun workspace root
 ├── biome.json                   # Linting config
 ├── vitest.config.ts             # Test config
 ├── tsconfig.json                # Base TypeScript config
+├── .claude/                     # Claude Code skills, slash commands, path-scoped rules
+├── .githooks/pre-push           # Blocks pushes with unsynced .meta/ changes
+├── .meta/                       # This repo's own roadmap, epics and stories (live, synced)
 ├── packages/
 │   ├── core/
 │   │   └── src/
@@ -137,7 +141,7 @@ gitpm/
 │   ├── cli/
 │   │   └── src/
 │   │       ├── index.ts         # Commander setup
-│   │       ├── commands/        # init, validate, import, push, pull, sync
+│   │       ├── commands/        # 18 commands, one file each (see docs/cli-reference.md)
 │   │       └── utils/           # auth, config, output, conflict-ui
 │   └── ui/
 │       └── src/
@@ -148,6 +152,9 @@ gitpm/
 └── docs/
     ├── demo.md                  # Product demo & use cases
     ├── architecture.md          # This file
+    ├── adopting-agentic-coding.md # Trust model for teams on Jira/Confluence
+    ├── AGENT_SETUP_GUIDE.md     # Setting up GitPM in a consumer repo (for agents)
+    ├── ci-claude-review.md      # How the AI review workflow works
     ├── cli-reference.md
     ├── schema-reference.md
     ├── sync-guide.md

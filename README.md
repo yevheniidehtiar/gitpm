@@ -20,6 +20,8 @@ GitPM turns your repository's `.meta/` directory into a full project management 
 
 **Offline-first for field teams and contractors.** Teams in low-connectivity environments (field engineering, defense, on-prem deployments) can manage their project boards locally and sync when connectivity is available. No always-on SaaS dependency.
 
+**Agentic coding for teams on Jira and Confluence.** Agents work from `.meta/` files while your tracker stays the team's UI. This repo ships an [`AGENTS.md`](AGENTS.md), path-scoped agent rules and CI gates you can copy. See [Adopting agentic coding alongside Jira and Confluence](docs/adopting-agentic-coding.md).
+
 ## Quick Start
 
 ```bash
@@ -74,9 +76,9 @@ Adapters are auto-detected at runtime — no extra configuration needed. The CLI
 - **File-based project management** — roadmaps, epics, stories, milestones, and PRDs as Markdown + YAML frontmatter in `.meta/`
 - **Bidirectional sync** — keep `.meta/` in sync with GitHub Issues, GitLab Issues, or Jira
 - **Plugin architecture** — install only the sync adapters you need; write custom adapters for any platform
-- **CLI-first** — six commands cover the full workflow: `init`, `validate`, `import`, `push`, `pull`, `sync`
+- **CLI-first** — 18 commands: six core (`init`, `validate`, `import`, `push`, `pull`, `sync`), tree editing (`query`, `show`, `set`, `create`, `move`, `archive`, `commit`) and planning (`status`, `sprint`, `next`, `audit`, `quality`)
 - **Local web UI** — browse, edit, and visualize your project tree with a React-based interface
-- **AI-agent friendly** — structured files in your repo give AI agents full project context
+- **AI-agent friendly** — structured files in your repo give AI agents full project context; this repo ships an [`AGENTS.md`](AGENTS.md) you can copy
 - **Schema-validated** — all entities are validated with Zod schemas; catch errors before they hit your tracker
 - **Custom schema extensions** — add project-specific fields (story points, team, etc.) via `.meta/.gitpm/schema-extensions.yaml`
 - **Lifecycle hooks** — run scripts before/after import, export, or sync operations
@@ -92,6 +94,8 @@ Adapters are auto-detected at runtime — no extra configuration needed. The CLI
 | `gitpm push` | Push local `.meta/` changes to the remote platform |
 | `gitpm pull` | Pull remote changes into local `.meta/` |
 | `gitpm sync` | Bidirectional sync between `.meta/` and the remote |
+
+Twelve more commands edit the tree (`query`, `show`, `set`, `create`, `move`, `archive`, `commit`) and support planning (`status`, `sprint`, `next`, `audit`, `quality`). Run `gitpm --help` for the list.
 
 Global options: `--meta-dir <path>` (default: `.meta`), `--token <token>`, `--adapter <name>`
 
@@ -225,6 +229,9 @@ Features:
 | [Sync Configuration Guide](docs/sync-guide.md) | Setup, configuration, conflict resolution |
 | [Architecture Overview](docs/architecture.md) | System design, packages, conventions (for contributors) |
 | [Migration Guide](docs/migration-guide.md) | Migrating from GitHub Issues, GitLab, or Jira |
+| [Agent Setup Guide](docs/AGENT_SETUP_GUIDE.md) | For AI agents setting up GitPM in a consumer repo |
+| [Adopting Agentic Coding](docs/adopting-agentic-coding.md) | Trust model and sync strategy for teams on Jira and Confluence |
+| [AGENTS.md](AGENTS.md) | The agent instructions this repo itself runs on |
 
 ## Contributing
 

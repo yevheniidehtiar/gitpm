@@ -198,12 +198,12 @@ jobs:
              of the repository is already written.** If a pattern is
              consistent with existing files in the repo, the PR is following
              the house convention — that alone CANNOT be `medium`. Only
-             genuine divergence from CLAUDE.md or from observable repo
+             genuine divergence from AGENTS.md or from observable repo
              patterns qualifies as a convention violation.
              - **critical**: correctness bugs, security issues, broken
                build/logic, thrown exceptions in library code where
                `Result<T, E>` is required, data loss, regressions.
-             - **medium**: CLAUDE.md convention violations the diff
+             - **medium**: AGENTS.md convention violations the diff
                introduces or files that diverge from the pattern every
                other file in the same area already follows (ESM `.js`
                import suffix, `type` imports, zod instead of manual type
@@ -719,7 +719,7 @@ jobs:
              in the PR diff, not build/test failures.
           3. Diagnose the root cause of each failure. Do NOT modify tests to
              make them pass — find the real bug in the code under test.
-          4. Fix the code following the gitpm conventions in `CLAUDE.md`
+          4. Fix the code following the gitpm conventions in `AGENTS.md`
              (ESM `.js` imports, `Result<T, E>` instead of thrown exceptions,
              zod for validation, `node:fs/promises`, no `any`, colocated tests).
           5. Run `bun run lint && bun run build && bun run test` locally to
