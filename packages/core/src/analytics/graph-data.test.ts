@@ -668,6 +668,123 @@ describe('buildGraphData', () => {
     expect(byEdge('a3', 'a4')?.critical).toBe(true);
   });
 
+  const story = (
+    id: string,
+    issueNumber: number,
+    body: string,
+    repo = 'org/repo',
+  ): ResolvedTree['stories'][number] =>
+    ({
+      type: 'story' as const,
+      id,
+      title: id,
+      status: 'todo' as const,
+      priority: 'medium' as const,
+      labels: [],
+      assignee: null,
+      estimate: null,
+      epic_ref: null,
+      github: { issue_number: issueNumber, repo, synced_at: '' },
+      body,
+      filePath: `/${id}.md`,
+      created_at: '',
+      updated_at: '',
+    }) as ResolvedTree['stories'][number];
+
+  /** Asserts the critical edges form one simple chain over critical nodes. */
+  const expectSingleChain = (result: ReturnType<typeof buildGraphData>) => {
+    const criticalEdges = result.edges.filter((e) => e.critical);
+    const criticalNodes = new Set(
+      result.nodes.filter((n) => n.critical).map((n) => n.id),
+    );
+    expect(criticalEdges.length).toBeGreaterThan(0);
+    expect(criticalNodes.size).toBe(criticalEdges.length + 1);
+    const outDegree = new Map<string, number>();
+    for (const e of criticalEdges) {
+      expect(criticalNodes.has(e.source)).toBe(true);
+      expect(criticalNodes.has(e.target)).toBe(true);
+      outDegree.set(e.source, (outDegree.get(e.source) ?? 0) + 1);
+    }
+    for (const n of outDegree.values()) expect(n).toBe(1);
+  };
+
+  it('stays bounded on a dense, fully cross-referenced cyclic graph', () => {
+    // 40 stories, each mentioning every other one: ~40! simple paths, which
+    // an unbounded exhaustive search would never finish.
+    const count = 40;
+    const stories = Array.from({ length: count }, (_, i) =>
+      story(
+        `d${i}`,
+        i + 1,
+        Array.from({ length: count }, (_, j) => `#${j + 1}`).join(' '),
+      ),
+    );
+
+    const started = performance.now();
+    const result = buildGraphData(makeTree({ stories }));
+    const elapsed = performance.now() - started;
+
+    expect(result.edges).toHaveLength(count * (count - 1));
+    expect(elapsed).toBeLessThan(2000);
+    expectSingleChain(result);
+  });
+
+  it('falls back to a linear-time DAG pass on large graphs and still finds long chains', () => {
+    // Chain of 1500 stories (past the exact-search size cap) plus a back
+    // reference from the tail to the head, forming one big cycle.
+    const count = 1500;
+    const stories = Array.from({ length: count }, (_, i) =>
+      story(`n${i}`, i + 1, i < count - 1 ? `See #${i + 2}.` : 'See #1.'),
+    );
+
+    const result = buildGraphData(makeTree({ stories }));
+
+    expectSingleChain(result);
+    expect(result.edges.filter((e) => e.critical)).toHaveLength(count - 1);
+  });
+
+  it('ignores cross-repo refs, code, URL fragments and hex-like tokens when scanning #N', () => {
+    const target = story('t', 20, '');
+    const source = story(
+      's',
+      1,
+      [
+        'Upstream: octokit/rest.js#20 and https://example.com/page#20',
+        'Color: #20ab',
+        'Inline `#20` code.',
+        '```',
+        'fixes #20',
+        '```',
+        '~~~sh',
+        'echo #20',
+        '~~~',
+      ].join('\n'),
+    );
+
+    const result = buildGraphData(makeTree({ stories: [source, target] }));
+    expect(result.edges).toHaveLength(0);
+
+    const real = story('s', 1, '#20 at line start, and (#20).');
+    const result2 = buildGraphData(makeTree({ stories: [real, target] }));
+    expect(result2.edges).toEqual([
+      { source: 's', target: 't', label: 'references', critical: true },
+    ]);
+  });
+
+  it('resolves #N to the entity in the same repo when issue numbers collide', () => {
+    const local = story('local', 5, '', 'org/a');
+    const other = story('other', 5, '', 'org/b');
+    const source = story('src', 1, 'See #5.', 'org/a');
+    const foreign = story('foreign', 2, 'See #5.', 'org/c');
+
+    const result = buildGraphData(
+      makeTree({ stories: [other, local, source, foreign] }),
+    );
+    const refs = result.edges.filter((e) => e.label === 'references');
+    // `foreign` (org/c) matches neither candidate's repo, so no edge.
+    expect(refs.map((e) => `${e.source}->${e.target}`)).toEqual(['src->local']);
+  });
+
   it('handles undefined sprints array (nullish coalescing)', () => {
     const tree = {
       stories: [],
