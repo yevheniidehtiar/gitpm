@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Epic, Milestone, Roadmap, Story } from '@gitpm/core';
@@ -581,6 +581,56 @@ describe('syncWithGitLab', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.pulled.issues).toBe(1);
+  });
+
+  it('writes pulled remote changes to the entity file in place', async () => {
+    await seedConfig();
+    await writeMeta(makeRoadmap([{ id: 'm1' }]));
+    await writeMeta(makeMilestone('m1'));
+    await writeMeta(makeStory('s1'));
+
+    const parsed = await parseTree(metaDir);
+    if (!parsed.ok) throw parsed.error;
+    const storyPath = parsed.value.stories[0].filePath;
+    const milestonePath = parsed.value.milestones[0].filePath;
+
+    await saveState(metaDir, {
+      project: 'ns/proj',
+      project_id: 42,
+      last_sync: '2026-01-01T00:00:00Z',
+      entities: {
+        m1: {
+          gitlab_milestone_id: 101,
+          local_hash: computeContentHash(parsed.value.milestones[0]),
+          remote_hash: 'sha256:stale-remote',
+          synced_at: '2026-01-01T00:00:00Z',
+        },
+        s1: {
+          gitlab_issue_iid: 50,
+          local_hash: computeContentHash(parsed.value.stories[0]),
+          remote_hash: 'sha256:stale-remote',
+          synced_at: '2026-01-01T00:00:00Z',
+        },
+      },
+    });
+    fake.getMilestone.mockResolvedValueOnce(
+      makeGlMilestone({ id: 101, title: 'Pulled Milestone Title' }),
+    );
+    fake.getIssue.mockResolvedValueOnce(
+      makeGlIssue({ iid: 50, title: 'Pulled Story Title' }),
+    );
+
+    const result = await syncWithGitLab({
+      token: 'tok',
+      project: 'ns/proj',
+      metaDir,
+    });
+    expect(result.ok).toBe(true);
+
+    expect(await readFile(storyPath, 'utf-8')).toContain('Pulled Story Title');
+    expect(await readFile(milestonePath, 'utf-8')).toContain(
+      'Pulled Milestone Title',
+    );
   });
 
   it('issue conflict with local-wins pushes local', async () => {
