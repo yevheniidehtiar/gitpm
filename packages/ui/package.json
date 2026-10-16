@@ -42,7 +42,7 @@
     "d3-force": "^3.0.0",
     "d3-selection": "^3.0.0",
     "hono": "^4.12.11",
-    "react": "^18.3.0",
+    "react": "^19.3.0",
     "react-dom": "^18.3.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1"

@@ -15,7 +15,7 @@
     },
     "packages/cli": {
       "name": "@gitpm/cli",
-      "version": "0.1.11",
+      "version": "0.1.12",
       "bin": {
         "gitpm": "./dist/index.js",
       },
@@ -41,7 +41,7 @@
     },
     "packages/core": {
       "name": "@gitpm/core",
-      "version": "0.1.12",
+      "version": "0.1.13",
       "dependencies": {
         "gray-matter": "^4.0.3",
         "nanoid": "^5.0.8",
@@ -54,7 +54,7 @@
     },
     "packages/sync-github": {
       "name": "@gitpm/sync-github",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@gitpm/core": "workspace:*",
         "@octokit/rest": "^22.0.1",
@@ -65,7 +65,7 @@
     },
     "packages/sync-gitlab": {
       "name": "@gitpm/sync-gitlab",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@gitpm/core": "workspace:*",
         "nanoid": "^5.0.8",
@@ -74,7 +74,7 @@
     },
     "packages/sync-jira": {
       "name": "@gitpm/sync-jira",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "dependencies": {
         "@gitpm/core": "workspace:*",
         "nanoid": "^5.0.8",
@@ -83,7 +83,7 @@
     },
     "packages/sync-linear": {
       "name": "@gitpm/sync-linear",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@gitpm/core": "workspace:*",
         "nanoid": "^5.0.8",
@@ -92,7 +92,7 @@
     },
     "packages/ui": {
       "name": "@gitpm/ui",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "dependencies": {
         "@gitpm/core": "workspace:*",
         "@gitpm/sync-github": "workspace:*",
@@ -103,7 +103,7 @@
         "d3-force": "^3.0.0",
         "d3-selection": "^3.0.0",
         "hono": "^4.12.11",
-        "react": "^18.3.0",
+        "react": "^19.3.0",
         "react-dom": "^18.3.0",
         "react-markdown": "^10.1.0",
         "remark-gfm": "^4.0.1",
@@ -819,7 +819,7 @@
 
     "property-information": ["property-information@7.2.0", "", {}, "sha512-IAtzIB6sUiWaJYrX9smp3V46pBGbBeLFRGdh25kg1334VcBlD8HzhPeNIWQH9zhGmo2itIe25EHt9dQP7G5hmg=="],
 
-    "react": ["react@18.3.1", "", { "dependencies": { "loose-envify": "^1.1.0" } }, "sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ=="],
+    "react": ["react@19.3.0", "", {}, "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog=="],
 
     "react-dom": ["react-dom@18.3.1", "", { "dependencies": { "loose-envify": "^1.1.0", "scheduler": "^0.23.2" }, "peerDependencies": { "react": "^18.3.1" } }, "sha512-5m4nQKp+rZRb09LNH59GM4BxTh9251/ylbKIbpe7TpGxfJ+9kv6BLkLBXIjjspbgbnIBNqlI23tRnTWT0snUIw=="],
 
@@ -980,6 +980,8 @@
     "parse-entities/@types/unist": ["@types/unist@2.0.11", "", {}, "sha512-CmBKiL6NNo/OqgmMn95Fk9Whlp2mtvIv+KNpQKN2F4SjvrEesubTRWGYSg+BnWZOnlCaSTU1sMpsBOzgbYhnsA=="],
 
     "postcss/nanoid": ["nanoid@3.3.20", "", { "bin": { "nanoid": "bin/nanoid.cjs" } }, "sha512-uKdg2G3GNCKQn9byYOpxbGqrT2fGO5KRt5J/8b3pok8rT6qxGWF6hxMyJiEYtAf+FVyYuD9hRaDqX5uPFYJ4ZQ=="],
+
+    "react-dom/react": ["react@18.3.1", "", { "dependencies": { "loose-envify": "^1.1.0" } }, "sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ=="],
 
     "sucrase/commander": ["commander@4.1.1", "", {}, "sha512-NOKm8xhkzAjzFx8B2v5OAHT+u5pRQc2UCa2Vq9jYL/31o2wi9mxBA7LIFs3sV5VSC49z6pEhfbMULvShKj26WA=="],
 
