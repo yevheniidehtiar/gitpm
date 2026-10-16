@@ -38,6 +38,21 @@ test.describe('Dependency graph', () => {
     await expect(page.getByText('epic', { exact: true })).toBeVisible();
   });
 
+  test('highlights the critical path in the critical color', async ({
+    page,
+  }) => {
+    // The fixture has an active story -> epic -> milestone chain, so at
+    // least one edge and its endpoint nodes must render as critical.
+    const svg = page.getByRole('img', { name: 'Entity Dependency Graph' });
+    await expect(svg).toBeVisible();
+    await expect
+      .poll(() => svg.locator('line[stroke="#DC2626"]').count())
+      .toBeGreaterThan(0);
+    await expect
+      .poll(() => svg.locator('circle[stroke="#DC2626"]').count())
+      .toBeGreaterThanOrEqual(2);
+  });
+
   test('clicking a node navigates to the entity page', async ({ page }) => {
     const svg = page.getByRole('img', { name: 'Entity Dependency Graph' });
     const firstNode = svg.locator('g').first();
