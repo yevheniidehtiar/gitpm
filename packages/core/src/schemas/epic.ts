@@ -5,6 +5,7 @@ import {
   gitHubSyncSchema,
   gitLabSyncSchema,
   jiraSyncSchema,
+  linearSyncSchema,
   prioritySchema,
   statusSchema,
 } from './common.js';
@@ -21,6 +22,7 @@ export const epicFrontmatterSchema = z.object({
   github: gitHubSyncSchema.nullable().optional(),
   jira: jiraSyncSchema.nullable().optional(),
   gitlab: gitLabSyncSchema.nullable().optional(),
+  linear: linearSyncSchema.nullable().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });

@@ -10,6 +10,7 @@ COPY packages/cli/package.json packages/cli/
 COPY packages/ui/package.json packages/ui/
 COPY packages/sync-gitlab/package.json packages/sync-gitlab/
 COPY packages/sync-jira/package.json packages/sync-jira/
+COPY packages/sync-linear/package.json packages/sync-linear/
 
 RUN bun install
 
@@ -19,11 +20,13 @@ COPY packages/sync-github/ packages/sync-github/
 COPY packages/cli/ packages/cli/
 COPY packages/sync-gitlab/ packages/sync-gitlab/
 COPY packages/sync-jira/ packages/sync-jira/
+COPY packages/sync-linear/ packages/sync-linear/
 
 RUN bun run --filter '@gitpm/core' build && \
     bun run --filter '@gitpm/sync-github' build && \
     bun run --filter '@gitpm/sync-gitlab' build && \
     bun run --filter '@gitpm/sync-jira' build && \
+    bun run --filter '@gitpm/sync-linear' build && \
     bun run --filter 'gitpm' build
 
 # Stage 2: Production runtime
@@ -41,6 +44,8 @@ COPY --from=build /app/packages/sync-gitlab/dist/ packages/sync-gitlab/dist/
 COPY --from=build /app/packages/sync-gitlab/package.json packages/sync-gitlab/
 COPY --from=build /app/packages/sync-jira/dist/ packages/sync-jira/dist/
 COPY --from=build /app/packages/sync-jira/package.json packages/sync-jira/
+COPY --from=build /app/packages/sync-linear/dist/ packages/sync-linear/dist/
+COPY --from=build /app/packages/sync-linear/package.json packages/sync-linear/
 COPY --from=build /app/node_modules/ node_modules/
 COPY --from=build /app/package.json .
 
