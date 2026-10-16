@@ -5,6 +5,9 @@ on:
     types: [opened, edited, synchronize, reopened]
     branches: [master]
 
+# Only reads the PR title from the event payload.
+permissions: {}
+
 jobs:
   lint:
     name: Conventional Commit Title
