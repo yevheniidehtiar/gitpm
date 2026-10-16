@@ -256,6 +256,76 @@ describe('gitpm audit', () => {
       expect(logOutput).toContain('Ninety-plus');
     });
 
+    it('collects stale items from the 30-day tier by default', async () => {
+      mockAuditTree.mockReturnValue(emptyReport());
+
+      await run('--markdown', '--meta-dir', '/tmp/meta');
+
+      expect(mockAuditTree).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ staleDays: 30 }),
+      );
+    });
+
+    it('respects an explicit --stale-days', async () => {
+      mockAuditTree.mockReturnValue(emptyReport());
+
+      await run('--markdown', '--stale-days', '60', '--meta-dir', '/tmp/meta');
+
+      expect(mockAuditTree).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ staleDays: 60 }),
+      );
+    });
+
+    it('renders 30-59 and 60-89 tiers with default flags using the real auditTree', async () => {
+      const actual =
+        await vi.importActual<typeof import('@gitpm/core')>('@gitpm/core');
+      mockAuditTree.mockImplementation(actual.auditTree);
+      const daysAgo = (n: number) =>
+        new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
+      const story = (id: string, title: string, days: number) => ({
+        type: 'story',
+        id,
+        title,
+        status: 'todo',
+        priority: 'medium',
+        assignee: null,
+        labels: [],
+        estimate: null,
+        epic_ref: { id: 'ep_1' },
+        updated_at: daysAgo(days),
+        body: `Body for ${title}`,
+        filePath: `/tmp/.meta/stories/${id}.md`,
+      });
+      mockResolveRefs.mockReturnValue({
+        ok: true,
+        value: {
+          stories: [
+            story('st_45', 'Forty-five alpha', 45),
+            story('st_75', 'Seventy-five bravo', 75),
+            story('st_120', 'One-twenty charlie', 120),
+          ],
+          epics: [],
+          milestones: [],
+          roadmaps: [],
+          prds: [],
+          sprints: [],
+        },
+      });
+
+      await expect(
+        run('--markdown', '--meta-dir', '/tmp/meta'),
+      ).rejects.toThrow('process.exit');
+
+      const logOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+      expect(logOutput).toContain('### 30-59 days (1)');
+      expect(logOutput).toContain('### 60-89 days (1)');
+      expect(logOutput).toContain('### 90+ days (1)');
+      expect(logOutput).toContain('Forty-five alpha');
+      expect(logOutput).toContain('Seventy-five bravo');
+    });
+
     it('prints "None." for empty sections', async () => {
       mockAuditTree.mockReturnValue(emptyReport());
 

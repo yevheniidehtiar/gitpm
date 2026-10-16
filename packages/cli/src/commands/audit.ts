@@ -61,6 +61,8 @@ const STALE_BUCKETS = [
   { label: '90+ days', min: 90, max: Number.POSITIVE_INFINITY },
 ] as const;
 
+const MARKDOWN_DEFAULT_STALE_DAYS = STALE_BUCKETS[0].min;
+
 function staleBucketLabel(item: AuditItem): string {
   if (item.daysSinceUpdate == null) return 'Unknown age';
   if (item.daysSinceUpdate < STALE_BUCKETS[0].min) return '< 30 days';
@@ -183,8 +185,8 @@ export const auditCommand = new Command('audit')
   )
   .option(
     '--stale-days <days>',
-    'Days before a todo is considered stale',
-    Number.parseInt,
+    `Days before a todo is considered stale (${MARKDOWN_DEFAULT_STALE_DAYS} with --markdown unless set)`,
+    (value: string) => Number.parseInt(value, 10),
     90,
   )
   .option('--json', 'Output as JSON')
@@ -207,9 +209,18 @@ export const auditCommand = new Command('audit')
       process.exit(1);
     }
 
-    const report = auditTree(resolveResult.value, {
-      staleDays: opts.staleDays,
-    });
+    // The Markdown report tiers stale items into 30/60/90-day buckets, so with
+    // the default threshold it must collect from the lowest tier — otherwise
+    // the 90-day default would leave the 30-59 and 60-89 buckets always empty.
+    // An explicit --stale-days still wins.
+    const staleDaysIsDefault =
+      cmd.getOptionValueSource('staleDays') === 'default';
+    const staleDays =
+      opts.markdown && staleDaysIsDefault
+        ? MARKDOWN_DEFAULT_STALE_DAYS
+        : opts.staleDays;
+
+    const report = auditTree(resolveResult.value, { staleDays });
 
     if (opts.markdown) {
       console.log(buildMarkdownReport(report));
