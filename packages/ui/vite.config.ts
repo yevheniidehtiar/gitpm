@@ -5,7 +5,9 @@ import { defineConfig } from 'vite';
 const isDemo = process.env.VITE_DEMO_MODE === '1';
 
 export default defineConfig({
-  base: process.env.VITE_BASE ?? '/',
+  // The demo is served from https://yevheniidehtiar.github.io/gitpm/demo/
+  // (the docs site owns /gitpm/). Override with VITE_BASE for other hosts.
+  base: process.env.VITE_BASE ?? (isDemo ? '/gitpm/demo/' : '/'),
   // Use a separate publicDir for the demo build so `public/` stays empty for
   // npm-published builds and `public-demo/demo-data.json` only affects the
   // GitHub Pages demo.

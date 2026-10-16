@@ -1,0 +1,96 @@
+name: Pages
+
+# Publishes one combined GitHub Pages site:
+#
+#   https://yevheniidehtiar.github.io/gitpm/       Zensical docs built from docs/ + zensical.toml
+#   https://yevheniidehtiar.github.io/gitpm/demo/  the UI in demo mode (VITE_DEMO_MODE=1,
+#                                                  base /gitpm/demo/), a public no-auth demo
+#
+# Pages holds a single artifact per repo, so docs and demo are always built and
+# deployed together. Triggers:
+#   - push to master touching the docs or this workflow
+#   - UI release tags (`ui-v*`, created by release-please when packages/ui bumps),
+#     so the demo redeploys exactly when the UI ships
+#   - manual runs via workflow_dispatch
+#
+# Setup requirement (one-time, by a maintainer): enable GitHub Pages in repo
+# Settings → Pages → Build and deployment → Source: "GitHub Actions".
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'docs/**'
+      - 'zensical.toml'
+      - '.github/workflows/pages.yml'
+    tags:
+      - 'ui-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  # Pinned; bump deliberately. Check with `uvx zensical@<version> build --strict` locally.
+  ZENSICAL_VERSION: '0.0.71'
+
+jobs:
+  build:
+    name: Build docs and demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # setup-uv no longer publishes floating major tags (last one was v7), so pin the release.
+      - uses: astral-sh/setup-uv@v10.3.0
+
+      - name: Build docs site
+        run: uvx "zensical@${ZENSICAL_VERSION}" build --clean --strict
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build @gitpm/core
+        run: bun run --filter '@gitpm/core' build
+
+      - name: Build UI demo bundle
+        working-directory: packages/ui
+        env:
+          VITE_BASE: /gitpm/demo/
+        run: bun run build:demo
+
+      - name: Add demo to site
+        run: |
+          if [ -e site/demo ]; then
+            echo "::error::site/demo already exists; a docs page is colliding with the demo path"
+            exit 1
+          fi
+          cp -R packages/ui/dist site/demo
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

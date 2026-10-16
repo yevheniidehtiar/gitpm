@@ -79,9 +79,10 @@ Available strategies for GitHub:
 ### Basic Import
 
 ```bash
-export GITLAB_TOKEN="glpat-..."
-gitpm import --source gitlab --project mygroup/myproject
+gitpm import --source gitlab --project mygroup/myproject --token "glpat-..."
 ```
+
+The GitLab adapter does not read a `GITLAB_TOKEN` environment variable yet; pass `--token` on every command.
 
 ### Self-Hosted GitLab
 
@@ -110,16 +111,16 @@ gitpm import --source gitlab --project mygroup/myproject --link-strategy native-
 
 ### Prerequisites
 
-- A Jira Cloud API token for a user who can read and transition issues in the project. Export it as `JIRA_TOKEN`.
+- A Jira Cloud API token for a user who can read and transition issues in the project. Pass it with `--token` on every command; a `JIRA_TOKEN` environment variable is not read yet.
 - Your site URL (for example `https://mycompany.atlassian.net`) and the project key (for example `PROJ`).
 - `@gitpm/sync-jira` installed next to `@gitpm/cli`.
 
 ### Import
 
 ```bash
-export JIRA_TOKEN="your-api-token"
 gitpm import --source jira --project PROJ \
-  --base-url https://mycompany.atlassian.net
+  --base-url https://mycompany.atlassian.net \
+  --token "your-api-token"
 ```
 
 Issues of type Epic become epics. Issues linked to an epic become its stories under `.meta/epics/<epic>/stories/`. Everything else lands in `.meta/stories/`.
@@ -216,4 +217,4 @@ This creates a clean `.meta/` tree with fresh sync state.
 
 ### Working with AI Agents
 
-After import, agents read `.meta/` for planned, in-progress and finished work without any tracker API access. Give them rules too. This repository's [`AGENTS.md`](../AGENTS.md) shows the shape (commands, verification gate, story lifecycle, boundaries), the [Agent Setup Guide](AGENT_SETUP_GUIDE.md) walks an agent through installing GitPM in your repo, and [Adopting agentic coding alongside Jira and Confluence](adopting-agentic-coding.md) covers the team-level trust model and sync strategy.
+After import, agents read `.meta/` for planned, in-progress and finished work without any tracker API access. Give them rules too. This repository's [`AGENTS.md`](https://github.com/yevheniidehtiar/gitpm/blob/master/AGENTS.md) shows the shape (commands, verification gate, story lifecycle, boundaries), the [Agent Setup Guide](AGENT_SETUP_GUIDE.md) walks an agent through installing GitPM in your repo, and [Adopting agentic coding alongside Jira and Confluence](adopting-agentic-coding.md) covers the team-level trust model and sync strategy.

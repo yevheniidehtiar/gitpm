@@ -1,6 +1,6 @@
 # CLI Reference
 
-GitPM's CLI has 18 commands for editing your `.meta/` project tree, syncing with remote platforms and planning work. The six core commands are documented in full on this page. The others are summarised in the index below and described by `gitpm <command> --help`.
+GitPM's CLI has 19 commands for editing your `.meta/` project tree, syncing with remote platforms and planning work. The six core commands are documented in full on this page. The others are summarised in the index below and described by `gitpm <command> --help`.
 
 ## Command Index
 
@@ -24,6 +24,7 @@ GitPM's CLI has 18 commands for editing your `.meta/` project tree, syncing with
 | Planning | `sprint` | Manage sprints (time-boxed iterations) |
 | Planning | `audit` | Detect stale issues, orphans, duplicates and other hygiene problems |
 | Planning | `quality` | Score entity quality across the tree, for example AI-agent readiness |
+| Agents | `context` | Generate a CLAUDE.md-style project context from the `.meta/` tree (`--output <file>` to write it) |
 
 ## Global Options
 
@@ -41,7 +42,7 @@ These options apply to all commands:
 The token is resolved in priority order:
 
 1. `--token` flag (highest priority)
-2. `GITHUB_TOKEN` or `GITLAB_TOKEN` environment variable
+2. `GITHUB_TOKEN` environment variable (GitLab and Jira currently require `--token`)
 3. GitHub CLI fallback (`gh auth token`)
 
 If no token is found, the command exits with an error message.

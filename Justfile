@@ -67,5 +67,17 @@ nuke:
     just install
     just build
 
+# ---------------------------------------------------------------------------
+# Documentation (Zensical, via uv: https://docs.astral.sh/uv/)
+# ---------------------------------------------------------------------------
+
+# Preview the docs site at http://localhost:8000/gitpm/ with live reload
+docs:
+    uvx zensical serve
+
+# Build the docs site into site/; strict mode fails on broken links
+docs-build:
+    uvx zensical build --clean --strict
+
 # Releases are automated: release-please tags, release.yml publishes.
 # See AGENTS.md → "Releases". There is deliberately no manual publish recipe.

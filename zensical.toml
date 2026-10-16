@@ -1,0 +1,123 @@
+# Documentation site for gitpm, built with Zensical (https://zensical.org).
+#
+#   uvx zensical serve           # preview at http://localhost:8000/gitpm/ (path from site_url)
+#   uvx zensical build --strict  # build into site/ (fails on warnings)
+#
+# Deployed to https://yevheniidehtiar.github.io/gitpm/ by
+# .github/workflows/pages.yml, together with the UI demo under /demo/.
+
+[project]
+site_name = "gitpm"
+site_url = "https://yevheniidehtiar.github.io/gitpm/"
+site_description = "Git-native project management: roadmaps, epics and stories as files in your repo, synced with GitHub, GitLab and Jira."
+site_author = "Yevhenii Dehtiar"
+copyright = "Copyright &copy; gitpm contributors. MIT licensed."
+
+repo_url = "https://github.com/yevheniidehtiar/gitpm"
+repo_name = "yevheniidehtiar/gitpm"
+edit_uri = "edit/master/docs/"
+
+docs_dir = "docs"
+site_dir = "site"
+
+# Abort on warnings (broken links, missing anchors, etc.).
+strict = true
+
+nav = [
+  { "Home" = "index.md" },
+  { "Getting started" = "getting-started.md" },
+  { "Guides" = [
+    { "Sync configuration" = "sync-guide.md" },
+    { "Migration guide" = "migration-guide.md" },
+    { "Adopting agentic coding" = "adopting-agentic-coding.md" },
+    { "Agent setup guide" = "AGENT_SETUP_GUIDE.md" },
+    # Not demo.md: /demo/ is reserved for the UI demo that pages.yml copies in.
+    { "Product demo" = "product-demo.md" },
+  ] },
+  { "Reference" = [
+    { "CLI reference" = "cli-reference.md" },
+    { "Schema reference" = "schema-reference.md" },
+    { "Entity schemas" = "schemas/ENTITY_SCHEMAS.md" },
+  ] },
+  { "Contributing" = [
+    { "Contributing guide" = "contributing/index.md" },
+    { "Architecture" = "architecture.md" },
+    { "Agent instructions" = "contributing/agents.md" },
+    { "Claude review CI" = "ci-claude-review.md" },
+    { "Security policy" = "contributing/security.md" },
+    { "Code of conduct" = "contributing/code-of-conduct.md" },
+  ] },
+]
+
+[project.theme]
+language = "en"
+features = [
+  "content.action.edit",
+  "content.action.view",
+  "content.code.annotate",
+  "content.code.copy",
+  "content.tabs.link",
+  "navigation.footer",
+  "navigation.indexes",
+  "navigation.instant",
+  "navigation.path",
+  "navigation.sections",
+  "navigation.tabs",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+  "toc.follow",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to system preference"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/yevheniidehtiar/gitpm"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/npm"
+link = "https://www.npmjs.com/package/@gitpm/cli"
+
+[project.markdown_extensions]
+abbr = {}
+admonition = {}
+attr_list = {}
+def_list = {}
+footnotes = {}
+md_in_html = {}
+toc.permalink = true
+pymdownx.betterem = {}
+pymdownx.details = {}
+pymdownx.emoji.emoji_generator = "zensical.extensions.emoji.to_svg"
+pymdownx.emoji.emoji_index = "zensical.extensions.emoji.twemoji"
+pymdownx.highlight.anchor_linenums = true
+pymdownx.highlight.line_spans = "__span"
+pymdownx.highlight.pygments_lang_class = true
+pymdownx.inlinehilite = {}
+pymdownx.keys = {}
+pymdownx.mark = {}
+# Lets docs/contributing/*.md include root files such as CONTRIBUTING.md.
+# Paths resolve from the repo root (the directory zensical runs in).
+pymdownx.snippets.check_paths = true
+pymdownx.superfences.custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+]
+pymdownx.tabbed.alternate_style = true
+pymdownx.tabbed.combine_header_slug = true
+pymdownx.tasklist.custom_checkbox = true

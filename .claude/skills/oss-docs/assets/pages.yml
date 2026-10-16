@@ -1,0 +1,72 @@
+# Publish the docs site to GitHub Pages.
+# Copy to .github/workflows/docs.yml and replace the {{PLACEHOLDERS}}.
+# One-time setup: repo Settings -> Pages -> Source: "GitHub Actions".
+name: Docs
+
+on:
+  push:
+    branches: [{{DEFAULT_BRANCH}}]
+    paths:
+      - "docs/**"
+      - "zensical.toml"
+      - ".github/workflows/docs.yml"
+      # - "packages/app/**"   # add the demo app's paths if it is published too
+  pull_request:
+    paths:
+      - "docs/**"
+      - "zensical.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; never cancel a deploy that is already publishing.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v6
+
+      # Pin the version so a new release cannot break the build unannounced.
+      # Pull requests run the strict build; broken links fail the check.
+      - name: Build docs (strict)
+        run: uvx zensical@{{ZENSICAL_VERSION}} build --clean --strict
+
+      # --- Optional: a second artifact (demo app, API playground) under /demo/ ---
+      # Build it so that its base path is /{{REPO}}/demo/, then copy it in.
+      # Example for a Vite app (adapt the commands to your toolchain):
+      #
+      # - uses: oven-sh/setup-bun@v2
+      # - run: bun install && bun run --cwd packages/app build -- --base=/{{REPO}}/demo/
+      # - run: cp -R packages/app/dist site/demo
+      #
+      # Link to it from the docs with the full URL, because the demo is not a
+      # Markdown page and strict mode cannot resolve it:
+      # https://{{ORG}}.github.io/{{REPO}}/demo/
+
+      - uses: actions/configure-pages@v6
+        if: github.event_name != 'pull_request'
+
+      - uses: actions/upload-pages-artifact@v5
+        if: github.event_name != 'pull_request'
+        with:
+          path: site
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
