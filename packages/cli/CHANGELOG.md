@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.12](https://github.com/yevheniidehtiar/gitpm/compare/cli-v0.1.11...cli-v0.1.12) (2026-10-16)
+
+
+### Features
+
+* **analytics:** blocked-count rollups, tree-browser progress bars, markdown audit report ([#243](https://github.com/yevheniidehtiar/gitpm/issues/243)) ([58ff4f7](https://github.com/yevheniidehtiar/gitpm/commit/58ff4f7dc0c2b27ed74e1507728bc1903d4553a8))
+* **cli:** add context command generating CLAUDE.md project context ([#242](https://github.com/yevheniidehtiar/gitpm/issues/242)) ([2f86b72](https://github.com/yevheniidehtiar/gitpm/commit/2f86b72878fe01009da7d6a2fdf3823eb5fae6f9))
+* **sprint:** interactive sprint plan command and points-based capacity tracking ([#244](https://github.com/yevheniidehtiar/gitpm/issues/244)) ([86c9e36](https://github.com/yevheniidehtiar/gitpm/commit/86c9e36c3df6b5ea16f5e6f543d8126faad4a976))
+* **sync-linear:** add Linear integration adapter ([#241](https://github.com/yevheniidehtiar/gitpm/issues/241)) ([8e9b7e4](https://github.com/yevheniidehtiar/gitpm/commit/8e9b7e42ae126a557e953f2692f54558caf1cf04))
+
+
+### Bug Fixes
+
+* **sync:** stop corrupting write paths during pull/sync; add CLI integration tests ([#246](https://github.com/yevheniidehtiar/gitpm/issues/246)) ([460bc09](https://github.com/yevheniidehtiar/gitpm/commit/460bc0939e008eb54171f72f48193baf369254db))
+
 ## [0.1.11](https://github.com/yevheniidehtiar/gitpm/compare/cli-v0.1.10...cli-v0.1.11) (2026-04-26)
 
 
