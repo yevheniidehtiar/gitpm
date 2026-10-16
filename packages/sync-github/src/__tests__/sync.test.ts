@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdtemp, rm, unlink } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeFile as coreWriteFile, parseTree } from '@gitpm/core';
@@ -172,8 +172,7 @@ describe('syncWithGitHub', () => {
     if (stories.length > 0) {
       const story = stories[0];
       story.title = 'Modified by local edit';
-      const filePath = join(metaDir, '..', story.filePath);
-      await coreWriteFile(story, filePath);
+      await coreWriteFile(story, story.filePath);
     }
 
     // Sync with local-wins
@@ -468,6 +467,14 @@ describe('syncWithGitHub', () => {
       expect(result.value.pulled.issues).toBeGreaterThan(0);
       expect(result.value.pulled.milestones).toBeGreaterThan(0);
     }
+    // Pulled changes must land in the original entity files, not a
+    // nested path derived from metaDir.
+    expect(await readFile(story.filePath, 'utf-8')).toContain(
+      'Remote-Renamed Title',
+    );
+    expect(await readFile(milestone.filePath, 'utf-8')).toContain(
+      'Remote Milestone Renamed',
+    );
   });
 
   it('pulls remote_changed data into an epic (covers applyRemoteIssue owner branch)', async () => {

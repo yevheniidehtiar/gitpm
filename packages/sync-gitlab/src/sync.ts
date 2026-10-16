@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { join } from 'node:path';
 import type { Epic, Milestone, Result, Story } from '@gitpm/core';
 import { parseTree, writeFile } from '@gitpm/core';
 import type { GlIssue, GlMilestone } from './client.js';
@@ -114,7 +113,7 @@ export async function syncWithGitLab(
         if (!remoteMilestone) {
           if (!dryRun) {
             localEntity.status = 'cancelled';
-            const filePath = join(metaDir, '..', localEntity.filePath);
+            const filePath = localEntity.filePath;
             await writeFile(localEntity, filePath);
             const hash = computeContentHash(localEntity);
             state.entities[entityId] = {
@@ -158,7 +157,7 @@ export async function syncWithGitLab(
         } else if (direction === 'remote_changed') {
           if (!dryRun) {
             applyRemoteMilestone(localEntity, remoteMilestone);
-            const filePath = join(metaDir, '..', localEntity.filePath);
+            const filePath = localEntity.filePath;
             await writeFile(localEntity, filePath);
             const hash = computeContentHash(localEntity);
             state.entities[entityId] = {
@@ -201,7 +200,7 @@ export async function syncWithGitLab(
                 };
               } else {
                 applyRemoteMilestone(localEntity, remoteMilestone);
-                const filePath = join(metaDir, '..', localEntity.filePath);
+                const filePath = localEntity.filePath;
                 await writeFile(localEntity, filePath);
                 const hash = computeContentHash(localEntity);
                 state.entities[entityId] = {
@@ -231,7 +230,7 @@ export async function syncWithGitLab(
             (localEntity.type === 'story' || localEntity.type === 'epic')
           ) {
             localEntity.status = 'cancelled';
-            const filePath = join(metaDir, '..', localEntity.filePath);
+            const filePath = localEntity.filePath;
             await writeFile(localEntity, filePath);
             const hash = computeContentHash(localEntity);
             state.entities[entityId] = {
@@ -282,7 +281,7 @@ export async function syncWithGitLab(
             (localEntity.type === 'story' || localEntity.type === 'epic')
           ) {
             applyRemoteIssue(localEntity, remoteIssue);
-            const filePath = join(metaDir, '..', localEntity.filePath);
+            const filePath = localEntity.filePath;
             await writeFile(localEntity, filePath);
             const hash = computeContentHash(localEntity);
             state.entities[entityId] = {
@@ -329,7 +328,7 @@ export async function syncWithGitLab(
                 };
               } else {
                 applyRemoteIssue(localEntity, remoteIssue);
-                const filePath = join(metaDir, '..', localEntity.filePath);
+                const filePath = localEntity.filePath;
                 await writeFile(localEntity, filePath);
                 const hash = computeContentHash(localEntity);
                 state.entities[entityId] = {
@@ -369,7 +368,7 @@ export async function syncWithGitLab(
             last_sync_hash: computeContentHash(entity),
             synced_at: new Date().toISOString(),
           };
-          const filePath = join(metaDir, '..', entity.filePath);
+          const filePath = entity.filePath;
           await writeFile(entity, filePath);
           const hash = computeContentHash(entity);
           state.entities[entity.id] = {
@@ -403,7 +402,7 @@ export async function syncWithGitLab(
             last_sync_hash: computeContentHash(entity),
             synced_at: new Date().toISOString(),
           };
-          const filePath = join(metaDir, '..', entity.filePath);
+          const filePath = entity.filePath;
           await writeFile(entity, filePath);
           const hash = computeContentHash(entity);
           state.entities[entity.id] = {

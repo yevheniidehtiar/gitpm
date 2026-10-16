@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { join } from 'node:path';
 import type { Epic, Result, Story } from '@gitpm/core';
 import { parseTree, writeFile } from '@gitpm/core';
 import type { JiraIssue, JiraSprint } from './client.js';
@@ -134,7 +133,7 @@ export async function syncWithJira(
             (localEntity.type === 'story' || localEntity.type === 'epic')
           ) {
             localEntity.status = 'cancelled';
-            const filePath = join(metaDir, '..', localEntity.filePath);
+            const filePath = localEntity.filePath;
             await writeFile(localEntity, filePath);
             const hash = computeContentHash(localEntity);
             state.entities[entityId] = {
@@ -205,7 +204,7 @@ export async function syncWithJira(
             (localEntity.type === 'story' || localEntity.type === 'epic')
           ) {
             applyRemoteIssue(localEntity, remoteIssue, config);
-            const filePath = join(metaDir, '..', localEntity.filePath);
+            const filePath = localEntity.filePath;
             await writeFile(localEntity, filePath);
             const hash = computeContentHash(localEntity);
             state.entities[entityId] = {
@@ -252,7 +251,7 @@ export async function syncWithJira(
                 };
               } else {
                 applyRemoteIssue(localEntity, remoteIssue, config);
-                const filePath = join(metaDir, '..', localEntity.filePath);
+                const filePath = localEntity.filePath;
                 await writeFile(localEntity, filePath);
                 const hash = computeContentHash(localEntity);
                 state.entities[entityId] = {
@@ -298,7 +297,7 @@ export async function syncWithJira(
           last_sync_hash: computeContentHash(entity),
           synced_at: new Date().toISOString(),
         };
-        const filePath = join(metaDir, '..', entity.filePath);
+        const filePath = entity.filePath;
         await writeFile(entity, filePath);
         const hash = computeContentHash(entity);
         state.entities[entity.id] = {

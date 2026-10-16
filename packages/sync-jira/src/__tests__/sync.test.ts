@@ -1,4 +1,4 @@
-import { mkdtemp, rm, unlink } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Story } from '@gitpm/core';
@@ -206,9 +206,7 @@ describe('syncWithJira', () => {
     });
     expect(first.ok).toBe(true);
 
-    // Second sync with no actual change: writeFile from the first pass
-    // doubled the on-disk path, so parseTree re-reads the pristine file
-    // and sees it as a local-change relative to the just-written state.
+    // Second sync with no actual change must not report any conflicts.
     const second = await syncWithJira({
       email: EMAIL,
       apiToken: TOKEN,
@@ -334,6 +332,36 @@ describe('syncWithJira', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.pulled.issues).toBeGreaterThan(0);
+  });
+
+  it('writes pulled remote changes to the entity file in place', async () => {
+    await seedTree(metaDir, {
+      issues: [mockIssue({ id: '11', key: 'TEST-11', summary: 'Original' })],
+    });
+    const treeResult = await parseTree(metaDir);
+    if (!treeResult.ok) throw treeResult.error;
+    const storyPath = treeResult.value.stories[0].filePath;
+
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.includes('/issue/TEST-11') && !url.includes('transitions')) {
+        return jsonResponse(
+          mockIssue({ id: '11', key: 'TEST-11', summary: 'Pulled Title' }),
+        );
+      }
+      return notFoundResponse();
+    });
+
+    const result = await syncWithJira({
+      email: EMAIL,
+      apiToken: TOKEN,
+      site: SITE,
+      projectKey: PROJECT_KEY,
+      metaDir,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.pulled.issues).toBe(1);
+    expect(await readFile(storyPath, 'utf-8')).toContain('Pulled Title');
   });
 
   it('pulls remote changes (remote_changed direction)', async () => {

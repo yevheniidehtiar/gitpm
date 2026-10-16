@@ -1,4 +1,3 @@
-import { join } from 'node:path';
 import type { Epic, Result, Story } from '@gitpm/core';
 import { parseTree, writeFile } from '@gitpm/core';
 import { JiraClient } from './client.js';
@@ -98,7 +97,7 @@ export async function exportToJira(
             last_sync_hash: computeContentHash(entity),
             synced_at: new Date().toISOString(),
           };
-          const filePath = join(metaDir, '..', entity.filePath);
+          const filePath = entity.filePath;
           await writeFile(entity, filePath);
 
           // Update epic key map for subsequent stories
@@ -144,7 +143,7 @@ export async function exportToJira(
               last_sync_hash: currentHash,
               synced_at: new Date().toISOString(),
             };
-            const filePath = join(metaDir, '..', entity.filePath);
+            const filePath = entity.filePath;
             await writeFile(entity, filePath);
 
             state.entities[entity.id] = {
