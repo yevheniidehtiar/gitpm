@@ -2,7 +2,7 @@
 type: story
 id: 37zYElFj4-nS
 title: "feat: add dependency graph visualization in UI"
-status: in_review
+status: done
 priority: medium
 assignee: null
 labels:
@@ -17,7 +17,7 @@ github:
   last_sync_hash: sha256:5504c7b309f817906538fa5e6d5319b801a62d6fdd15ca3d9c2ca25aff0d6769
   synced_at: 2026-04-05T17:24:12.493Z
 created_at: 2026-04-05T09:49:46.000Z
-updated_at: 2026-07-06T17:59:01.091Z
+updated_at: 2026-10-16T21:16:48.361Z
 ---
 
 ## Motivation

@@ -2,7 +2,7 @@
 type: story
 id: MMhxNNMSbWWh
 title: "docs: publish documentation site with Zensical and add oss-docs skill"
-status: in_review
+status: done
 priority: high
 assignee: null
 labels:
@@ -17,5 +17,5 @@ github:
   last_sync_hash: sha256:88b235135e5bfc9b38177d43879052afcbef77af0f5c94436e7b2ee7ffcdb288
   synced_at: 2026-10-16T19:56:09.476Z
 created_at: 2026-10-16T18:54:19.397Z
-updated_at: 2026-10-16T19:56:07.464Z
+updated_at: 2026-10-16T21:16:49.829Z
 ---

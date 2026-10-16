@@ -2,7 +2,7 @@
 type: story
 id: pWkhCLQ9Aue6
 title: "docs: add tool-neutral AGENTS.md, slim CLAUDE.md, and agent-adoption guide"
-status: in_review
+status: done
 priority: high
 assignee: null
 labels:
@@ -17,5 +17,5 @@ github:
   last_sync_hash: sha256:83e711f737689e02b4b59165f4890b4818dc079f056b67ead818f67281a9ec06
   synced_at: 2026-10-16T18:38:11.818Z
 created_at: 2026-10-16T18:30:55.044Z
-updated_at: 2026-10-16T18:38:10.575Z
+updated_at: 2026-10-16T21:16:49.617Z
 ---
