@@ -2,10 +2,8 @@ name: Claude Code Review
 
 # Runs the official `/code-review` skill (code-review plugin) and posts
 # findings as inline PR comments. Advisory only: the check never fails on
-# findings. When the review leaves inline comments, it dispatches
-# claude-autofix.yml to address them. Authenticates Claude with the
-# CLAUDE_CODE_OAUTH_TOKEN secret (`claude setup-token`).
-# See docs/ci-claude-review.md.
+# findings. Authenticates Claude with the CLAUDE_CODE_OAUTH_TOKEN secret
+# (`claude setup-token`). See docs/ci-claude-review.md.
 
 on:
   pull_request:
@@ -17,7 +15,7 @@ on:
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
-      - 'docs-site/**'
+      - 'zensical.toml'
       - '.meta/**'
       - 'LICENSE'
       - '.gitignore'
@@ -42,29 +40,12 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-      actions: write # dispatch claude-autofix.yml
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      REPO: ${{ github.repository }}
-      PR_NUMBER: ${{ github.event.pull_request.number }}
-      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      HEAD_REF: ${{ github.event.pull_request.head.ref }}
     steps:
-      # Don't re-review our own autofix commits: it duplicates comments and
-      # would feed autofix its own output.
-      - name: Skip autofix pushes
-        id: author
-        run: |
-          EMAIL=$(gh api "repos/$REPO/commits/$HEAD_SHA" --jq '.commit.author.email')
-          echo "autofix=$([ "$EMAIL" = claude-autofix@users.noreply.github.com ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-
       - uses: actions/checkout@v4
-        if: steps.author.outputs.autofix != 'true'
         with:
           fetch-depth: 0
 
       - uses: anthropics/claude-code-action@v1
-        if: steps.author.outputs.autofix != 'true'
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # Post as github-actions[bot]; no Claude GitHub App install needed.
@@ -75,17 +56,3 @@ jobs:
           # The action only starts the inline-comment MCP server when this
           # tool is named in --allowedTools.
           claude_args: --allowedTools "mcp__github_inline_comment__create_inline_comment"
-
-      # No findings → nothing else runs. Findings → one autofix pass.
-      - name: Dispatch autofix for review findings
-        if: steps.author.outputs.autofix != 'true'
-        run: |
-          COUNT=$(gh api "repos/$REPO/pulls/$PR_NUMBER/comments" --paginate \
-            --jq "[.[] | select(.user.login == \"github-actions[bot]\" and .commit_id == \"$HEAD_SHA\")] | length" \
-            | jq -s 'add // 0')
-          echo "Inline review comments on $HEAD_SHA: $COUNT"
-          if [ "$COUNT" -gt 0 ]; then
-            gh workflow run claude-autofix.yml --repo "$REPO" --ref master \
-              -f pr="$PR_NUMBER" -f branch="$HEAD_REF" -f sha="$HEAD_SHA" \
-              || echo "::warning::Could not dispatch claude-autofix.yml (not on master yet?)"
-          fi

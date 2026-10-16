@@ -28,7 +28,7 @@
 
 ## Review in CI
 
-`.github/workflows/claude-review.yml` runs the official `/code-review` skill on every PR and posts inline comments. It is advisory and never fails the check on findings. `.github/workflows/claude-autofix.yml` runs only when CI fails or the review left comments, and pushes one fix pass. When you change either workflow, keep `docs/ci-claude-review.md` accurate.
+`.github/workflows/claude-review.yml` runs the official `/code-review` skill on every PR and posts inline comments. It is advisory and never fails the check on findings, and nothing fixes them automatically: use `/code-review <n> --fix` locally. When you change the workflow, keep `docs/ci-claude-review.md` accurate.
 
 ## Path-scoped rules
 
