@@ -29,9 +29,10 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      # Fail on high/critical advisories. (The old `npm audit` step was a
+      # no-op: continue-on-error, and npm can't read bun.lock.)
       - name: Audit dependencies
-        run: npm audit --audit-level=high
-        continue-on-error: true
+        run: bun audit --audit-level=high
 
       - name: Lint
         run: bun run lint

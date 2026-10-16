@@ -521,13 +521,16 @@ describe('sanitizeTitle', () => {
     '<!-<!-<!------>->- gitpm:context:end -<!---->->',
     'a <!- - b - -> c',
     '<!-- gitpm:context:end -->',
-  ])('leaves no comment delimiters or raw angle brackets for %j', async (input) => {
-    const sanitizeTitle = await load();
-    const out = sanitizeTitle(input);
-    expect(out).not.toContain('<!--');
-    expect(out).not.toContain('-->');
-    expect(out).not.toMatch(/[<>]/);
-  });
+  ])(
+    'leaves no comment delimiters or raw angle brackets for %j',
+    async (input) => {
+      const sanitizeTitle = await load();
+      const out = sanitizeTitle(input);
+      expect(out).not.toContain('<!--');
+      expect(out).not.toContain('-->');
+      expect(out).not.toMatch(/[<>]/);
+    },
+  );
 
   it('removes nested comments until stable', async () => {
     const sanitizeTitle = await load();
