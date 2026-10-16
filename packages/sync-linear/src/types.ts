@@ -23,11 +23,18 @@ export interface LinearConfig {
 }
 
 export interface LinearSyncStateEntry {
+  /** Absent on a tombstone (see `remote_deleted_at`). */
   linear_issue_id?: string;
   linear_cycle_id?: string;
   local_hash: string;
   remote_hash: string;
   synced_at: string;
+  /**
+   * Set when sync confirmed the Linear issue was deleted and cancelled the
+   * local entity. Such a tombstone has no `linear_issue_id`; sync and export
+   * leave the entity alone instead of re-pulling or recreating it.
+   */
+  remote_deleted_at?: string;
 }
 
 export interface LinearSyncState {

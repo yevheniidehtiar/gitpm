@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { ParsedEntity } from '@gitpm/core';
+import type { Epic, ParsedEntity, Story } from '@gitpm/core';
 import type { LinearIssue } from './client.js';
 import { mapLinearPriority, mapLinearState } from './mapper.js';
 import type {
@@ -68,6 +68,27 @@ export function computeRemoteIssueHash(
 ): string {
   const json = JSON.stringify(remoteIssueFields(issue, config));
   return `sha256:${createHash('sha256').update(json).digest('hex')}`;
+}
+
+/**
+ * True when every syncable field of `local` already equals what `remote`
+ * reports, i.e. the two sides agree regardless of the stored baseline.
+ */
+export function localMatchesRemote(
+  local: Story | Epic,
+  remote: LinearIssue,
+  config?: Pick<LinearConfig, 'status_mapping'>,
+): boolean {
+  const remoteFields = remoteIssueFields(remote, config);
+  const localFields: Record<string, unknown> = {
+    title: local.title,
+    status: local.status,
+    priority: local.priority,
+    labels: [...(local.labels ?? [])].sort(),
+    assignee: (local.type === 'story' ? local.assignee : local.owner) ?? null,
+    body: (local.body ?? '').trim(),
+  };
+  return diffFields(localFields, remoteFields).length === 0;
 }
 
 function diffFields(

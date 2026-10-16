@@ -1,11 +1,16 @@
 import type { Epic, Result, Story } from '@gitpm/core';
 import { parseTree, writeFile } from '@gitpm/core';
-import { LinearClient } from './client.js';
+import { isNotFoundError, LinearClient } from './client.js';
 import { loadConfig } from './config.js';
 import { computeRemoteIssueHash } from './diff.js';
 import { resolveEntityFilePath } from './paths.js';
 import { createPushContext } from './push.js';
-import { computeContentHash, loadState, saveState } from './state.js';
+import {
+  computeContentHash,
+  isTombstone,
+  loadState,
+  saveState,
+} from './state.js';
 import type {
   ExportResult,
   LinearExportOptions,
@@ -64,6 +69,10 @@ export async function exportToLinear(
 
     for (const entity of allIssueEntities) {
       const entityState = state.entities[entity.id];
+      // The Linear issue was deleted and the entity cancelled by sync;
+      // recreating it would resurrect the deleted issue.
+      if (isTombstone(entityState)) continue;
+
       const issueId = entity.linear?.issue_id ?? entityState?.linear_issue_id;
 
       if (!issueId) {
@@ -110,7 +119,11 @@ export async function exportToLinear(
       if (entityState && currentHash === entityState.local_hash) continue;
 
       if (!dryRun) {
-        const updated = await push.updateIssue(issueId, entity);
+        // The current issue lets push leave untouched fields (notably
+        // Linear's "No priority") as they are.
+        const current = await client.getIssue(issueId);
+        if (!current) continue; // deleted remotely; sync will tombstone it
+        const updated = await push.updateIssue(issueId, entity, current);
 
         entity.linear = {
           ...entity.linear,
@@ -147,9 +160,14 @@ export async function exportToLinear(
     for (const [entityId, entry] of Object.entries(state.entities)) {
       if (!currentEntityIds.has(entityId)) {
         if (!dryRun && entry.linear_issue_id && push.completedStateId) {
-          await client.updateIssue(entry.linear_issue_id, {
-            stateId: push.completedStateId,
-          });
+          try {
+            await client.updateIssue(entry.linear_issue_id, {
+              stateId: push.completedStateId,
+            });
+          } catch (err) {
+            // Already gone remotely means there is nothing left to close.
+            if (!isNotFoundError(err)) throw err;
+          }
         }
         delete state.entities[entityId];
         result.totalChanges++;

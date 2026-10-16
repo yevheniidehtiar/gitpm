@@ -5,7 +5,7 @@ import type {
   LinearIssue,
   UpdateLinearIssueParams,
 } from './client.js';
-import { entityToLinearIssue } from './mapper.js';
+import { entityToLinearIssue, mapLinearPriority } from './mapper.js';
 import type { LinearConfig } from './types.js';
 
 /**
@@ -20,9 +20,16 @@ export interface PushContext {
   createIssue(entity: Story | Epic, parentId?: string): Promise<LinearIssue>;
   /**
    * Pushes every syncable field of `entity` to `issueId`. Empty labels, an
-   * empty body and a missing assignee are sent as explicit clears.
+   * empty body and a missing assignee are sent as explicit clears. When the
+   * `current` remote issue is given, priority is only sent if it differs
+   * from what that issue already maps to, so Linear's 0 ("No priority") is
+   * not overwritten with 3 by an unrelated edit.
    */
-  updateIssue(issueId: string, entity: Story | Epic): Promise<LinearIssue>;
+  updateIssue(
+    issueId: string,
+    entity: Story | Epic,
+    current?: LinearIssue,
+  ): Promise<LinearIssue>;
 }
 
 export async function createPushContext(
@@ -100,8 +107,12 @@ export async function createPushContext(
       };
       return client.createIssue(params);
     },
-    async updateIssue(issueId, entity) {
-      return client.updateIssue(issueId, await buildInput(entity));
+    async updateIssue(issueId, entity, current) {
+      const input = await buildInput(entity);
+      if (current && mapLinearPriority(current.priority) === entity.priority) {
+        delete input.priority;
+      }
+      return client.updateIssue(issueId, input);
     },
   };
 }

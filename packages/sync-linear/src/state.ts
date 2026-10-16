@@ -38,6 +38,11 @@ export async function saveState(
   }
 }
 
+/** True for the state entry of an entity whose Linear issue was deleted. */
+export function isTombstone(entry: LinearSyncStateEntry | undefined): boolean {
+  return entry?.remote_deleted_at !== undefined;
+}
+
 export function computeContentHash(entity: ParsedEntity): string {
   const canonical = buildCanonicalObject(entity);
   const json = JSON.stringify(canonical);

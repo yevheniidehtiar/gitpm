@@ -4,7 +4,11 @@ import type { LinearIssue } from './client.js';
 import { isNotFoundError, LinearClient } from './client.js';
 import { loadConfig } from './config.js';
 import { resolveConflicts } from './conflict.js';
-import { computeRemoteIssueHash, diffByHash } from './diff.js';
+import {
+  computeRemoteIssueHash,
+  diffByHash,
+  localMatchesRemote,
+} from './diff.js';
 import { mapLinearPriority, mapLinearState } from './mapper.js';
 import { resolveEntityFilePath } from './paths.js';
 import { createPushContext } from './push.js';
@@ -67,8 +71,9 @@ export async function syncWithLinear(
       issueId: string,
       local: Story | Epic,
       localHash: string,
+      current: LinearIssue,
     ): Promise<void> => {
-      const updated = await push.updateIssue(issueId, local);
+      const updated = await push.updateIssue(issueId, local, current);
       state.entities[entityId] = {
         ...entry,
         local_hash: localHash,
@@ -95,212 +100,251 @@ export async function syncWithLinear(
       };
     };
 
-    // 4. Build entity lookup maps
-    const milestoneById = new Map(tree.milestones.map((m) => [m.id, m]));
-    const epicById = new Map(tree.epics.map((e) => [e.id, e]));
-    const storyById = new Map(tree.stories.map((s) => [s.id, s]));
+    // Every mutation below records its result in `state` as soon as it
+    // succeeds; the finally block persists it even if a later step throws,
+    // so already-synced entities never come back as conflicts.
+    let completed = false;
+    let saveResult: Result<void> = { ok: true, value: undefined };
+    try {
+      // 4. Build entity lookup maps
+      const milestoneById = new Map(tree.milestones.map((m) => [m.id, m]));
+      const epicById = new Map(tree.epics.map((e) => [e.id, e]));
+      const storyById = new Map(tree.stories.map((s) => [s.id, s]));
 
-    const epicIdToLinearId = new Map<string, string>();
-    for (const epic of tree.epics) {
-      const linearId =
-        epic.linear?.issue_id ?? state.entities[epic.id]?.linear_issue_id;
-      if (linearId) epicIdToLinearId.set(epic.id, linearId);
-    }
+      const epicIdToLinearId = new Map<string, string>();
+      for (const epic of tree.epics) {
+        const linearId =
+          epic.linear?.issue_id ?? state.entities[epic.id]?.linear_issue_id;
+        if (linearId) epicIdToLinearId.set(epic.id, linearId);
+      }
 
-    // 5. Process each entity in sync state
-    for (const [entityId, entry] of Object.entries(state.entities)) {
-      const localEntity =
-        milestoneById.get(entityId) ??
-        epicById.get(entityId) ??
-        storyById.get(entityId);
+      // 5. Process each entity in sync state
+      for (const [entityId, entry] of Object.entries(state.entities)) {
+        const localEntity =
+          milestoneById.get(entityId) ??
+          epicById.get(entityId) ??
+          storyById.get(entityId);
 
-      // Handle local deletion: close the Linear issue
-      if (!localEntity) {
-        if (!dryRun) {
-          if (entry.linear_issue_id && push.completedStateId) {
-            try {
-              await client.updateIssue(entry.linear_issue_id, {
-                stateId: push.completedStateId,
-              });
-            } catch (err) {
-              // Already gone remotely means there is nothing left to close.
-              if (!isNotFoundError(err)) throw err;
+        // Handle local deletion: close the Linear issue
+        if (!localEntity) {
+          if (!dryRun) {
+            if (entry.linear_issue_id && push.completedStateId) {
+              try {
+                await client.updateIssue(entry.linear_issue_id, {
+                  stateId: push.completedStateId,
+                });
+              } catch (err) {
+                // Already gone remotely means there is nothing left to close.
+                if (!isNotFoundError(err)) throw err;
+              }
             }
+            delete state.entities[entityId];
           }
-          delete state.entities[entityId];
+          if (entry.linear_issue_id) result.pushed.issues++;
+          continue;
         }
-        if (entry.linear_issue_id) result.pushed.issues++;
-        continue;
-      }
 
-      // Cycles are managed in Linear; their state is tracked, never diffed.
-      if (localEntity.type === 'milestone' || !entry.linear_issue_id) continue;
+        // Cycles are managed in Linear; their state is tracked, never diffed.
+        if (localEntity.type === 'milestone' || !entry.linear_issue_id)
+          continue;
 
-      const currentLocalHash = computeContentHash(localEntity);
-      const remoteIssue = await client.getIssue(entry.linear_issue_id);
+        const currentLocalHash = computeContentHash(localEntity);
+        const remoteIssue = await client.getIssue(entry.linear_issue_id);
 
-      if (!remoteIssue) {
-        // Linear confirmed the issue no longer exists
-        if (!dryRun) {
-          localEntity.status = 'cancelled';
-          await writeFile(
-            localEntity,
-            resolveEntityFilePath(metaDir, localEntity.filePath),
-          );
-          const hash = computeContentHash(localEntity);
-          state.entities[entityId] = {
-            ...entry,
-            local_hash: hash,
-            remote_hash: hash,
-            synced_at: now(),
-          };
+        if (!remoteIssue) {
+          // Linear confirmed the issue no longer exists
+          if (!dryRun) {
+            localEntity.status = 'cancelled';
+            await writeFile(
+              localEntity,
+              resolveEntityFilePath(metaDir, localEntity.filePath),
+            );
+            // Tombstone: no linear_issue_id, so later runs neither re-fetch
+            // the deleted issue nor (in export) recreate it.
+            const { linear_issue_id: _deleted, ...rest } = entry;
+            const hash = computeContentHash(localEntity);
+            state.entities[entityId] = {
+              ...rest,
+              local_hash: hash,
+              remote_hash: hash,
+              synced_at: now(),
+              remote_deleted_at: now(),
+            };
+          }
+          result.pulled.issues++;
+          result.pulledPaths.push(localEntity.filePath);
+          continue;
         }
-        result.pulled.issues++;
-        result.pulledPaths.push(localEntity.filePath);
-        continue;
-      }
 
-      const currentRemoteHash = computeRemoteIssueHash(remoteIssue, config);
-      const direction = diffByHash(currentLocalHash, currentRemoteHash, entry);
+        const currentRemoteHash = computeRemoteIssueHash(remoteIssue, config);
+        const direction = diffByHash(
+          currentLocalHash,
+          currentRemoteHash,
+          entry,
+        );
 
-      if (direction === 'in_sync') continue;
+        if (direction === 'in_sync') continue;
 
-      if (direction === 'local_changed') {
-        if (!dryRun) {
-          await pushLocal(
-            entityId,
-            entry,
-            entry.linear_issue_id,
-            localEntity,
-            currentLocalHash,
-          );
-        }
-        result.pushed.issues++;
-        result.pushedPaths.push(localEntity.filePath);
-        continue;
-      }
-
-      if (direction === 'remote_changed') {
-        if (!dryRun) {
-          await pullRemote(
-            entityId,
-            entry,
-            localEntity,
-            remoteIssue,
-            currentRemoteHash,
-          );
-        }
-        result.pulled.issues++;
-        result.pulledPaths.push(localEntity.filePath);
-        continue;
-      }
-
-      // Both changed — conflict
-      const conflict: FieldConflict = {
-        entityId,
-        entityTitle: localEntity.title,
-        entityType: localEntity.type,
-        field: '_all',
-        baseValue: null,
-        localValue: currentLocalHash,
-        remoteValue: currentRemoteHash,
-      };
-
-      const resolutions = resolveConflicts([conflict], strategy);
-      if (resolutions.length === 0) {
-        result.conflicts.push(conflict);
-        result.skipped++;
-        continue;
-      }
-
-      if (!dryRun) {
-        if (resolutions[0].pick === 'local') {
-          await pushLocal(
-            entityId,
-            entry,
-            entry.linear_issue_id,
-            localEntity,
-            currentLocalHash,
-          );
-        } else {
-          await pullRemote(
-            entityId,
-            entry,
-            localEntity,
-            remoteIssue,
-            currentRemoteHash,
-          );
-        }
-      }
-      result.resolved++;
-    }
-
-    // 6. Handle local entities with no sync state entry. Epics go first so
-    //    stories created in this run can be parented to them.
-    const newEntities: (Epic | Story)[] = [
-      ...tree.epics.filter((e) => !(e.id in state.entities)),
-      ...tree.stories.filter((s) => !(s.id in state.entities)),
-    ];
-
-    for (const entity of newEntities) {
-      // Already linked to a Linear issue (e.g. state file stale or missing
-      // this entry): reconcile by seeding state instead of creating a
-      // duplicate issue.
-      const linkedId = entity.linear?.issue_id;
-      if (linkedId) {
-        const remote = await client.getIssue(linkedId);
-        if (remote) {
-          state.entities[entity.id] = {
-            linear_issue_id: remote.id,
-            local_hash: computeContentHash(entity),
-            remote_hash: computeRemoteIssueHash(remote, config),
-            synced_at: now(),
-          };
-          if (entity.type === 'epic') {
-            epicIdToLinearId.set(entity.id, remote.id);
+        // Both hashes moved but the content already agrees (e.g. a previous
+        // run pushed or pulled and then died before saving state): reseed the
+        // baseline instead of reporting a spurious conflict.
+        if (
+          direction === 'both_changed' &&
+          localMatchesRemote(localEntity, remoteIssue, config)
+        ) {
+          if (!dryRun) {
+            state.entities[entityId] = {
+              ...entry,
+              local_hash: currentLocalHash,
+              remote_hash: currentRemoteHash,
+              synced_at: now(),
+            };
           }
           continue;
         }
-      }
 
-      if (!dryRun) {
-        const parentId =
-          entity.type === 'story' && entity.epic_ref?.id
-            ? epicIdToLinearId.get(entity.epic_ref.id)
-            : undefined;
-        const created = await push.createIssue(entity, parentId);
-
-        entity.linear = {
-          issue_id: created.id,
-          identifier: created.identifier,
-          team_id: teamId,
-          last_sync_hash: computeContentHash(entity),
-          synced_at: now(),
-        };
-        await writeFile(
-          entity,
-          resolveEntityFilePath(metaDir, entity.filePath),
-        );
-        if (entity.type === 'epic') {
-          epicIdToLinearId.set(entity.id, created.id);
+        if (direction === 'local_changed') {
+          if (!dryRun) {
+            await pushLocal(
+              entityId,
+              entry,
+              entry.linear_issue_id,
+              localEntity,
+              currentLocalHash,
+              remoteIssue,
+            );
+          }
+          result.pushed.issues++;
+          result.pushedPaths.push(localEntity.filePath);
+          continue;
         }
-        state.entities[entity.id] = {
-          linear_issue_id: created.id,
-          local_hash: computeContentHash(entity),
-          remote_hash: computeRemoteIssueHash(created, config),
-          synced_at: now(),
-        };
-      }
-      result.pushed.issues++;
-      result.pushedPaths.push(entity.filePath);
-    }
 
-    // 7. Save state
-    if (!dryRun) {
-      state.last_sync = now();
-      const saveResult = await saveState(metaDir, state);
-      if (!saveResult.ok) return saveResult;
+        if (direction === 'remote_changed') {
+          if (!dryRun) {
+            await pullRemote(
+              entityId,
+              entry,
+              localEntity,
+              remoteIssue,
+              currentRemoteHash,
+            );
+          }
+          result.pulled.issues++;
+          result.pulledPaths.push(localEntity.filePath);
+          continue;
+        }
+
+        // Both changed — conflict
+        const conflict: FieldConflict = {
+          entityId,
+          entityTitle: localEntity.title,
+          entityType: localEntity.type,
+          field: '_all',
+          baseValue: null,
+          localValue: currentLocalHash,
+          remoteValue: currentRemoteHash,
+        };
+
+        const resolutions = resolveConflicts([conflict], strategy);
+        if (resolutions.length === 0) {
+          result.conflicts.push(conflict);
+          result.skipped++;
+          continue;
+        }
+
+        if (!dryRun) {
+          if (resolutions[0].pick === 'local') {
+            await pushLocal(
+              entityId,
+              entry,
+              entry.linear_issue_id,
+              localEntity,
+              currentLocalHash,
+              remoteIssue,
+            );
+          } else {
+            await pullRemote(
+              entityId,
+              entry,
+              localEntity,
+              remoteIssue,
+              currentRemoteHash,
+            );
+          }
+        }
+        result.resolved++;
+      }
+
+      // 6. Handle local entities with no sync state entry. Epics go first so
+      //    stories created in this run can be parented to them.
+      const newEntities: (Epic | Story)[] = [
+        ...tree.epics.filter((e) => !(e.id in state.entities)),
+        ...tree.stories.filter((s) => !(s.id in state.entities)),
+      ];
+
+      for (const entity of newEntities) {
+        // Already linked to a Linear issue (e.g. state file stale or missing
+        // this entry): reconcile by seeding state instead of creating a
+        // duplicate issue.
+        const linkedId = entity.linear?.issue_id;
+        if (linkedId) {
+          const remote = await client.getIssue(linkedId);
+          if (remote) {
+            state.entities[entity.id] = {
+              linear_issue_id: remote.id,
+              local_hash: computeContentHash(entity),
+              remote_hash: computeRemoteIssueHash(remote, config),
+              synced_at: now(),
+            };
+            if (entity.type === 'epic') {
+              epicIdToLinearId.set(entity.id, remote.id);
+            }
+            continue;
+          }
+        }
+
+        if (!dryRun) {
+          const parentId =
+            entity.type === 'story' && entity.epic_ref?.id
+              ? epicIdToLinearId.get(entity.epic_ref.id)
+              : undefined;
+          const created = await push.createIssue(entity, parentId);
+          // Record the new issue before anything else can fail, so a retry
+          // never creates a duplicate.
+          state.entities[entity.id] = {
+            linear_issue_id: created.id,
+            local_hash: computeContentHash(entity),
+            remote_hash: computeRemoteIssueHash(created, config),
+            synced_at: now(),
+          };
+          if (entity.type === 'epic') {
+            epicIdToLinearId.set(entity.id, created.id);
+          }
+
+          entity.linear = {
+            issue_id: created.id,
+            identifier: created.identifier,
+            team_id: teamId,
+            last_sync_hash: computeContentHash(entity),
+            synced_at: now(),
+          };
+          await writeFile(
+            entity,
+            resolveEntityFilePath(metaDir, entity.filePath),
+          );
+        }
+        result.pushed.issues++;
+        result.pushedPaths.push(entity.filePath);
+      }
+
+      completed = true;
+    } finally {
+      if (!dryRun) {
+        if (completed) state.last_sync = now();
+        saveResult = await saveState(metaDir, state);
+      }
     }
+    if (!saveResult.ok) return saveResult;
 
     return { ok: true, value: result };
   } catch (err) {

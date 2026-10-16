@@ -478,4 +478,190 @@ describe('syncWithLinear', () => {
       expect(result.value.skipped).toBeGreaterThan(0);
     }
   });
+
+  it('persists state for completed pushes when a later entity throws', async () => {
+    const second = baseIssue({
+      id: 'issue-2',
+      identifier: 'ENG-2',
+      title: 'Second',
+    });
+    await seedTree(metaDir, [baseIssue(), second]);
+
+    const { parseTree, writeFile } = await import('@gitpm/core');
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw tree.error;
+    for (const story of tree.value.stories) {
+      story.title = `${story.title} (local)`;
+      await writeFile(story, story.filePath);
+    }
+
+    const remotes = new Map<string, ReturnType<typeof baseIssue>>([
+      ['issue-1', baseIssue()],
+      ['issue-2', second],
+    ]);
+    let failSecondFetch = true;
+    let issueFetches = 0;
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('WorkflowStates')) return statesResponse();
+      if (body.query.includes('IssueUpdate')) {
+        const { id, input } = body.variables;
+        const updated = {
+          ...(remotes.get(id) ?? baseIssue()),
+          title: input.title,
+        };
+        remotes.set(id, updated);
+        return graphqlResponse({
+          issueUpdate: { success: true, issue: updated },
+        });
+      }
+      if (body.query.includes('query Issue(')) {
+        issueFetches++;
+        if (failSecondFetch && issueFetches === 2) {
+          throw new TypeError('fetch failed');
+        }
+        return graphqlResponse({ issue: remotes.get(body.variables.id) });
+      }
+      return graphqlResponse({});
+    });
+
+    const first = await syncWithLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+    expect(first.ok).toBe(false);
+
+    failSecondFetch = false;
+    const retry = await syncWithLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+      strategy: 'ask',
+    });
+    expect(retry.ok).toBe(true);
+    if (!retry.ok) return;
+    expect(retry.value.conflicts).toHaveLength(0);
+    // Only the entity the failed run never reached is still pending.
+    expect(retry.value.pushed.issues).toBe(1);
+  });
+
+  it('treats both-changed as in sync when local and remote already agree', async () => {
+    await seedTree(metaDir, [baseIssue()]);
+
+    const { parseTree, writeFile } = await import('@gitpm/core');
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw tree.error;
+    const story = tree.value.stories[0];
+    story.title = 'Same Edit';
+    await writeFile(story, story.filePath);
+
+    const mutations: string[] = [];
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('mutation')) mutations.push(body.query);
+      if (body.query.includes('WorkflowStates')) return statesResponse();
+      if (body.query.includes('query Issue(')) {
+        return graphqlResponse({ issue: baseIssue({ title: 'Same Edit' }) });
+      }
+      return graphqlResponse({});
+    });
+
+    const result = await syncWithLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+      strategy: 'ask',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.conflicts).toHaveLength(0);
+    expect(result.value.pushed.issues).toBe(0);
+    expect(result.value.pulled.issues).toBe(0);
+    expect(mutations).toHaveLength(0);
+
+    const again = await syncWithLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+      strategy: 'ask',
+    });
+    expect(again.ok).toBe(true);
+    if (again.ok) expect(again.value.conflicts).toHaveLength(0);
+  });
+
+  it('stops re-pulling an issue once its deletion was recorded', async () => {
+    await seedTree(metaDir, [baseIssue()]);
+
+    let issueFetches = 0;
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('WorkflowStates')) return statesResponse();
+      if (body.query.includes('query Issue(')) {
+        issueFetches++;
+        return graphqlResponse({ issue: null });
+      }
+      return graphqlResponse({});
+    });
+
+    const first = await syncWithLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+    expect(first.ok).toBe(true);
+    if (first.ok) expect(first.value.pulled.issues).toBe(1);
+    expect(issueFetches).toBe(1);
+
+    const second = await syncWithLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    expect(second.value.pulled.issues).toBe(0);
+    expect(second.value.pushed.issues).toBe(0);
+    expect(issueFetches).toBe(1);
+  });
+
+  it('keeps Linear "No priority" when pushing an unrelated edit', async () => {
+    const remote = baseIssue({ priority: 0 });
+    await seedTree(metaDir, [remote]);
+
+    const { parseTree, writeFile } = await import('@gitpm/core');
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw tree.error;
+    const story = tree.value.stories[0];
+    story.title = 'Renamed';
+    await writeFile(story, story.filePath);
+
+    let updateInput: Record<string, unknown> | undefined;
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('WorkflowStates')) return statesResponse();
+      if (body.query.includes('IssueUpdate')) {
+        updateInput = body.variables.input;
+        return graphqlResponse({
+          issueUpdate: {
+            success: true,
+            issue: baseIssue({ priority: 0, title: 'Renamed' }),
+          },
+        });
+      }
+      if (body.query.includes('query Issue(')) {
+        return graphqlResponse({ issue: remote });
+      }
+      return graphqlResponse({});
+    });
+
+    const result = await syncWithLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+    expect(result.ok).toBe(true);
+    expect(updateInput?.title).toBe('Renamed');
+    expect(updateInput).not.toHaveProperty('priority');
+  });
 });

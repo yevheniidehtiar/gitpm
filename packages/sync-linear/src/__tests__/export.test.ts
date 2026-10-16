@@ -1,4 +1,4 @@
-import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -301,6 +301,9 @@ describe('exportToLinear', () => {
           issueUpdate: { success: true, issue: baseIssue() },
         });
       }
+      if (body.query.includes('query Issue(')) {
+        return graphqlResponse({ issue: baseIssue() });
+      }
       return graphqlResponse({});
     });
 
@@ -425,5 +428,124 @@ describe('exportToLinear', () => {
     // file into a garbage doubled path nested under the repo root instead.
     const doubledPath = join(metaDir, '..', created.value.filePath);
     await expect(access(doubledPath)).rejects.toThrow();
+  });
+
+  it('keeps Linear "No priority" when pushing an unrelated edit', async () => {
+    await seedTree(metaDir, [baseIssue({ priority: 0 })]);
+
+    const { parseTree, writeFile } = await import('@gitpm/core');
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw tree.error;
+    const story = tree.value.stories[0];
+    story.title = 'Renamed';
+    await writeFile(story, story.filePath);
+
+    let updateInput: Record<string, unknown> | undefined;
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('WorkflowStates')) return statesResponse();
+      if (body.query.includes('IssueUpdate')) {
+        updateInput = body.variables.input;
+        return graphqlResponse({
+          issueUpdate: {
+            success: true,
+            issue: baseIssue({ priority: 0, title: 'Renamed' }),
+          },
+        });
+      }
+      if (body.query.includes('query Issue(')) {
+        return graphqlResponse({ issue: baseIssue({ priority: 0 }) });
+      }
+      return graphqlResponse({});
+    });
+
+    const result = await exportToLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(updateInput?.title).toBe('Renamed');
+    expect(updateInput).not.toHaveProperty('priority');
+  });
+
+  it('tolerates an already-deleted issue when closing a locally deleted entity', async () => {
+    await seedTree(metaDir, [baseIssue()]);
+    const { parseTree } = await import('@gitpm/core');
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw tree.error;
+    await unlink(tree.value.stories[0].filePath);
+
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('WorkflowStates')) return statesResponse();
+      if (body.query.includes('IssueUpdate')) {
+        return new Response(
+          JSON.stringify({ errors: [{ message: 'Entity not found: Issue' }] }),
+          { status: 400 },
+        );
+      }
+      return graphqlResponse({});
+    });
+
+    const result = await exportToLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+
+    expect(result.ok).toBe(true);
+    const state = JSON.parse(
+      await readFile(join(metaDir, 'sync', 'linear-state.json'), 'utf-8'),
+    );
+    expect(Object.keys(state.entities)).toHaveLength(0);
+  });
+
+  it('does not recreate an issue that sync tombstoned after a remote deletion', async () => {
+    await seedTree(metaDir, [baseIssue()]);
+
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('WorkflowStates')) return statesResponse();
+      if (body.query.includes('query Issue(')) {
+        return graphqlResponse({ issue: null });
+      }
+      return graphqlResponse({});
+    });
+    const synced = await syncWithLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+    expect(synced.ok).toBe(true);
+
+    // Edit the cancelled entity and drop its file-level link, so neither the
+    // hash nor `linear.issue_id` keeps export away from it.
+    const { parseTree, writeFile } = await import('@gitpm/core');
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw tree.error;
+    const story = tree.value.stories[0];
+    expect(story.status).toBe('cancelled');
+    story.body = 'Edited after the remote deletion';
+    story.linear = undefined;
+    await writeFile(story, story.filePath);
+
+    const calls: string[] = [];
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('WorkflowStates')) return statesResponse();
+      calls.push(body.query);
+      return graphqlResponse({});
+    });
+    const pushed = await exportToLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+
+    expect(pushed.ok).toBe(true);
+    if (pushed.ok) expect(pushed.value.totalChanges).toBe(0);
+    expect(calls).toHaveLength(0);
   });
 });
