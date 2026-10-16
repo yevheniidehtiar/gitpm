@@ -1,4 +1,3 @@
-import { join } from 'node:path';
 import type { Epic, Result, Story } from '@gitpm/core';
 import { parseTree, writeFile } from '@gitpm/core';
 import { GitLabClient } from './client.js';
@@ -69,7 +68,7 @@ export async function exportToGitLab(
             last_sync_hash: computeContentHash(milestone),
             synced_at: new Date().toISOString(),
           };
-          const filePath = join(metaDir, '..', milestone.filePath);
+          const filePath = milestone.filePath;
           await writeFile(milestone, filePath);
 
           const hash = computeContentHash(milestone);
@@ -102,7 +101,7 @@ export async function exportToGitLab(
               last_sync_hash: currentHash,
               synced_at: new Date().toISOString(),
             };
-            const filePath = join(metaDir, '..', milestone.filePath);
+            const filePath = milestone.filePath;
             await writeFile(milestone, filePath);
 
             state.entities[milestone.id] = {
@@ -171,7 +170,7 @@ export async function exportToGitLab(
             last_sync_hash: computeContentHash(entity),
             synced_at: new Date().toISOString(),
           };
-          const filePath = join(metaDir, '..', entity.filePath);
+          const filePath = entity.filePath;
           await writeFile(entity, filePath);
 
           const hash = computeContentHash(entity);
@@ -214,7 +213,7 @@ export async function exportToGitLab(
               last_sync_hash: currentHash,
               synced_at: new Date().toISOString(),
             };
-            const filePath = join(metaDir, '..', entity.filePath);
+            const filePath = entity.filePath;
             await writeFile(entity, filePath);
 
             state.entities[entity.id] = {
