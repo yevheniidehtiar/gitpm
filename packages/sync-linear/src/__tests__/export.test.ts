@@ -548,4 +548,90 @@ describe('exportToLinear', () => {
     if (pushed.ok) expect(pushed.value.totalChanges).toBe(0);
     expect(calls).toHaveLength(0);
   });
+
+  it('does not parent new stories to an epic that sync tombstoned', async () => {
+    await seedTree(metaDir, [
+      baseIssue({
+        id: 'epic-issue',
+        identifier: 'ENG-10',
+        title: 'Deleted Epic',
+        children: { nodes: [{ id: 'issue-1' }] },
+      }),
+      baseIssue({ parent: { id: 'epic-issue' } }),
+    ]);
+
+    // The epic is deleted on Linear; its child story still exists.
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('WorkflowStates')) return statesResponse();
+      if (body.query.includes('query Issue(')) {
+        return graphqlResponse({
+          issue:
+            body.variables.id === 'epic-issue'
+              ? null
+              : baseIssue({ parent: { id: 'epic-issue' } }),
+        });
+      }
+      return graphqlResponse({});
+    });
+    const synced = await syncWithLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+    expect(synced.ok).toBe(true);
+
+    // Add a brand-new story under the (now cancelled) epic.
+    const { parseTree, writeFile } = await import('@gitpm/core');
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw tree.error;
+    const epic = tree.value.epics[0];
+    expect(epic.status).toBe('cancelled');
+    const existing = tree.value.stories[0];
+    const fresh = {
+      ...existing,
+      id: 'new-story',
+      title: 'New Story',
+      epic_ref: { id: epic.id },
+      linear: undefined,
+      filePath: existing.filePath.replace(/[^/]+\.md$/, 'new-story.md'),
+    };
+    await writeFile(fresh, fresh.filePath);
+
+    const creates: Array<Record<string, unknown>> = [];
+    mockFetch.mockImplementation(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes('WorkflowStates')) return statesResponse();
+      if (body.query.includes('issueCreate')) {
+        creates.push(body.variables.input);
+        return graphqlResponse({
+          issueCreate: {
+            success: true,
+            issue: baseIssue({ id: 'issue-new', title: 'New Story' }),
+          },
+        });
+      }
+      if (body.query.includes('query Issue(')) {
+        return graphqlResponse({
+          issue: baseIssue({ parent: { id: 'epic-issue' } }),
+        });
+      }
+      return graphqlResponse({
+        issueLabels: {
+          nodes: [],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+        users: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+      });
+    });
+    const pushed = await exportToLinear({
+      apiKey: API_KEY,
+      teamId: TEAM_ID,
+      metaDir,
+    });
+
+    expect(pushed.ok).toBe(true);
+    expect(creates).toHaveLength(1);
+    expect(creates[0].parentId).toBeUndefined();
+  });
 });

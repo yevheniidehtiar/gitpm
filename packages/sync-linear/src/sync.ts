@@ -12,7 +12,12 @@ import {
 import { mapLinearPriority, mapLinearState } from './mapper.js';
 import { resolveEntityFilePath } from './paths.js';
 import { createPushContext } from './push.js';
-import { computeContentHash, loadState, saveState } from './state.js';
+import {
+  computeContentHash,
+  isTombstone,
+  loadState,
+  saveState,
+} from './state.js';
 import type {
   FieldConflict,
   LinearConfig,
@@ -113,6 +118,8 @@ export async function syncWithLinear(
 
       const epicIdToLinearId = new Map<string, string>();
       for (const epic of tree.epics) {
+        // A tombstoned epic's Linear issue is gone; never parent stories to it.
+        if (isTombstone(state.entities[epic.id])) continue;
         const linearId =
           epic.linear?.issue_id ?? state.entities[epic.id]?.linear_issue_id;
         if (linearId) epicIdToLinearId.set(epic.id, linearId);
