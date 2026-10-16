@@ -112,6 +112,7 @@ gitpm/
 ├── biome.json                   # Linting config
 ├── vitest.config.ts             # Test config
 ├── tsconfig.json                # Base TypeScript config
+├── zensical.toml                # Docs site config: nav, theme, Markdown extensions
 ├── .claude/                     # Claude Code skills, slash commands, path-scoped rules
 ├── .githooks/pre-push           # Blocks pushes with unsynced .meta/ changes
 ├── .meta/                       # This repo's own roadmap, epics and stories (live, synced)
@@ -149,8 +150,10 @@ gitpm/
 │           ├── components/      # StatusBadge, PriorityBadge, etc.
 │           ├── lib/api.ts       # React Query hooks
 │           └── server/          # Hono API server
-└── docs/
-    ├── demo.md                  # Product demo & use cases
+└── docs/                        # Zensical site sources (https://yevheniidehtiar.github.io/gitpm/)
+    ├── index.md                 # Site landing page
+    ├── getting-started.md       # Install, tokens, init/import, first push
+    ├── product-demo.md          # Product demo & use cases
     ├── architecture.md          # This file
     ├── adopting-agentic-coding.md # Trust model for teams on Jira/Confluence
     ├── AGENT_SETUP_GUIDE.md     # Setting up GitPM in a consumer repo (for agents)
@@ -159,6 +162,7 @@ gitpm/
     ├── schema-reference.md
     ├── sync-guide.md
     ├── migration-guide.md
+    ├── contributing/            # Wrappers that include CONTRIBUTING.md, AGENTS.md, SECURITY.md, CODE_OF_CONDUCT.md
     └── schemas/ENTITY_SCHEMAS.md
 ```
 

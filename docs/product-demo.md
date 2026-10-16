@@ -2,6 +2,9 @@
 
 GitPM turns your repository into a project management system. Roadmaps, epics, stories, and milestones live as Markdown files in `.meta/` — version-controlled, AI-readable, and kept in bidirectional sync with GitHub, GitLab, or Jira. No SaaS lock-in. No context switching. Everything in one `git diff`.
 
+!!! tip "Try it in the browser"
+    The [live demo](https://yevheniidehtiar.github.io/gitpm/demo/) runs the web UI read-only on gitpm's own `.meta/` tree. No install or token needed.
+
 ---
 
 ## Use Case 1: Bootstrap a Project in Seconds

@@ -39,7 +39,7 @@ gitpm import --repo owner/repo
 gitpm validate
 
 # Edit files in .meta/ (or use the web UI)
-gitpm dev:ui
+# Browse and edit in the web UI from a clone of this repo: bun run dev:ui (see "Web UI" below)
 
 # Push local changes to GitHub
 gitpm push
@@ -222,8 +222,13 @@ Features:
 
 ## Documentation
 
+Read the docs at **<https://yevheniidehtiar.github.io/gitpm/>**. The live UI demo, running on this repo's own `.meta/` tree, is at **<https://yevheniidehtiar.github.io/gitpm/demo/>** (it moved from `/gitpm/` when the docs site launched).
+
+The same pages live in [`docs/`](docs/):
+
 | Document | Description |
 |----------|-------------|
+| [Getting Started](docs/getting-started.md) | Install, tokens, init or import, first push |
 | [CLI Reference](docs/cli-reference.md) | Detailed command reference with examples |
 | [Schema Reference](docs/schema-reference.md) | Entity types, frontmatter fields, directory conventions |
 | [Sync Configuration Guide](docs/sync-guide.md) | Setup, configuration, conflict resolution |

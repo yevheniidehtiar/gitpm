@@ -41,7 +41,7 @@ These options apply to all commands:
 The token is resolved in priority order:
 
 1. `--token` flag (highest priority)
-2. `GITHUB_TOKEN` or `GITLAB_TOKEN` environment variable
+2. `GITHUB_TOKEN` environment variable (GitLab and Jira currently require `--token`)
 3. GitHub CLI fallback (`gh auth token`)
 
 If no token is found, the command exits with an error message.
