@@ -19,6 +19,29 @@ export const CONTEXT_END_MARKER = '<!-- gitpm:context:end -->';
 
 const DONE_STATUSES = new Set(['done', 'cancelled']);
 const ACTIVE_STATUSES = new Set(['in_progress', 'in_review']);
+const MAX_UNASSIGNED_ITEMS = 10;
+
+type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };
+
+/**
+ * Neutralise a user-controlled title before embedding it in generated
+ * markdown: drop HTML comments and stray comment delimiters (so titles cannot
+ * forge or break the gitpm context markers) and collapse whitespace to one line.
+ */
+export function sanitizeTitle(title: string): string {
+  return title
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<!--|-->/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function localDate(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 function pct(ratio: number): string {
   return `${Math.round(ratio * 100)}%`;
@@ -41,23 +64,25 @@ function findCurrentSprint(
   tree: ResolvedTree,
   today: string,
 ): ResolvedSprint | undefined {
-  return tree.sprints.find((s) => {
+  const inRange = tree.sprints.filter((s) => {
+    if (s.status === 'cancelled') return false;
     const start = s.start_date.slice(0, 10);
     const end = s.end_date.slice(0, 10);
     return today >= start && today <= end;
   });
+  return inRange.find((s) => s.status === 'in_progress') ?? inRange[0];
 }
 
 function findActiveEpics(tree: ResolvedTree): ResolvedEpic[] {
   return tree.epics.filter((e) => ACTIVE_STATUSES.has(e.status));
 }
 
-interface BlockedItem {
+interface UnassignedItem {
   title: string;
   epicTitle?: string;
 }
 
-function findBlockedItems(tree: ResolvedTree): BlockedItem[] {
+function findUnassignedItems(tree: ResolvedTree): UnassignedItem[] {
   return tree.stories
     .filter(
       (s) =>
@@ -70,7 +95,7 @@ function findBlockedItems(tree: ResolvedTree): BlockedItem[] {
 
 export function renderContext(
   tree: ResolvedTree,
-  today: string = new Date().toISOString().slice(0, 10),
+  today: string = localDate(),
 ): string {
   const lines: string[] = [];
 
@@ -85,7 +110,7 @@ export function renderContext(
       ? ` — due ${milestone.target_date.slice(0, 10)}`
       : '';
     lines.push(
-      `**${milestone.title}** — ${pct(progress.progress)} done (${progress.done}/${progress.total} stories)${due}`,
+      `**${sanitizeTitle(milestone.title)}** — ${pct(progress.progress)} done (${progress.done}/${progress.total} stories)${due}`,
     );
   } else {
     lines.push('No active milestone.');
@@ -102,7 +127,7 @@ export function renderContext(
     const start = sprint.start_date.slice(0, 10);
     const end = sprint.end_date.slice(0, 10);
     lines.push(
-      `**${sprint.title}** — ${done}/${total} stories done (${start} → ${end})`,
+      `**${sanitizeTitle(sprint.title)}** — ${done}/${total} stories done (${start} → ${end})`,
     );
   } else {
     lines.push('No sprint currently active.');
@@ -115,7 +140,7 @@ export function renderContext(
     for (const epic of activeEpics) {
       const progress = computeEpicProgress(epic);
       lines.push(
-        `- **${epic.title}** — ${progress.done}/${progress.total} done`,
+        `- **${sanitizeTitle(epic.title)}** — ${progress.done}/${progress.total} done`,
       );
     }
   } else {
@@ -123,13 +148,15 @@ export function renderContext(
   }
   lines.push('');
 
-  lines.push('### Blocked Items');
-  const blocked = findBlockedItems(tree);
-  if (blocked.length > 0) {
-    for (const item of blocked) {
-      lines.push(
-        `- ${item.title}${item.epicTitle ? ` (${item.epicTitle})` : ''}`,
-      );
+  lines.push('### Unassigned Backlog');
+  const unassigned = findUnassignedItems(tree);
+  if (unassigned.length > 0) {
+    for (const item of unassigned.slice(0, MAX_UNASSIGNED_ITEMS)) {
+      const epic = item.epicTitle ? ` (${sanitizeTitle(item.epicTitle)})` : '';
+      lines.push(`- ${sanitizeTitle(item.title)}${epic}`);
+    }
+    if (unassigned.length > MAX_UNASSIGNED_ITEMS) {
+      lines.push(`- …and ${unassigned.length - MAX_UNASSIGNED_ITEMS} more`);
     }
   } else {
     lines.push('None.');
@@ -139,25 +166,64 @@ export function renderContext(
   return lines.join('\n');
 }
 
-export function spliceIntoClaudeMd(existing: string, section: string): string {
-  const block = `${CONTEXT_START_MARKER}\n\n${section}\n${CONTEXT_END_MARKER}`;
-  const startIdx = existing.indexOf(CONTEXT_START_MARKER);
-  const endIdx = existing.indexOf(CONTEXT_END_MARKER);
+function countOccurrences(haystack: string, needle: string): number {
+  return haystack.split(needle).length - 1;
+}
 
-  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-    const before = existing.slice(0, startIdx);
-    const after = existing.slice(endIdx + CONTEXT_END_MARKER.length);
-    return `${before}${block}${after}`;
+/**
+ * Splice the generated section into CLAUDE.md content. Requires either no
+ * markers (block is appended) or exactly one start marker followed by exactly
+ * one end marker. Any other arrangement is rejected so user content is never
+ * silently overwritten.
+ */
+export function spliceIntoClaudeMd(
+  existing: string,
+  section: string,
+): Result<string> {
+  const block = `${CONTEXT_START_MARKER}\n\n${section}\n${CONTEXT_END_MARKER}`;
+  const startCount = countOccurrences(existing, CONTEXT_START_MARKER);
+  const endCount = countOccurrences(existing, CONTEXT_END_MARKER);
+
+  if (startCount === 0 && endCount === 0) {
+    const trimmed = existing.replace(/\n+$/, '');
+    const separator = trimmed.length > 0 ? '\n\n' : '';
+    return { ok: true, value: `${trimmed}${separator}${block}\n` };
   }
 
-  const trimmed = existing.replace(/\n+$/, '');
-  const separator = trimmed.length > 0 ? '\n\n' : '';
-  return `${trimmed}${separator}${block}\n`;
+  const startIdx = existing.indexOf(CONTEXT_START_MARKER);
+  const endIdx = existing.indexOf(
+    CONTEXT_END_MARKER,
+    startIdx + CONTEXT_START_MARKER.length,
+  );
+  if (startCount !== 1 || endCount !== 1 || startIdx === -1 || endIdx === -1) {
+    return {
+      ok: false,
+      error: new Error(
+        `CLAUDE.md has unbalanced gitpm context markers (found ${startCount} start, ${endCount} end; expected exactly one "${CONTEXT_START_MARKER}" followed by one "${CONTEXT_END_MARKER}"). Fix the markers manually and re-run.`,
+      ),
+    };
+  }
+
+  const before = existing.slice(0, startIdx);
+  const after = existing.slice(endIdx + CONTEXT_END_MARKER.length);
+  return { ok: true, value: `${before}${block}${after}` };
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+function isEnoent(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    (err as NodeJS.ErrnoException).code === 'ENOENT'
+  );
 }
 
 export const contextCommand = new Command('context')
   .description(
-    'Generate project context (milestone, sprint, epics, blockers) from the .meta tree',
+    'Generate project context (milestone, sprint, epics, unassigned backlog) from the .meta tree',
   )
   .option('--output <file>', 'Write context to a file instead of stdout')
   .option(
@@ -165,6 +231,11 @@ export const contextCommand = new Command('context')
     'Splice context into ./CLAUDE.md between gitpm:context markers',
   )
   .action(async (opts, cmd) => {
+    if (opts.update && opts.output) {
+      printError('--update and --output cannot be used together');
+      process.exit(1);
+    }
+
     const metaDir = resolveMetaDir(cmd.optsWithGlobals().metaDir);
 
     const parseResult = await parseTree(metaDir);
@@ -186,19 +257,36 @@ export const contextCommand = new Command('context')
       let existing = '';
       try {
         existing = await readFile(claudeMdPath, 'utf-8');
-      } catch {
-        existing = '';
+      } catch (err) {
+        if (!isEnoent(err)) {
+          printError(`Failed to read ${claudeMdPath}: ${errorMessage(err)}`);
+          process.exit(1);
+        }
       }
 
       const updated = spliceIntoClaudeMd(existing, section);
-      await writeFile(claudeMdPath, updated, 'utf-8');
+      if (!updated.ok) {
+        printError(updated.error.message);
+        process.exit(1);
+      }
+      try {
+        await writeFile(claudeMdPath, updated.value, 'utf-8');
+      } catch (err) {
+        printError(`Failed to write ${claudeMdPath}: ${errorMessage(err)}`);
+        process.exit(1);
+      }
       printSuccess(`Updated ${claudeMdPath}`);
       return;
     }
 
     if (opts.output) {
       const outputPath = resolve(process.cwd(), opts.output);
-      await writeFile(outputPath, `${section}\n`, 'utf-8');
+      try {
+        await writeFile(outputPath, `${section}\n`, 'utf-8');
+      } catch (err) {
+        printError(`Failed to write ${outputPath}: ${errorMessage(err)}`);
+        process.exit(1);
+      }
       printSuccess(`Wrote context to ${outputPath}`);
       return;
     }
