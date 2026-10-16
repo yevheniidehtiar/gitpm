@@ -23,11 +23,11 @@ export GITLAB_TOKEN="glpat-..."
 # Jira
 export JIRA_TOKEN="your-api-token"
 
-# Linear (pass explicitly with --token "$LINEAR_API_KEY")
+# Linear (read by the Linear adapter; --token is never sent to Linear)
 export LINEAR_API_KEY="lin_api_..."
 ```
 
-Alternatively, pass the token directly via the `--token` flag on any command.
+Alternatively, pass the token directly via the `--token` flag on any command. For Linear, use `--api-key` instead.
 
 For GitHub, the token can also be resolved from the GitHub CLI (`gh auth token`) if installed and authenticated.
 
@@ -46,6 +46,9 @@ gitpm import --source gitlab --project namespace/project
 # From self-hosted GitLab
 gitpm import --source gitlab --project namespace/project \
   --base-url https://gitlab.mycompany.com
+
+# From Linear (API key read from LINEAR_API_KEY)
+gitpm import --source linear --team <team-id>
 ```
 
 This creates the `.meta/` directory with all imported entities and generates the sync configuration files.
@@ -136,7 +139,7 @@ bun add @gitpm/sync-linear
 **File:** `.meta/sync/linear-config.yaml`
 
 ```yaml
-team_id: 5f1c...                     # Required: Linear team ID (UUID)
+team_id: 5f1c...                     # Linear team ID (UUID), used when --team is not passed
 status_mapping:                      # Maps Linear workflow state *type* to GitPM status
   triage: backlog
   backlog: backlog
@@ -149,20 +152,32 @@ auto_sync: false                     # Reserved for future use
 
 The keys of `status_mapping` are Linear workflow state **types**, not the state names shown in your team's board, so custom states such as "In QA" map through their type (`started`). Any type missing from the mapping defaults to `todo`.
 
+**Credentials:**
+
+- **API key**, resolved in order: `--api-key`, then the `LINEAR_API_KEY` environment variable. Programmatic callers can also pass `apiKey` or `credentials.apiKey` to the adapter. The generic `--token` option, `GITHUB_TOKEN` and `gh auth token` are ignored, so a GitHub credential is never sent to Linear.
+- **Team ID**, resolved in order: `--team`, then `team_id` in `.meta/sync/linear-config.yaml`.
+
+If either is missing, the command fails with `Linear API key is required. Set LINEAR_API_KEY or pass --api-key.` or `Linear team ID is required. Pass --team or set team_id in .meta/sync/linear-config.yaml.`
+
 **Setup:**
 
 1. Create a personal API key in Linear under **Settings → Security & access → Personal API keys**, and export it as `LINEAR_API_KEY`.
 2. Find your team ID. Open the command menu in Linear (`Cmd/Ctrl+K`) and run **Copy model UUID** on the team, or query `{ teams { nodes { id name } } }` in the Linear API explorer.
-3. Create `.meta/sync/linear-config.yaml` with that `team_id`, using the example above.
-4. Sync, passing the key explicitly and selecting the adapter:
+3. Import the team. This writes the entities, `.meta/sync/linear-config.yaml` (with `team_id` and the default `status_mapping`) and `.meta/sync/linear-state.json`:
 
 ```bash
-gitpm push --adapter linear --token "$LINEAR_API_KEY" --dry-run
-gitpm pull --adapter linear --token "$LINEAR_API_KEY"
-gitpm sync --adapter linear --token "$LINEAR_API_KEY"
+gitpm import --source linear --team <team-id>
 ```
 
-Always pass `--token` for Linear. Without it, the CLI falls back to `GITHUB_TOKEN` or `gh auth token` and sends that to Linear. Pass `--adapter linear` whenever another adapter's config is also in `.meta/sync/`, because auto-detection picks the first adapter whose config it finds.
+4. Sync. After import, the team ID comes from `linear-config.yaml`, so `--team` is optional:
+
+```bash
+gitpm push --adapter linear --dry-run
+gitpm pull --adapter linear
+gitpm sync --adapter linear
+```
+
+`import`, `push` and `sync` accept `--team` and `--api-key`. `pull` takes neither, so it always uses `LINEAR_API_KEY` and the `team_id` from `linear-config.yaml`. Pass `--adapter linear` whenever another adapter's config is also in `.meta/sync/`, because auto-detection picks the first adapter whose config it finds.
 
 **How Linear maps to GitPM:**
 
@@ -174,10 +189,6 @@ Always pass `--token` for Linear. Without it, the CLI falls back to `GITHUB_TOKE
 | Priority 1 / 2 / 3 / 4 / 0 (Urgent / High / Medium / Low / None) | `critical` / `high` / `medium` / `low` / `medium` |
 
 Synced entities carry a `linear:` block in their frontmatter (`issue_id`, `identifier`, `team_id`, `cycle_id`, `last_sync_hash`, `synced_at`), and the sync state is kept in `.meta/sync/linear-state.json`.
-
-:::note
-The adapter can import a Linear team into `.meta/`, but `gitpm import` has no option for the team ID yet, so importing from the CLI currently fails with `Linear team ID is required`. Until it does, create `linear-config.yaml` by hand as shown above and use `push`, `pull`, and `sync`.
-:::
 
 ---
 

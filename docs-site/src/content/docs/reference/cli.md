@@ -28,7 +28,7 @@ The token is resolved in priority order:
 
 If no token is found, the command exits with an error message.
 
-For Linear, always pass the API key explicitly with `--token "$LINEAR_API_KEY"`. The CLI does not read `LINEAR_API_KEY` on its own, and without `--token` it would fall back to your GitHub token. See [Linear Configuration](/guides/sync/#linear-configuration).
+Linear does not use this token. The Linear adapter reads its API key from `--api-key` or the `LINEAR_API_KEY` environment variable, and never sends `--token`, `GITHUB_TOKEN` or a `gh` token to Linear. See [Linear Configuration](/guides/sync/#linear-configuration).
 
 ---
 
@@ -124,7 +124,7 @@ Validation failed with 2 error(s) and 1 warning(s)
 
 ## `gitpm import`
 
-Import project data from GitHub or GitLab into `.meta/` files.
+Import project data from GitHub, GitLab, Jira or Linear into `.meta/` files.
 
 ```
 gitpm import [options]
@@ -134,11 +134,13 @@ gitpm import [options]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--source <source>` | Source platform: `github` or `gitlab` | `github` |
+| `--source <source>` | Source platform: `github`, `gitlab`, `jira` or `linear` | `github` |
 | `--repo <owner/repo>` | GitHub repository (required for GitHub) | |
 | `--project <value>` | GitHub Project number or GitLab project path | |
 | `--token <token>` | Personal access token | (auto-resolved) |
 | `--base-url <url>` | GitLab base URL | `https://gitlab.com` |
+| `--team <id>` | Linear team ID (falls back to `team_id` in `linear-config.yaml`) | |
+| `--api-key <key>` | Linear API key | `LINEAR_API_KEY` |
 | `--link-strategy <strategy>` | Epic-story linkage strategy | `all` |
 
 **Link strategies (GitHub):**
@@ -179,6 +181,9 @@ gitpm import --source gitlab --project mygroup/myproject \
 
 # Use a specific link strategy
 gitpm import --repo myorg/myrepo --link-strategy sub-issues
+
+# Import a Linear team (API key read from LINEAR_API_KEY)
+gitpm import --source linear --team 5f1c...
 ```
 
 **Output:**
@@ -211,8 +216,11 @@ gitpm push [options]
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--token <token>` | Personal access token | (auto-resolved) |
+| `--team <id>` | Linear team ID (falls back to `team_id` in `linear-config.yaml`) | |
+| `--api-key <key>` | Linear API key | `LINEAR_API_KEY` |
 | `--dry-run` | Preview changes without pushing | `false` |
 | `--yes` | Skip confirmation prompt | `false` |
+| `--adapter <name>` | Force a specific adapter (e.g. `github`, `linear`) | (auto-detected) |
 
 **Examples:**
 
@@ -263,6 +271,9 @@ gitpm pull [options]
 |--------|-------------|---------|
 | `--token <token>` | Personal access token | (auto-resolved) |
 | `--strategy <strategy>` | Conflict resolution strategy | `remote-wins` |
+| `--adapter <name>` | Force a specific adapter (e.g. `github`, `linear`) | (auto-detected) |
+
+`pull` has no `--team` or `--api-key` option. For Linear it reads the API key from `LINEAR_API_KEY` and the team from `team_id` in `.meta/sync/linear-config.yaml`.
 
 **Conflict resolution strategies:**
 
@@ -314,8 +325,11 @@ gitpm sync [options]
 |--------|-------------|---------|
 | `--token <token>` | Personal access token | (auto-resolved) |
 | `--strategy <strategy>` | Conflict resolution strategy | `ask` |
+| `--team <id>` | Linear team ID (falls back to `team_id` in `linear-config.yaml`) | |
+| `--api-key <key>` | Linear API key | `LINEAR_API_KEY` |
 | `--dry-run` | Preview changes without syncing | `false` |
 | `--yes` | Skip confirmation prompt | `false` |
+| `--adapter <name>` | Force a specific adapter (e.g. `github`, `linear`) | (auto-detected) |
 
 **Examples:**
 

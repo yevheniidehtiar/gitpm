@@ -157,7 +157,8 @@ gitpm/
     └── src/
         ├── assets/demo/         # Screenshots used by the site
         └── content/docs/
-            ├── start/           # Getting started, product tour, migration
+            ├── index.mdx        # Landing page
+            ├── start/           # Agent setup, migration, product tour
             ├── guides/          # Sync and workflow guides
             ├── reference/       # CLI and schema reference
             └── contributing/    # Architecture (this page), CI
