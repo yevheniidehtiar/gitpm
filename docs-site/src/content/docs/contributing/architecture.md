@@ -111,7 +111,7 @@ Field-level diffing identifies exactly which fields changed (title, status, prio
 
 ```
 gitpm/
-├── CLAUDE.md                    # Project conventions (this file)
+├── CLAUDE.md                    # Project conventions for AI agents
 ├── package.json                 # Bun workspace root
 ├── biome.json                   # Linting config
 ├── vitest.config.ts             # Test config
@@ -150,14 +150,17 @@ gitpm/
 │           ├── components/      # StatusBadge, PriorityBadge, etc.
 │           ├── lib/api.ts       # React Query hooks
 │           └── server/          # Hono API server
-└── docs/
-    ├── demo.md                  # Product demo & use cases
-    ├── architecture.md          # This file
-    ├── cli-reference.md
-    ├── schema-reference.md
-    ├── sync-guide.md
-    ├── migration-guide.md
-    └── schemas/ENTITY_SCHEMAS.md
+├── docs/
+│   └── demos/                   # Screenshot captures (README assets)
+└── docs-site/                   # Astro Starlight documentation site
+    ├── astro.config.mjs
+    └── src/
+        ├── assets/demo/         # Screenshots used by the site
+        └── content/docs/
+            ├── start/           # Getting started, product tour, migration
+            ├── guides/          # Sync and workflow guides
+            ├── reference/       # CLI and schema reference
+            └── contributing/    # Architecture (this page), CI
 ```
 
 ## Tech Stack
