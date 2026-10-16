@@ -5,7 +5,7 @@ sidebar:
   order: 1
 ---
 
-GitPM provides bidirectional sync between your `.meta/` file tree and remote issue trackers (GitHub, GitLab, Jira). This guide covers setup, configuration, and day-to-day sync workflows.
+GitPM provides bidirectional sync between your `.meta/` file tree and remote issue trackers (GitHub, GitLab, Jira, Linear). This guide covers setup, configuration, and day-to-day sync workflows.
 
 ## Getting Started
 
@@ -22,6 +22,9 @@ export GITLAB_TOKEN="glpat-..."
 
 # Jira
 export JIRA_TOKEN="your-api-token"
+
+# Linear (pass explicitly with --token "$LINEAR_API_KEY")
+export LINEAR_API_KEY="lin_api_..."
 ```
 
 Alternatively, pass the token directly via the `--token` flag on any command.
@@ -121,6 +124,60 @@ workflow_mapping:                    # Maps Jira workflow statuses to GitPM stat
   Done: done
   Backlog: backlog
 ```
+
+### Linear Configuration
+
+The Linear adapter ships as a separate package and talks to the Linear GraphQL API (`https://api.linear.app/graphql`):
+
+```bash
+bun add @gitpm/sync-linear
+```
+
+**File:** `.meta/sync/linear-config.yaml`
+
+```yaml
+team_id: 5f1c...                     # Required: Linear team ID (UUID)
+status_mapping:                      # Maps Linear workflow state *type* to GitPM status
+  triage: backlog
+  backlog: backlog
+  unstarted: todo
+  started: in_progress
+  completed: done
+  canceled: cancelled
+auto_sync: false                     # Reserved for future use
+```
+
+The keys of `status_mapping` are Linear workflow state **types**, not the state names shown in your team's board, so custom states such as "In QA" map through their type (`started`). Any type missing from the mapping defaults to `todo`.
+
+**Setup:**
+
+1. Create a personal API key in Linear under **Settings → Security & access → Personal API keys**, and export it as `LINEAR_API_KEY`.
+2. Find your team ID. Open the command menu in Linear (`Cmd/Ctrl+K`) and run **Copy model UUID** on the team, or query `{ teams { nodes { id name } } }` in the Linear API explorer.
+3. Create `.meta/sync/linear-config.yaml` with that `team_id`, using the example above.
+4. Sync, passing the key explicitly and selecting the adapter:
+
+```bash
+gitpm push --adapter linear --token "$LINEAR_API_KEY" --dry-run
+gitpm pull --adapter linear --token "$LINEAR_API_KEY"
+gitpm sync --adapter linear --token "$LINEAR_API_KEY"
+```
+
+Always pass `--token` for Linear. Without it, the CLI falls back to `GITHUB_TOKEN` or `gh auth token` and sends that to Linear. Pass `--adapter linear` whenever another adapter's config is also in `.meta/sync/`, because auto-detection picks the first adapter whose config it finds.
+
+**How Linear maps to GitPM:**
+
+| Linear | GitPM |
+|--------|-------|
+| Cycle | Milestone (`done` once the cycle is completed, otherwise `in_progress`) |
+| Issue with sub-issues | Epic |
+| Leaf issue | Story, linked to its parent epic and to the milestone for its cycle |
+| Priority 1 / 2 / 3 / 4 / 0 (Urgent / High / Medium / Low / None) | `critical` / `high` / `medium` / `low` / `medium` |
+
+Synced entities carry a `linear:` block in their frontmatter (`issue_id`, `identifier`, `team_id`, `cycle_id`, `last_sync_hash`, `synced_at`), and the sync state is kept in `.meta/sync/linear-state.json`.
+
+:::note
+The adapter can import a Linear team into `.meta/`, but `gitpm import` has no option for the team ID yet, so importing from the CLI currently fails with `Linear team ID is required`. Until it does, create `linear-config.yaml` by hand as shown above and use `push`, `pull`, and `sync`.
+:::
 
 ---
 
@@ -302,3 +359,4 @@ Keys are sorted alphabetically and whitespace is normalized, ensuring stable has
 | `GITHUB_TOKEN` | GitHub | Personal access token with `repo` scope |
 | `GITLAB_TOKEN` | GitLab | Personal access token with `api` scope |
 | `JIRA_TOKEN` | Jira | API token from [Atlassian account settings](https://id.atlassian.com/manage-profile/security/api-tokens) |
+| `LINEAR_API_KEY` | Linear | Personal API key from Linear **Settings → Security & access**. Not read automatically: pass it with `--token "$LINEAR_API_KEY"` |
