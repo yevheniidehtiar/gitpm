@@ -35,8 +35,8 @@ jobs:
   # `done` directly on the release PR branch. The resulting commit makes
   # the release PR's diff show exactly which tickets are being shipped,
   # and downstream `post-merge-sync.yml` closes the matching GitHub issues
-  # once the release PR merges. See the "Task Lifecycle & PR Linkage"
-  # section in CLAUDE.md for the full chain.
+  # once the release PR merges. See "Project management via .meta/"
+  # in AGENTS.md for the full chain.
   mark-stories-done:
     name: Mark in_review stories as done in release PR
     needs: release-please
@@ -102,6 +102,7 @@ jobs:
                   --filter '@gitpm/sync-github' \
                   --filter '@gitpm/sync-gitlab' \
                   --filter '@gitpm/sync-jira' \
+                  --filter '@gitpm/sync-linear' \
                   --filter '@gitpm/cli' \
                   build
 

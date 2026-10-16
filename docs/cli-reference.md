@@ -1,6 +1,30 @@
 # CLI Reference
 
-GitPM provides six commands for managing your `.meta/` project tree and syncing with remote platforms.
+GitPM's CLI has 19 commands for editing your `.meta/` project tree, syncing with remote platforms and planning work. The six core commands are documented in full on this page. The others are summarised in the index below and described by `gitpm <command> --help`.
+
+## Command Index
+
+| Group | Command | Purpose |
+|---|---|---|
+| Tree | `init` | Initialize a new `.meta/` project structure |
+| Tree | `validate` | Validate the `.meta/` tree against the schemas |
+| Tree | `query` | Query and filter entities by type, status, priority, label or epic |
+| Tree | `show` | Display one entity, or an epic with its stories |
+| Tree | `create` | Create a story, epic or milestone with valid frontmatter |
+| Tree | `set` | Update frontmatter fields (`field=value`, `field+=item`, `field-=item`, `field=null`) |
+| Tree | `move` | Move a story between epics or to standalone |
+| Tree | `archive` | Move done or cancelled entities older than N days to `.meta/archive/` |
+| Tree | `commit` | Commit all `.meta/` changes atomically |
+| Sync | `import` | Import project data from GitHub, GitLab or Jira into `.meta/` |
+| Sync | `push` | Push local `.meta/` changes to the remote platform |
+| Sync | `pull` | Pull remote changes into local `.meta/` |
+| Sync | `sync` | Bidirectional sync with conflict resolution |
+| Planning | `status` | Show project progress across milestones and epics |
+| Planning | `next` | Show the next stories ready to be picked up |
+| Planning | `sprint` | Manage sprints (time-boxed iterations) |
+| Planning | `audit` | Detect stale issues, orphans, duplicates and other hygiene problems |
+| Planning | `quality` | Score entity quality across the tree, for example AI-agent readiness |
+| Agents | `context` | Generate a CLAUDE.md-style project context from the `.meta/` tree (`--output <file>` to write it) |
 
 ## Global Options
 
@@ -18,7 +42,7 @@ These options apply to all commands:
 The token is resolved in priority order:
 
 1. `--token` flag (highest priority)
-2. `GITHUB_TOKEN` or `GITLAB_TOKEN` environment variable
+2. `GITHUB_TOKEN` environment variable (GitLab and Jira currently require `--token`)
 3. GitHub CLI fallback (`gh auth token`)
 
 If no token is found, the command exits with an error message.

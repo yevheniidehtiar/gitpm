@@ -26,6 +26,8 @@ This project uses [GitPM](https://github.com/yevheniidehtiar/gitpm) to manage pr
 
 **Avoid** `grep` / `cat` / `Edit` directly on `.meta/*.md` unless you truly need a raw view. The CLI preserves frontmatter ordering, validates against Zod schemas, and keeps GitHub sync state consistent.
 
+In the gitpm repository itself there is no global `gitpm` binary. Run `bun run build` once, then `bun run gitpm <command>`.
+
 ## Common recipes
 
 ### Find all in-progress stories
@@ -139,9 +141,9 @@ gitpm push --token "$GITHUB_TOKEN"
 
 Use `gitpm sync --strategy local-wins` when you have both local edits and remote changes.
 
-## Story lifecycle (three-state flow)
+## Story lifecycle
 
-Stories move through four states tied to the release pipeline:
+Stories move through four states tied to the release pipeline. For the gitpm repo itself, `AGENTS.md` is the canonical version of this section:
 
 ```
 todo ──► in_progress ──► in_review ──► done

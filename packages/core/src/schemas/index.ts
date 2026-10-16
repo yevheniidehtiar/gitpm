@@ -4,6 +4,7 @@ export type {
   GitHubSync,
   GitLabSync,
   JiraSync,
+  LinearSync,
   Priority,
   Result,
   Status,
@@ -14,6 +15,7 @@ export {
   gitHubSyncSchema,
   gitLabSyncSchema,
   jiraSyncSchema,
+  linearSyncSchema,
   prioritySchema,
   statusSchema,
 } from './common.js';

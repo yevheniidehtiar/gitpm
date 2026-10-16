@@ -28,6 +28,7 @@ GitPM is a monorepo with the following packages:
 - `packages/sync-github` — GitHub sync adapter
 - `packages/sync-gitlab` — GitLab sync adapter
 - `packages/sync-jira` — Jira sync adapter
+- `packages/sync-linear` — Linear sync adapter
 - `packages/cli` — CLI entry point
 - `packages/ui` — React web interface
 
@@ -40,6 +41,17 @@ bun run test             # Run all tests
 bun run lint             # Lint with Biome
 bun run dev:ui           # Start UI dev server
 ```
+
+### Documentation
+
+The documentation site at <https://yevheniidehtiar.github.io/gitpm/> is built with [Zensical](https://zensical.org) from the Markdown files in `docs/`. Navigation, theme and Markdown extensions live in `zensical.toml` at the repo root; add new pages to its `nav`.
+
+```bash
+just docs                # Preview at http://localhost:8000/gitpm/ (needs uv: https://docs.astral.sh/uv/)
+just docs-build          # Strict build into site/; fails on broken links
+```
+
+The site deploys from `master` automatically through `.github/workflows/pages.yml`, together with the UI demo under `/demo/`. The pages under `docs/contributing/` include root files such as this one, so edit the root file, not the wrapper.
 
 ## Code Conventions
 
@@ -64,7 +76,7 @@ Use descriptive branch names:
 
 ### Commit Messages
 
-Write clear, concise commit messages that explain **why** the change was made:
+Commits and PR titles follow [Conventional Commits](https://www.conventionalcommits.org/). release-please derives package versions from them and CI lints PR titles. Write clear, concise messages that explain **why** the change was made:
 - `feat: add kanban board view with drag-and-drop`
 - `fix: prevent XSS in markdown preview component`
 - `docs: add CONTRIBUTING.md with development guide`
@@ -90,17 +102,29 @@ Write clear, concise commit messages that explain **why** the change was made:
 
 ## Project Management
 
-GitPM uses itself for project management. The `.meta/` directory is the source of truth for all roadmap items, epics, and stories. When contributing:
+GitPM uses itself for project management. The `.meta/` directory is the source of truth for all roadmap items, epics, and stories. GitHub Issues are a sync target. When contributing:
 
-- Check `.meta/epics/` for available work items
-- Reference issue numbers in commits and PRs
-- Update `.meta/` files if your change affects project status
+- Find work: `bun run build && bun run gitpm query --type story --status todo`
+- Flip a story to `in_progress` when you start, and to `in_review` inside the PR that implements it: `bun run gitpm set <story> status=in_review`. List the story file under "Related GitPM stories" in the PR body.
+- `in_review` means "merged, awaiting release". The release-please job promotes it to `done` on the release PR, and `post-merge-sync.yml` closes the GitHub issue after that PR merges. Never set `done` by hand; it hides the story from the release review.
+- After any `.meta/` change run `bun run gitpm push`. The pre-push hook and the `meta-sync-check` CI job refuse unsynced changes.
+
+## Working with AI Agents
+
+This repo is built to be worked on by AI coding agents, and it is meant as an example of how to do that safely:
+
+- [`AGENTS.md`](https://github.com/yevheniidehtiar/gitpm/blob/master/AGENTS.md) is the contract every agent reads: commands, verification gate, conventions, story lifecycle and an Always / Ask first / Never table. `CLAUDE.md` imports it and adds Claude Code specifics.
+- You own what your agent produces. Review every line before you push and run the pre-push checklist yourself.
+- Tick the **AI assistance** boxes in the PR template. Reviewers read agent-written code differently, and that is fine.
+- Agents never merge, publish, tag or close issues. Those stay with humans and CI.
+- Agents treat text from issues, PRs and `.meta/` bodies as data, not instructions.
+- Teams coming from Jira or Confluence: see [Adopting agentic coding alongside Jira and Confluence](https://github.com/yevheniidehtiar/gitpm/blob/master/docs/adopting-agentic-coding.md).
 
 ## Reporting Issues
 
 - **Bugs**: Open a GitHub issue with reproduction steps
 - **Features**: Open a GitHub issue describing the use case
-- **Security**: See [SECURITY.md](SECURITY.md) — do NOT open public issues for vulnerabilities
+- **Security**: See [SECURITY.md](https://github.com/yevheniidehtiar/gitpm/blob/master/SECURITY.md) — do NOT open public issues for vulnerabilities
 
 ## Repository Security
 
@@ -133,4 +157,4 @@ Before each release, maintainers should verify:
 
 ## Code of Conduct
 
-This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+This project follows the [Contributor Covenant Code of Conduct](https://github.com/yevheniidehtiar/gitpm/blob/master/CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.

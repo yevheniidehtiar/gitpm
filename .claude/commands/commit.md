@@ -13,7 +13,7 @@ Use this when the user asks you to commit local changes. Goal: produce a clean c
    - `git diff --cached` (staged) and `git diff` (unstaged)
    - `git log --oneline -10` (match existing message style)
 
-2. **Classify the change** using the table from `CLAUDE.md` → "Release Workflow":
+2. **Classify the change** using the table from `AGENTS.md` → "Commits and pull requests":
 
    | Prefix | Meaning | Bumps version? |
    |---|---|---|

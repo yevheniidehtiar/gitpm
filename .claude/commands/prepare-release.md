@@ -33,7 +33,7 @@ Run this before merging a branch to `master` to verify the release-please pipeli
    git log <last-tag>..HEAD --oneline -- packages/ui
    ```
 
-4. **Classify each commit** using the conventional-commits mapping from `CLAUDE.md` → "Release Workflow":
+4. **Classify each commit** using the conventional-commits mapping from `AGENTS.md` → "Commits and pull requests":
    - `fix:` → patch
    - `feat:` → patch (pre-1.0 via `bump-patch-for-minor-pre-major: true`)
    - `feat!:` / `BREAKING CHANGE:` → major

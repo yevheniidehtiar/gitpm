@@ -14,6 +14,7 @@ This document describes GitPM's system architecture, package structure, and code
 │ @gitpm/core  │   @gitpm/sync-github     │
 │              │   @gitpm/sync-gitlab     │
 │              │   @gitpm/sync-jira       │
+│              │   @gitpm/sync-linear     │
 ├──────────────┴──────────────────────────┤
 │         .meta/ file tree (Git)          │
 └─────────────────────────────────────────┘
@@ -27,7 +28,8 @@ This document describes GitPM's system architecture, package structure, and code
 | `packages/sync-github` | `@gitpm/sync-github` | Bidirectional sync with GitHub Issues/Milestones/Projects | `@octokit/rest`, `@gitpm/core` |
 | `packages/sync-gitlab` | `@gitpm/sync-gitlab` | Bidirectional sync with GitLab Issues/Milestones | `@gitpm/core` |
 | `packages/sync-jira` | `@gitpm/sync-jira` | Bidirectional sync with Jira Cloud | `@gitpm/core` |
-| `packages/cli` | `gitpm` | CLI entry point with six commands | `commander`, `chalk`, `ora`, `@gitpm/core`, sync packages |
+| `packages/sync-linear` | `@gitpm/sync-linear` | Bidirectional sync with Linear (GraphQL) | `@gitpm/core` |
+| `packages/cli` | `gitpm` | CLI entry point with 19 commands (tree editing, sync, planning) | `commander`, `chalk`, `ora`, `@gitpm/core`, sync packages |
 | `packages/ui` | `@gitpm/ui` | Local React web UI for browsing and editing | `react`, `tailwindcss`, `@tanstack/router`, `@tanstack/query`, `hono` |
 
 ### Dependency Graph
@@ -36,7 +38,8 @@ This document describes GitPM's system architecture, package structure, and code
 cli ─────┬──▶ core
          ├──▶ sync-github ──▶ core
          ├──▶ sync-gitlab ──▶ core
-         └──▶ sync-jira ────▶ core
+         ├──▶ sync-jira ────▶ core
+         └──▶ sync-linear ──▶ core
 
 ui ──────┬──▶ core
          └──▶ (sync packages via API server)
@@ -106,11 +109,16 @@ Field-level diffing identifies exactly which fields changed (title, status, prio
 
 ```
 gitpm/
-├── CLAUDE.md                    # Project conventions (this file)
+├── AGENTS.md                    # Agent instructions (tool-neutral contract)
+├── CLAUDE.md                    # Claude Code notes (imports AGENTS.md)
 ├── package.json                 # Bun workspace root
 ├── biome.json                   # Linting config
 ├── vitest.config.ts             # Test config
 ├── tsconfig.json                # Base TypeScript config
+├── zensical.toml                # Docs site config: nav, theme, Markdown extensions
+├── .claude/                     # Claude Code skills, slash commands, path-scoped rules
+├── .githooks/pre-push           # Blocks pushes with unsynced .meta/ changes
+├── .meta/                       # This repo's own roadmap, epics and stories (live, synced)
 ├── packages/
 │   ├── core/
 │   │   └── src/
@@ -134,10 +142,11 @@ gitpm/
 │   │       └── linker.ts        # Epic-story linkage detection
 │   ├── sync-gitlab/             # Same structure as sync-github
 │   ├── sync-jira/               # Same structure as sync-github
+│   ├── sync-linear/             # Same structure as sync-github (GraphQL client)
 │   ├── cli/
 │   │   └── src/
 │   │       ├── index.ts         # Commander setup
-│   │       ├── commands/        # init, validate, import, push, pull, sync
+│   │       ├── commands/        # 19 commands, one file each (see docs/cli-reference.md)
 │   │       └── utils/           # auth, config, output, conflict-ui
 │   └── ui/
 │       └── src/
@@ -145,13 +154,19 @@ gitpm/
 │           ├── components/      # StatusBadge, PriorityBadge, etc.
 │           ├── lib/api.ts       # React Query hooks
 │           └── server/          # Hono API server
-└── docs/
-    ├── demo.md                  # Product demo & use cases
+└── docs/                        # Zensical site sources (https://yevheniidehtiar.github.io/gitpm/)
+    ├── index.md                 # Site landing page
+    ├── getting-started.md       # Install, tokens, init/import, first push
+    ├── product-demo.md          # Product demo & use cases
     ├── architecture.md          # This file
+    ├── adopting-agentic-coding.md # Trust model for teams on Jira/Confluence
+    ├── AGENT_SETUP_GUIDE.md     # Setting up GitPM in a consumer repo (for agents)
+    ├── ci-claude-review.md      # How the AI review workflow works
     ├── cli-reference.md
     ├── schema-reference.md
     ├── sync-guide.md
     ├── migration-guide.md
+    ├── contributing/            # Wrappers that include CONTRIBUTING.md, AGENTS.md, SECURITY.md, CODE_OF_CONDUCT.md
     └── schemas/ENTITY_SCHEMAS.md
 ```
 

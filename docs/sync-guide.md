@@ -6,22 +6,19 @@ GitPM provides bidirectional sync between your `.meta/` file tree and remote iss
 
 ### 1. Set up authentication
 
-Set your access token as an environment variable:
+Every command accepts `--token`. For GitHub the token is also resolved from the `GITHUB_TOKEN` environment variable, then from the GitHub CLI (`gh auth token`) if it is installed and authenticated:
 
 ```bash
-# GitHub
+# GitHub: environment variable or gh auth token
 export GITHUB_TOKEN="ghp_..."
+gitpm push
 
-# GitLab
-export GITLAB_TOKEN="glpat-..."
-
-# Jira
-export JIRA_TOKEN="your-api-token"
+# GitLab and Jira: pass the token explicitly (dedicated env vars are not read yet)
+gitpm import --source gitlab --project mygroup/myproject --token "glpat-..."
+gitpm import --source jira --project PROJ --base-url https://mycompany.atlassian.net --token "your-api-token"
 ```
 
-Alternatively, pass the token directly via the `--token` flag on any command.
-
-For GitHub, the token can also be resolved from the GitHub CLI (`gh auth token`) if installed and authenticated.
+The Linear adapter reads `LINEAR_API_KEY` from the environment. Never commit tokens or write them into `.meta/sync/*.yaml`.
 
 ### 2. Import your project
 

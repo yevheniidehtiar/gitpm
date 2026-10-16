@@ -1,6 +1,24 @@
+<div align="center">
+
 # GitPM
 
-Git-native project management — store roadmaps, PRDs, epics, and issues as structured files in your monorepo, with bidirectional GitHub/GitLab sync and a local web UI. Built for AI-agentic workflows where code and project context live in one traversable file tree.
+**Project management that lives in your repo.**
+
+Roadmaps, PRDs, epics, and stories as Markdown + YAML in `.meta/` — bidirectionally synced with GitHub, GitLab, and Jira. Built for AI-agentic workflows where code and project context live in one traversable file tree.
+
+[![Build Matrix](https://github.com/yevheniidehtiar/gitpm/actions/workflows/build-matrix.yml/badge.svg?branch=master)](https://github.com/yevheniidehtiar/gitpm/actions/workflows/build-matrix.yml)
+[![Nightly Integration Tests](https://github.com/yevheniidehtiar/gitpm/actions/workflows/nightly.yml/badge.svg?branch=master)](https://github.com/yevheniidehtiar/gitpm/actions/workflows/nightly.yml)
+[![Release Please](https://github.com/yevheniidehtiar/gitpm/actions/workflows/release-please.yml/badge.svg?branch=master)](https://github.com/yevheniidehtiar/gitpm/actions/workflows/release-please.yml)
+[![npm](https://img.shields.io/npm/v/%40gitpm%2Fcli?label=%40gitpm%2Fcli&logo=npm&color=cb3837)](https://www.npmjs.com/package/@gitpm/cli)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Runtime: Bun](https://img.shields.io/badge/runtime-Bun-black?logo=bun)](https://bun.sh)
+[![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](tsconfig.json)
+
+[**Documentation**](https://yevheniidehtiar.github.io/gitpm/) · [**Live Demo**](https://yevheniidehtiar.github.io/gitpm/demo/) · [**Quick Start**](#quick-start) · [**For AI agents**](AGENTS.md)
+
+<img src="docs/demos/hyper-admin/05-roadmap.png" alt="GitPM roadmap timeline" width="800" />
+
+</div>
 
 ## What is GitPM?
 
@@ -20,6 +38,8 @@ GitPM turns your repository's `.meta/` directory into a full project management 
 
 **Offline-first for field teams and contractors.** Teams in low-connectivity environments (field engineering, defense, on-prem deployments) can manage their project boards locally and sync when connectivity is available. No always-on SaaS dependency.
 
+**Agentic coding for teams on Jira and Confluence.** Agents work from `.meta/` files while your tracker stays the team's UI. This repo ships an [`AGENTS.md`](AGENTS.md), path-scoped agent rules and CI gates you can copy. See [Adopting agentic coding alongside Jira and Confluence](docs/adopting-agentic-coding.md).
+
 ## Quick Start
 
 ```bash
@@ -37,7 +57,7 @@ gitpm import --repo owner/repo
 gitpm validate
 
 # Edit files in .meta/ (or use the web UI)
-gitpm dev:ui
+# Browse and edit in the web UI from a clone of this repo: bun run dev:ui (see "Web UI" below)
 
 # Push local changes to GitHub
 gitpm push
@@ -74,9 +94,9 @@ Adapters are auto-detected at runtime — no extra configuration needed. The CLI
 - **File-based project management** — roadmaps, epics, stories, milestones, and PRDs as Markdown + YAML frontmatter in `.meta/`
 - **Bidirectional sync** — keep `.meta/` in sync with GitHub Issues, GitLab Issues, or Jira
 - **Plugin architecture** — install only the sync adapters you need; write custom adapters for any platform
-- **CLI-first** — six commands cover the full workflow: `init`, `validate`, `import`, `push`, `pull`, `sync`
+- **CLI-first** — 19 commands: six core (`init`, `validate`, `import`, `push`, `pull`, `sync`), tree editing (`query`, `show`, `set`, `create`, `move`, `archive`, `commit`), planning (`status`, `sprint`, `next`, `audit`, `quality`) and `context` (a project summary for AI agents)
 - **Local web UI** — browse, edit, and visualize your project tree with a React-based interface
-- **AI-agent friendly** — structured files in your repo give AI agents full project context
+- **AI-agent friendly** — structured files in your repo give AI agents full project context; this repo ships an [`AGENTS.md`](AGENTS.md) you can copy
 - **Schema-validated** — all entities are validated with Zod schemas; catch errors before they hit your tracker
 - **Custom schema extensions** — add project-specific fields (story points, team, etc.) via `.meta/.gitpm/schema-extensions.yaml`
 - **Lifecycle hooks** — run scripts before/after import, export, or sync operations
@@ -92,6 +112,8 @@ Adapters are auto-detected at runtime — no extra configuration needed. The CLI
 | `gitpm push` | Push local `.meta/` changes to the remote platform |
 | `gitpm pull` | Pull remote changes into local `.meta/` |
 | `gitpm sync` | Bidirectional sync between `.meta/` and the remote |
+
+Thirteen more commands edit the tree (`query`, `show`, `set`, `create`, `move`, `archive`, `commit`), support planning (`status`, `sprint`, `next`, `audit`, `quality`) and generate a project summary for AI agents (`context`). Run `gitpm --help` for the list.
 
 Global options: `--meta-dir <path>` (default: `.meta`), `--token <token>`, `--adapter <name>`
 
@@ -210,7 +232,10 @@ GitPM includes a local web interface for browsing and editing your project tree:
 bun run dev:ui
 ```
 
+<img src="docs/demos/hyper-admin/01-tree-browser.png" alt="GitPM tree browser" width="800" />
+
 Features:
+
 - **Tree browser** — search, filter, and sort entities by status, type, priority, or assignee
 - **Entity editor** — form-based frontmatter editing with a Markdown body editor
 - **Roadmap timeline** — visual timeline of milestones and epics
@@ -218,13 +243,21 @@ Features:
 
 ## Documentation
 
+Read the docs at **<https://yevheniidehtiar.github.io/gitpm/>**. The live UI demo, running on this repo's own `.meta/` tree, is at **<https://yevheniidehtiar.github.io/gitpm/demo/>** (it moved from `/gitpm/` when the docs site launched).
+
+The same pages live in [`docs/`](docs/):
+
 | Document | Description |
 |----------|-------------|
+| [Getting Started](docs/getting-started.md) | Install, tokens, init or import, first push |
 | [CLI Reference](docs/cli-reference.md) | Detailed command reference with examples |
 | [Schema Reference](docs/schema-reference.md) | Entity types, frontmatter fields, directory conventions |
 | [Sync Configuration Guide](docs/sync-guide.md) | Setup, configuration, conflict resolution |
 | [Architecture Overview](docs/architecture.md) | System design, packages, conventions (for contributors) |
 | [Migration Guide](docs/migration-guide.md) | Migrating from GitHub Issues, GitLab, or Jira |
+| [Agent Setup Guide](docs/AGENT_SETUP_GUIDE.md) | For AI agents setting up GitPM in a consumer repo |
+| [Adopting Agentic Coding](docs/adopting-agentic-coding.md) | Trust model and sync strategy for teams on Jira and Confluence |
+| [AGENTS.md](AGENTS.md) | The agent instructions this repo itself runs on |
 
 ## Contributing
 

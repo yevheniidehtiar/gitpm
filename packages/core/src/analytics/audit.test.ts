@@ -95,6 +95,31 @@ describe('auditTree', () => {
       expect(auditTree(tree, { staleDays: 30 }).stale).toHaveLength(1);
       expect(auditTree(tree, { staleDays: 60 }).stale).toHaveLength(0);
     });
+
+    it('includes a numeric daysSinceUpdate on stale items', () => {
+      const oldDate = new Date();
+      oldDate.setDate(oldDate.getDate() - 120);
+      const tree = makeTree({
+        stories: [
+          makeStory({ updated_at: oldDate.toISOString(), status: 'todo' }),
+        ] as ResolvedTree['stories'],
+      });
+      const report = auditTree(tree);
+      expect(report.stale).toHaveLength(1);
+      expect(typeof report.stale[0].daysSinceUpdate).toBe('number');
+      expect(report.stale[0].daysSinceUpdate).toBeGreaterThanOrEqual(119);
+    });
+
+    it('omits daysSinceUpdate when there is no update date', () => {
+      const tree = makeTree({
+        stories: [
+          makeStory({ updated_at: undefined, status: 'todo' }),
+        ] as ResolvedTree['stories'],
+      });
+      const report = auditTree(tree);
+      expect(report.stale).toHaveLength(1);
+      expect(report.stale[0].daysSinceUpdate).toBeUndefined();
+    });
   });
 
   describe('orphan detection', () => {

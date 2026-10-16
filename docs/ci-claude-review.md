@@ -68,7 +68,7 @@ Each iteration:
 5. If any failed:
    - Write the failing check metadata to `/tmp/autofix/failing-checks.json`.
    - **If `Claude Review` is among the failures**, fetch the latest "Claude Review" PR comment and write its body to `/tmp/autofix/review-findings.md`. Claude is told to prioritize critical/medium severity findings before build/test failures.
-   - Run Claude with a prompt that tells it to read the failing-checks JSON, fetch logs via `gh run view`, fix the root cause (NOT modify tests to mask it), follow `CLAUDE.md` conventions, and verify locally with `bun run lint && bun run build && bun run test`. **Claude must not commit, push, or comment** — the workflow does that.
+   - Run Claude with a prompt that tells it to read the failing-checks JSON, fetch logs via `gh run view`, fix the root cause (NOT modify tests to mask it), follow `AGENTS.md` conventions, and verify locally with `bun run lint && bun run build && bun run test`. **Claude must not commit, push, or comment** — the workflow does that.
    - `--max-turns` is 30 if review-findings are present, 20 otherwise.
    - If the working tree is clean after Claude exits → break the loop with a "manual intervention required" summary.
    - Otherwise `git add -u` (tracked files only — avoids staging stray secrets or build artifacts), commit as `claude-autofix[bot]`, and push with up-to-5-attempt exponential backoff retry.

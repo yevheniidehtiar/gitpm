@@ -68,14 +68,16 @@ nuke:
     just build
 
 # ---------------------------------------------------------------------------
-# Release
+# Documentation (Zensical, via uv: https://docs.astral.sh/uv/)
 # ---------------------------------------------------------------------------
 
-# Publish all public packages to npm (requires npm auth)
-publish-all: build
-    cd packages/core         && npm publish --access public
-    cd packages/sync-github  && npm publish --access public
-    cd packages/sync-gitlab  && npm publish --access public
-    cd packages/sync-jira    && npm publish --access public
-    cd packages/cli          && npm publish --access public
-    cd packages/ui           && npm publish --access public
+# Preview the docs site at http://localhost:8000/gitpm/ with live reload
+docs:
+    uvx zensical serve
+
+# Build the docs site into site/; strict mode fails on broken links
+docs-build:
+    uvx zensical build --clean --strict
+
+# Releases are automated: release-please tags, release.yml publishes.
+# See AGENTS.md → "Releases". There is deliberately no manual publish recipe.

@@ -18,6 +18,9 @@
     "test:coverage": "vitest run --coverage",
     "lint": "biome check .",
     "dev:ui": "bun run --filter @gitpm/ui dev",
+    "docs": "uvx zensical serve",
+    "docs:build": "uvx zensical build --clean --strict",
+    "gitpm": "node packages/cli/dist/index.js",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true"
   },
   "devDependencies": {

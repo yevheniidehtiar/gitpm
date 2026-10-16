@@ -22,16 +22,20 @@ const TYPE_COLORS: Record<string, string> = {
 
 const DONE_STATUSES = new Set(['done', 'cancelled']);
 
+const CRITICAL_COLOR = '#DC2626';
+
 interface SimNode extends SimulationNodeDatum {
   id: string;
   title: string;
   type: string;
   status: string;
   radius: number;
+  critical: boolean;
 }
 
 interface SimLink extends SimulationLinkDatum<SimNode> {
   label: string;
+  critical: boolean;
 }
 
 function buildSimData(
@@ -61,6 +65,7 @@ function buildSimData(
       source: e.source,
       target: e.target,
       label: e.label,
+      critical: e.critical,
     }));
 
   return { simNodes: Array.from(nodeMap.values()), simLinks };
@@ -171,8 +176,8 @@ export function GraphView() {
                 y1={s.y}
                 x2={t.x}
                 y2={t.y}
-                stroke="#D1D5DB"
-                strokeWidth={1.5}
+                stroke={link.critical ? CRITICAL_COLOR : '#D1D5DB'}
+                strokeWidth={link.critical ? 3 : 1.5}
                 markerEnd="url(#arrowhead)"
               />
             );
@@ -205,8 +210,8 @@ export function GraphView() {
                   r={node.radius}
                   fill={color}
                   opacity={opacity}
-                  stroke={color}
-                  strokeWidth={2}
+                  stroke={node.critical ? CRITICAL_COLOR : color}
+                  strokeWidth={node.critical ? 3 : 2}
                 />
                 {node.radius >= 12 && (
                   <text
@@ -251,6 +256,16 @@ export function GraphView() {
               <span className="text-gray-600">{type}</span>
             </div>
           ))}
+          <div className="flex items-center gap-1">
+            <span
+              className="w-3 h-3 rounded-full border-2"
+              style={{
+                borderColor: CRITICAL_COLOR,
+                backgroundColor: 'transparent',
+              }}
+            />
+            <span className="text-gray-600">critical path</span>
+          </div>
         </div>
       </div>
     </div>

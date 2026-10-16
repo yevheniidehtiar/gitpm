@@ -142,15 +142,18 @@ describe('buildGraphData', () => {
 
     const result = buildGraphData(tree);
     expect(result.edges).toHaveLength(2);
+    // s1 -> e1 -> m1 is the only chain in this tree, so it's the critical path.
     expect(result.edges).toContainEqual({
       source: 's1',
       target: 'e1',
       label: 'epic_ref',
+      critical: true,
     });
     expect(result.edges).toContainEqual({
       source: 'e1',
       target: 'm1',
       label: 'milestone_ref',
+      critical: true,
     });
   });
 
@@ -206,16 +209,21 @@ describe('buildGraphData', () => {
     });
 
     const result = buildGraphData(tree);
+    // 'm1' isn't itself a node in this tree (tree.milestones is empty — only
+    // referenced as an edge target), so it can't participate in the active
+    // subgraph and no critical path is marked.
     expect(result.nodes).toContainEqual({
       id: 'r1',
       title: 'Roadmap 2026',
       type: 'roadmap',
       status: '',
+      critical: false,
     });
     expect(result.edges).toContainEqual({
       source: 'r1',
       target: 'm1',
       label: 'milestone',
+      critical: false,
     });
   });
 
@@ -256,11 +264,13 @@ describe('buildGraphData', () => {
       title: 'PRD',
       type: 'prd',
       status: 'todo',
+      critical: false,
     });
     expect(result.edges).toContainEqual({
       source: 'p1',
       target: 'e1',
       label: 'epic_ref',
+      critical: false,
     });
   });
 
@@ -305,12 +315,474 @@ describe('buildGraphData', () => {
       title: 'Sprint 1',
       type: 'sprint',
       status: 'in_progress',
+      critical: false,
     });
     expect(result.edges).toContainEqual({
       source: 'sp1',
       target: 's1',
       label: 'sprint_story',
+      critical: false,
     });
+  });
+
+  it('creates "references" edges from #N mentions in body, resolved by github.issue_number', () => {
+    const s1 = {
+      type: 'story' as const,
+      id: 's1',
+      title: 'Story 1',
+      status: 'todo' as const,
+      priority: 'medium' as const,
+      labels: [],
+      assignee: null,
+      estimate: null,
+      epic_ref: null,
+      github: { issue_number: 10, repo: 'org/repo', synced_at: '' },
+      // References e2 (#20) twice — should dedupe to a single edge — plus an
+      // unresolvable number (#999) and a self-reference (#10) that must both
+      // be skipped.
+      body: 'See #20 for context, also #20 again. Unrelated: #999. Self: #10.',
+      filePath: '/s1.md',
+      created_at: '',
+      updated_at: '',
+    };
+    const e2 = {
+      type: 'epic' as const,
+      id: 'e2',
+      title: 'Epic 2',
+      status: 'todo' as const,
+      priority: 'high' as const,
+      labels: [],
+      owner: null,
+      milestone_ref: null,
+      github: { issue_number: 20, repo: 'org/repo', synced_at: '' },
+      body: '',
+      filePath: '/e2.md',
+      created_at: '',
+      updated_at: '',
+    };
+
+    const tree = makeTree({
+      stories: [s1] as ResolvedTree['stories'],
+      epics: [e2] as ResolvedEpic[],
+    });
+
+    const result = buildGraphData(tree);
+    const referenceEdges = result.edges.filter((e) => e.label === 'references');
+    expect(referenceEdges).toHaveLength(1);
+    expect(referenceEdges[0]).toEqual({
+      source: 's1',
+      target: 'e2',
+      label: 'references',
+      // s1 -> e2 is the only edge in this tree, so it doubles as the
+      // critical path.
+      critical: true,
+    });
+  });
+
+  it('marks the longest not-done/cancelled dependency chain as critical', () => {
+    const m1 = {
+      type: 'milestone' as const,
+      id: 'm1',
+      title: 'MS',
+      status: 'todo' as const,
+      body: '',
+      filePath: '/m.md',
+      created_at: '',
+      updated_at: '',
+      resolvedEpics: [],
+    };
+    const e1 = {
+      type: 'epic' as const,
+      id: 'e1',
+      title: 'Epic',
+      status: 'in_progress' as const,
+      priority: 'high' as const,
+      labels: [],
+      owner: null,
+      milestone_ref: { id: 'm1' },
+      body: '',
+      filePath: '/e1.md',
+      created_at: '',
+      updated_at: '',
+      resolvedStories: [],
+      resolvedMilestone: m1,
+    };
+    const s1 = {
+      type: 'story' as const,
+      id: 's1',
+      title: 'Story 1',
+      status: 'todo' as const,
+      priority: 'medium' as const,
+      labels: [],
+      assignee: null,
+      estimate: null,
+      epic_ref: { id: 'e1' },
+      body: '',
+      filePath: '/s1.md',
+      created_at: '',
+      updated_at: '',
+      resolvedEpic: e1,
+    };
+    // Done story also points at e1 — its status excludes it (and the edge)
+    // from the active subgraph, so it must not extend the critical chain.
+    const s2Done = {
+      type: 'story' as const,
+      id: 's2',
+      title: 'Story 2 (done)',
+      status: 'done' as const,
+      priority: 'medium' as const,
+      labels: [],
+      assignee: null,
+      estimate: null,
+      epic_ref: { id: 'e1' },
+      body: '',
+      filePath: '/s2.md',
+      created_at: '',
+      updated_at: '',
+      resolvedEpic: e1,
+    };
+    // Unconnected story — should never be marked critical.
+    const s3Orphan = {
+      type: 'story' as const,
+      id: 's3',
+      title: 'Orphan',
+      status: 'todo' as const,
+      priority: 'low' as const,
+      labels: [],
+      assignee: null,
+      estimate: null,
+      epic_ref: null,
+      body: '',
+      filePath: '/s3.md',
+      created_at: '',
+      updated_at: '',
+    };
+    const sp1 = {
+      type: 'sprint' as const,
+      id: 'sp1',
+      title: 'Sprint 1',
+      status: 'in_progress' as const,
+      start_date: '2026-01-01',
+      end_date: '2026-01-14',
+      stories: [{ id: 's1' }],
+      body: '',
+      filePath: '/sp1.md',
+      created_at: '',
+      updated_at: '',
+      resolvedStories: [s1],
+    };
+
+    const tree = makeTree({
+      stories: [s1, s2Done, s3Orphan] as ResolvedTree['stories'],
+      epics: [e1] as ResolvedEpic[],
+      milestones: [m1] as ResolvedMilestone[],
+      sprints: [sp1] as ResolvedTree['sprints'],
+    });
+
+    const result = buildGraphData(tree);
+
+    // The longest chain is sp1 -> s1 -> e1 -> m1 (3 edges, 4 nodes).
+    const byId = (id: string) => result.nodes.find((n) => n.id === id);
+    expect(byId('sp1')?.critical).toBe(true);
+    expect(byId('s1')?.critical).toBe(true);
+    expect(byId('e1')?.critical).toBe(true);
+    expect(byId('m1')?.critical).toBe(true);
+    expect(byId('s2')?.critical).toBe(false);
+    expect(byId('s3')?.critical).toBe(false);
+
+    const byEdge = (source: string, target: string) =>
+      result.edges.find((e) => e.source === source && e.target === target);
+    expect(byEdge('sp1', 's1')?.critical).toBe(true);
+    expect(byEdge('s1', 'e1')?.critical).toBe(true);
+    expect(byEdge('e1', 'm1')?.critical).toBe(true);
+    expect(byEdge('s2', 'e1')?.critical).toBe(false);
+  });
+
+  it('guards against cycles created by mutual body #N references', () => {
+    const s1 = {
+      type: 'story' as const,
+      id: 's1',
+      title: 'Story 1',
+      status: 'todo' as const,
+      priority: 'medium' as const,
+      labels: [],
+      assignee: null,
+      estimate: null,
+      epic_ref: null,
+      github: { issue_number: 1, repo: 'org/repo', synced_at: '' },
+      body: 'Blocked by #2.',
+      filePath: '/s1.md',
+      created_at: '',
+      updated_at: '',
+    };
+    const s2 = {
+      type: 'story' as const,
+      id: 's2',
+      title: 'Story 2',
+      status: 'todo' as const,
+      priority: 'medium' as const,
+      labels: [],
+      assignee: null,
+      estimate: null,
+      epic_ref: null,
+      github: { issue_number: 2, repo: 'org/repo', synced_at: '' },
+      body: 'Blocked by #1.',
+      filePath: '/s2.md',
+      created_at: '',
+      updated_at: '',
+    };
+
+    const tree = makeTree({
+      stories: [s1, s2] as ResolvedTree['stories'],
+    });
+
+    // Must terminate (no infinite loop/stack overflow) and still resolve both
+    // reference edges.
+    const result = buildGraphData(tree);
+    expect(result.edges).toHaveLength(2);
+    expect(result.edges).toContainEqual({
+      source: 's1',
+      target: 's2',
+      label: 'references',
+      critical: expect.any(Boolean),
+    });
+    expect(result.edges).toContainEqual({
+      source: 's2',
+      target: 's1',
+      label: 'references',
+      critical: expect.any(Boolean),
+    });
+  });
+
+  it('does not let a cycle-truncated chain outrank a longer real chain', () => {
+    // c0 -> c1 -> c2 -> c3 -> c1 (cycle). The cycle guard makes the c1->c2->c3->c1
+    // step a dead end, so the real reconstructable chain from c0 is only
+    // c0->c1->c2->c3 (3 edges) — it must not be inflated to tie/beat the
+    // genuinely longer 4-edge chain below.
+    const makeStory = (
+      id: string,
+      issueNumber: number,
+      body: string,
+    ): ResolvedTree['stories'][number] =>
+      ({
+        type: 'story' as const,
+        id,
+        title: id,
+        status: 'todo' as const,
+        priority: 'medium' as const,
+        labels: [],
+        assignee: null,
+        estimate: null,
+        epic_ref: null,
+        github: { issue_number: issueNumber, repo: 'org/repo', synced_at: '' },
+        body,
+        filePath: `/${id}.md`,
+        created_at: '',
+        updated_at: '',
+      }) as ResolvedTree['stories'][number];
+
+    const cycle = [
+      makeStory('c0', 10, 'See #11.'),
+      makeStory('c1', 11, 'See #12.'),
+      makeStory('c2', 12, 'See #13.'),
+      makeStory('c3', 13, 'See #11.'),
+    ];
+    const chain = [
+      makeStory('s1', 1, 'See #2.'),
+      makeStory('s2', 2, 'See #3.'),
+      makeStory('s3', 3, 'See #4.'),
+      makeStory('s4', 4, 'See #5.'),
+      makeStory('s5', 5, ''),
+    ];
+
+    const tree = makeTree({
+      stories: [...cycle, ...chain] as ResolvedTree['stories'],
+    });
+
+    const result = buildGraphData(tree);
+    const byId = (id: string) => result.nodes.find((n) => n.id === id);
+
+    for (const id of ['s1', 's2', 's3', 's4', 's5']) {
+      expect(byId(id)?.critical).toBe(true);
+    }
+    for (const id of ['c0', 'c1', 'c2', 'c3']) {
+      expect(byId(id)?.critical).toBe(false);
+    }
+  });
+
+  it('finds the true longest chain through a cycle with two distinct entry points', () => {
+    // A <-> B (2-cycle, mutual references), B -> C -> D, A -> A2 -> A3 -> A4.
+    // The true longest simple path is B->A->A2->A3->A4 (4 edges): entering
+    // the cycle at B and immediately leaving toward A's longer branch. A
+    // node-memoized DFS computes A's best chain once (while B is on the
+    // recursion stack, so A->B is blocked) and wrongly reuses that stale
+    // result when B is later tried as its own start — silently dropping the
+    // B->A edge and reporting the shorter A->B->C->D (3 edges) instead.
+    const makeStory = (
+      id: string,
+      issueNumber: number,
+      body: string,
+    ): ResolvedTree['stories'][number] =>
+      ({
+        type: 'story' as const,
+        id,
+        title: id,
+        status: 'todo' as const,
+        priority: 'medium' as const,
+        labels: [],
+        assignee: null,
+        estimate: null,
+        epic_ref: null,
+        github: { issue_number: issueNumber, repo: 'org/repo', synced_at: '' },
+        body,
+        filePath: `/${id}.md`,
+        created_at: '',
+        updated_at: '',
+      }) as ResolvedTree['stories'][number];
+
+    const stories = [
+      makeStory('a', 1, 'See #2. See #5.'),
+      makeStory('b', 2, 'See #1. See #3.'),
+      makeStory('c', 3, 'See #4.'),
+      makeStory('d', 4, ''),
+      makeStory('a2', 5, 'See #6.'),
+      makeStory('a3', 6, 'See #7.'),
+      makeStory('a4', 7, ''),
+    ];
+
+    const tree = makeTree({
+      stories: stories as ResolvedTree['stories'],
+    });
+
+    const result = buildGraphData(tree);
+    const byId = (id: string) => result.nodes.find((n) => n.id === id);
+    const byEdge = (source: string, target: string) =>
+      result.edges.find((e) => e.source === source && e.target === target);
+
+    for (const id of ['a', 'b', 'a2', 'a3', 'a4']) {
+      expect(byId(id)?.critical).toBe(true);
+    }
+    expect(byEdge('b', 'a')?.critical).toBe(true);
+    expect(byEdge('a', 'a2')?.critical).toBe(true);
+    expect(byEdge('a2', 'a3')?.critical).toBe(true);
+    expect(byEdge('a3', 'a4')?.critical).toBe(true);
+  });
+
+  const story = (
+    id: string,
+    issueNumber: number,
+    body: string,
+    repo = 'org/repo',
+  ): ResolvedTree['stories'][number] =>
+    ({
+      type: 'story' as const,
+      id,
+      title: id,
+      status: 'todo' as const,
+      priority: 'medium' as const,
+      labels: [],
+      assignee: null,
+      estimate: null,
+      epic_ref: null,
+      github: { issue_number: issueNumber, repo, synced_at: '' },
+      body,
+      filePath: `/${id}.md`,
+      created_at: '',
+      updated_at: '',
+    }) as ResolvedTree['stories'][number];
+
+  /** Asserts the critical edges form one simple chain over critical nodes. */
+  const expectSingleChain = (result: ReturnType<typeof buildGraphData>) => {
+    const criticalEdges = result.edges.filter((e) => e.critical);
+    const criticalNodes = new Set(
+      result.nodes.filter((n) => n.critical).map((n) => n.id),
+    );
+    expect(criticalEdges.length).toBeGreaterThan(0);
+    expect(criticalNodes.size).toBe(criticalEdges.length + 1);
+    const outDegree = new Map<string, number>();
+    for (const e of criticalEdges) {
+      expect(criticalNodes.has(e.source)).toBe(true);
+      expect(criticalNodes.has(e.target)).toBe(true);
+      outDegree.set(e.source, (outDegree.get(e.source) ?? 0) + 1);
+    }
+    for (const n of outDegree.values()) expect(n).toBe(1);
+  };
+
+  it('stays bounded on a dense, fully cross-referenced cyclic graph', () => {
+    // 40 stories, each mentioning every other one: ~40! simple paths, which
+    // an unbounded exhaustive search would never finish.
+    const count = 40;
+    const stories = Array.from({ length: count }, (_, i) =>
+      story(
+        `d${i}`,
+        i + 1,
+        Array.from({ length: count }, (_, j) => `#${j + 1}`).join(' '),
+      ),
+    );
+
+    const started = performance.now();
+    const result = buildGraphData(makeTree({ stories }));
+    const elapsed = performance.now() - started;
+
+    expect(result.edges).toHaveLength(count * (count - 1));
+    expect(elapsed).toBeLessThan(2000);
+    expectSingleChain(result);
+  });
+
+  it('falls back to a linear-time DAG pass on large graphs and still finds long chains', () => {
+    // Chain of 1500 stories (past the exact-search size cap) plus a back
+    // reference from the tail to the head, forming one big cycle.
+    const count = 1500;
+    const stories = Array.from({ length: count }, (_, i) =>
+      story(`n${i}`, i + 1, i < count - 1 ? `See #${i + 2}.` : 'See #1.'),
+    );
+
+    const result = buildGraphData(makeTree({ stories }));
+
+    expectSingleChain(result);
+    expect(result.edges.filter((e) => e.critical)).toHaveLength(count - 1);
+  });
+
+  it('ignores cross-repo refs, code, URL fragments and hex-like tokens when scanning #N', () => {
+    const target = story('t', 20, '');
+    const source = story(
+      's',
+      1,
+      [
+        'Upstream: octokit/rest.js#20 and https://example.com/page#20',
+        'Color: #20ab',
+        'Inline `#20` code.',
+        '```',
+        'fixes #20',
+        '```',
+        '~~~sh',
+        'echo #20',
+        '~~~',
+      ].join('\n'),
+    );
+
+    const result = buildGraphData(makeTree({ stories: [source, target] }));
+    expect(result.edges).toHaveLength(0);
+
+    const real = story('s', 1, '#20 at line start, and (#20).');
+    const result2 = buildGraphData(makeTree({ stories: [real, target] }));
+    expect(result2.edges).toEqual([
+      { source: 's', target: 't', label: 'references', critical: true },
+    ]);
+  });
+
+  it('resolves #N to the entity in the same repo when issue numbers collide', () => {
+    const local = story('local', 5, '', 'org/a');
+    const other = story('other', 5, '', 'org/b');
+    const source = story('src', 1, 'See #5.', 'org/a');
+    const foreign = story('foreign', 2, 'See #5.', 'org/c');
+
+    const result = buildGraphData(
+      makeTree({ stories: [other, local, source, foreign] }),
+    );
+    const refs = result.edges.filter((e) => e.label === 'references');
+    // `foreign` (org/c) matches neither candidate's repo, so no edge.
+    expect(refs.map((e) => `${e.source}->${e.target}`)).toEqual(['src->local']);
   });
 
   it('handles undefined sprints array (nullish coalescing)', () => {

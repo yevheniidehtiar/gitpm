@@ -2,7 +2,7 @@
 type: story
 id: XDbbOigUWenB
 title: "feat: add progress tracking (completion %) to milestones and epics"
-status: todo
+status: in_review
 priority: medium
 assignee: null
 labels:
@@ -17,8 +17,8 @@ github:
   repo: yevheniidehtiar/gitpm
   last_sync_hash: sha256:da2d36ac16494c4e674dc1b73e2b7cfc7917e7ab1d46549a13b90397a809993f
   synced_at: 2026-04-05T17:24:12.493Z
-created_at: 2026-04-05T09:49:45Z
-updated_at: 2026-04-05T09:49:45Z
+created_at: 2026-04-05T09:49:45.000Z
+updated_at: 2026-07-06T17:59:04.637Z
 ---
 
 ## Motivation
