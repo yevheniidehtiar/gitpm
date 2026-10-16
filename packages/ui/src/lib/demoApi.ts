@@ -114,8 +114,14 @@ function generateId(type: string): string {
 const DONE_STATUSES = new Set(['done', 'cancelled']);
 const ACTIVE_STATUSES = new Set(['in_progress', 'in_review']);
 
-function computeEntityEpicProgress(epic: Entity): EpicProgress {
-  const stories = epic.resolvedStories ?? [];
+// Stories are derived from the live `tree.stories` (mirroring core's resolver)
+// rather than `epic.resolvedStories`, which is a stale snapshot baked into
+// demo-data.json that demo PUT/POST/DELETE handlers never update.
+function computeEntityEpicProgress(
+  epic: Entity,
+  allStories: Entity[],
+): EpicProgress {
+  const stories = allStories.filter((s) => s.epic_ref?.id === epic.id);
   const total = stories.length;
   const done = stories.filter((s) => DONE_STATUSES.has(s.status ?? '')).length;
   const inProgress = stories.filter((s) =>
@@ -143,16 +149,15 @@ function computeEntityEpicProgress(epic: Entity): EpicProgress {
 function computeEntityMilestoneProgress(
   milestone: Entity,
   allEpics: Entity[],
+  allStories: Entity[],
 ): MilestoneProgress {
   // Do not read `milestone.resolvedEpics`: the resolver populates
   // `ResolvedMilestone.resolvedEpics` with raw `Epic[]` (no `resolvedStories`),
   // and that raw shape is what gets serialized into demo-data.json. Instead,
-  // mirror core: derive linked epics from `tree.epics`, which — as the
-  // already-resolved `Entity` shape served by `GET /tree` — carries
-  // `resolvedStories` on each epic.
+  // mirror core: derive linked epics from the live `tree.epics`.
   const epics = allEpics
     .filter((e) => e.milestone_ref?.id === milestone.id)
-    .map(computeEntityEpicProgress);
+    .map((e) => computeEntityEpicProgress(e, allStories));
   const total = epics.reduce((sum, e) => sum + e.total, 0);
   const done = epics.reduce((sum, e) => sum + e.done, 0);
   const blocked = epics.reduce((sum, e) => sum + e.blocked, 0);
@@ -178,11 +183,11 @@ function computeDemoProgress(tree: TreeResponse): ProjectProgress {
   );
 
   const milestones = tree.milestones.map((m) =>
-    computeEntityMilestoneProgress(m, tree.epics),
+    computeEntityMilestoneProgress(m, tree.epics, tree.stories),
   );
   const orphanEpics = tree.epics
     .filter((e) => !linkedEpicIds.has(e.id))
-    .map(computeEntityEpicProgress);
+    .map((e) => computeEntityEpicProgress(e, tree.stories));
 
   const allTotal =
     milestones.reduce((s, m) => s + m.total, 0) +

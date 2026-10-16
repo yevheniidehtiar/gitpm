@@ -86,6 +86,7 @@ export function useUpdateEntity() {
       }),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['tree'] });
+      qc.invalidateQueries({ queryKey: ['progress'] });
       qc.invalidateQueries({ queryKey: ['entity', vars.id] });
     },
   });
@@ -105,6 +106,7 @@ export function useCreateEntity() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tree'] });
+      qc.invalidateQueries({ queryKey: ['progress'] });
     },
   });
 }
@@ -116,6 +118,7 @@ export function useDeleteEntity() {
       fetchJson(`/entity/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tree'] });
+      qc.invalidateQueries({ queryKey: ['progress'] });
     },
   });
 }
@@ -260,6 +263,7 @@ export function useSyncPull() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['syncStatus'] });
       qc.invalidateQueries({ queryKey: ['tree'] });
+      qc.invalidateQueries({ queryKey: ['progress'] });
     },
   });
 }
@@ -275,6 +279,7 @@ export function useSync() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['syncStatus'] });
       qc.invalidateQueries({ queryKey: ['tree'] });
+      qc.invalidateQueries({ queryKey: ['progress'] });
     },
   });
 }
