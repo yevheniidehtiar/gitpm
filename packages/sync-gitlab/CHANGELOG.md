@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.10](https://github.com/yevheniidehtiar/gitpm/compare/sync-gitlab-v0.1.9...sync-gitlab-v0.1.10) (2026-10-16)
+
+
+### Bug Fixes
+
+* **sync:** stop corrupting write paths during pull/sync; add CLI integration tests ([#246](https://github.com/yevheniidehtiar/gitpm/issues/246)) ([460bc09](https://github.com/yevheniidehtiar/gitpm/commit/460bc0939e008eb54171f72f48193baf369254db))
+
 ## [0.1.9](https://github.com/yevheniidehtiar/gitpm/compare/sync-gitlab-v0.1.8...sync-gitlab-v0.1.9) (2026-04-26)
 
 
