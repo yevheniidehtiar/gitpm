@@ -22,13 +22,14 @@ export interface MilestoneProgress {
   epics: EpicProgress[];
   total: number;
   done: number;
+  blocked: number;
   progress: number; // 0–1
 }
 
 export interface ProjectProgress {
   milestones: MilestoneProgress[];
   orphanEpics: EpicProgress[];
-  overall: { total: number; done: number; progress: number };
+  overall: { total: number; done: number; blocked: number; progress: number };
 }
 
 const DONE_STATUSES = new Set(['done', 'cancelled']);
@@ -70,6 +71,7 @@ export function computeMilestoneProgress(
   const epics = linkedEpics.map(computeEpicProgress);
   const total = epics.reduce((sum, e) => sum + e.total, 0);
   const done = epics.reduce((sum, e) => sum + e.done, 0);
+  const blocked = epics.reduce((sum, e) => sum + e.blocked, 0);
 
   return {
     milestoneId: milestone.id,
@@ -78,6 +80,7 @@ export function computeMilestoneProgress(
     epics,
     total,
     done,
+    blocked,
     progress: total > 0 ? done / total : 0,
   };
 }
@@ -104,6 +107,9 @@ export function computeProjectProgress(tree: ResolvedTree): ProjectProgress {
   const allDone =
     milestones.reduce((s, m) => s + m.done, 0) +
     orphanEpics.reduce((s, e) => s + e.done, 0);
+  const allBlocked =
+    milestones.reduce((s, m) => s + m.blocked, 0) +
+    orphanEpics.reduce((s, e) => s + e.blocked, 0);
 
   return {
     milestones,
@@ -111,6 +117,7 @@ export function computeProjectProgress(tree: ResolvedTree): ProjectProgress {
     overall: {
       total: allTotal,
       done: allDone,
+      blocked: allBlocked,
       progress: allTotal > 0 ? allDone / allTotal : 0,
     },
   };

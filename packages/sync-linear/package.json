@@ -1,0 +1,42 @@
+{
+  "name": "@gitpm/sync-linear",
+  "version": "0.1.0",
+  "license": "MIT",
+  "description": "Linear sync adapter for gitpm — bidirectional sync between .meta/ and Linear Issues",
+  "keywords": [
+    "gitpm",
+    "linear",
+    "sync",
+    "issues",
+    "project-management"
+  ],
+  "homepage": "https://github.com/yevheniidehtiar/gitpm#readme",
+  "bugs": {
+    "url": "https://github.com/yevheniidehtiar/gitpm/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yevheniidehtiar/gitpm.git",
+    "directory": "packages/sync-linear"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup"
+  },
+  "dependencies": {
+    "@gitpm/core": "workspace:*",
+    "nanoid": "^5.0.8",
+    "yaml": "^2.6.0"
+  }
+}
