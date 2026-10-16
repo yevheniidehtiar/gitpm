@@ -13,6 +13,11 @@ epic_ref:
   id: 3xy8aacTSvZu
 created_at: 2026-10-16T21:51:40.859Z
 updated_at: 2026-10-16T21:51:40.859Z
+github:
+  issue_number: 263
+  repo: yevheniidehtiar/gitpm
+  last_sync_hash: sha256:5cf5da16faf4a65123199558891f58bd6c6783bd1a94fa02b040534fb2a63fa5
+  synced_at: 2026-10-16T21:52:47.883Z
 ---
 
 ## Why

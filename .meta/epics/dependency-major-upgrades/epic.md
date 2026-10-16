@@ -11,6 +11,11 @@ labels:
 milestone_ref: null
 created_at: 2026-10-16T21:51:21.847Z
 updated_at: 2026-10-16T21:51:21.847Z
+github:
+  issue_number: 259
+  repo: yevheniidehtiar/gitpm
+  last_sync_hash: sha256:74e59ba7676d56b9aed3e851d080050fc557bf7d7df284f29dd432a5ce8b3473
+  synced_at: 2026-10-16T21:52:45.265Z
 ---
 
 ## Goal
