@@ -20,7 +20,7 @@ jobs:
           #   type(optional-scope): description
           #   type!: description  (breaking change)
           #
-          # Allowed types match the release-please + CLAUDE.md convention table.
+          # Allowed types match the release-please + AGENTS.md convention table.
           PATTERN='^(feat|fix|chore|docs|refactor|test|ci|style|build|perf)(\([a-z0-9_-]+\))?!?: .+'
 
           if echo "$PR_TITLE" | grep -Eq "$PATTERN"; then

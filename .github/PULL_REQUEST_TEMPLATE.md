@@ -26,6 +26,11 @@ Example:
 - [ ] `bun run build`
 - [ ] `bun run test`
 
+## AI assistance
+
+- [ ] Parts of this PR were written with an AI agent (name it: )
+- [ ] I reviewed every line and ran `bun run lint && bun run build && bun run test` locally
+
 ## Related issues
 
 Closes #

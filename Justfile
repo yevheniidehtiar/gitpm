@@ -67,16 +67,5 @@ nuke:
     just install
     just build
 
-# ---------------------------------------------------------------------------
-# Release
-# ---------------------------------------------------------------------------
-
-# Publish all public packages to npm (requires npm auth)
-publish-all: build
-    cd packages/core         && npm publish --access public
-    cd packages/sync-github  && npm publish --access public
-    cd packages/sync-gitlab  && npm publish --access public
-    cd packages/sync-jira    && npm publish --access public
-    cd packages/sync-linear  && npm publish --access public
-    cd packages/cli          && npm publish --access public
-    cd packages/ui           && npm publish --access public
+# Releases are automated: release-please tags, release.yml publishes.
+# See AGENTS.md → "Releases". There is deliberately no manual publish recipe.

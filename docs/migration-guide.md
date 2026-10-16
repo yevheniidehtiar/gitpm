@@ -108,13 +108,29 @@ gitpm import --source gitlab --project mygroup/myproject --link-strategy native-
 
 ## From Jira
 
-Jira import follows the same pattern. After import, GitPM maps Jira workflow statuses to its standard status enum via the `workflow_mapping` in `.meta/sync/jira-config.yaml`.
+### Prerequisites
+
+- A Jira Cloud API token for a user who can read and transition issues in the project. Export it as `JIRA_TOKEN`.
+- Your site URL (for example `https://mycompany.atlassian.net`) and the project key (for example `PROJ`).
+- `@gitpm/sync-jira` installed next to `@gitpm/cli`.
+
+### Import
 
 ```bash
 export JIRA_TOKEN="your-api-token"
 gitpm import --source jira --project PROJ \
   --base-url https://mycompany.atlassian.net
 ```
+
+Issues of type Epic become epics. Issues linked to an epic become its stories under `.meta/epics/<epic>/stories/`. Everything else lands in `.meta/stories/`.
+
+### Map your workflow
+
+Jira workflows rarely match GitPM's six statuses out of the box. Edit `workflow_mapping` in `.meta/sync/jira-config.yaml` so every Jira status maps to one of `backlog`, `todo`, `in_progress`, `in_review`, `done` or `cancelled`. See [Jira Configuration](sync-guide.md#jira-configuration) in the sync guide for the full file.
+
+### Confluence pages
+
+There is no Confluence importer. Export requirement pages to Markdown and store them as `.meta/prds/<slug>/prd.md` so agents read them next to the code. [Adopting agentic coding alongside Jira and Confluence](adopting-agentic-coding.md) walks through this and through who should win sync conflicts.
 
 ---
 
@@ -200,11 +216,4 @@ This creates a clean `.meta/` tree with fresh sync state.
 
 ### Working with AI Agents
 
-One of GitPM's key use cases is providing project context to AI agents. After importing, agents can read the `.meta/` directory to understand:
-
-- What work is planned (roadmap, milestones)
-- What's in progress (epics, stories with status)
-- How work is organized (epic-story hierarchy)
-- What's been completed (done stories, closed milestones)
-
-This gives AI agents structured project context without needing API access to your issue tracker.
+After import, agents read `.meta/` for planned, in-progress and finished work without any tracker API access. Give them rules too. This repository's [`AGENTS.md`](../AGENTS.md) shows the shape (commands, verification gate, story lifecycle, boundaries), the [Agent Setup Guide](AGENT_SETUP_GUIDE.md) walks an agent through installing GitPM in your repo, and [Adopting agentic coding alongside Jira and Confluence](adopting-agentic-coding.md) covers the team-level trust model and sync strategy.
