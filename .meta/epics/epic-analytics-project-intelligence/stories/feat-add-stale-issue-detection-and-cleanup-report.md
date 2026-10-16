@@ -2,7 +2,7 @@
 type: story
 id: EWHnNnW4rAWN
 title: "feat: add stale issue detection and cleanup report"
-status: in_review
+status: done
 priority: medium
 assignee: null
 labels:
@@ -17,7 +17,7 @@ github:
   last_sync_hash: sha256:7d812418d7774c8753a539d3fc976b034ef2c71afcf258bb00cbdea0d9ebe7bf
   synced_at: 2026-10-16T21:52:52.076Z
 created_at: 2026-04-05T09:49:44.000Z
-updated_at: 2026-07-06T17:59:04.752Z
+updated_at: 2026-10-16T22:21:22.364Z
 ---
 
 ## Motivation

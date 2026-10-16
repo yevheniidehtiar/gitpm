@@ -2,7 +2,7 @@
 type: story
 id: F6g7j1oPthfW
 title: Add CLI tests for all commands
-status: in_review
+status: done
 priority: medium
 assignee: null
 labels:
@@ -17,7 +17,7 @@ github:
   last_sync_hash: sha256:2ea6c81b4896ad1fb118ec95814728465f31bf15d64b20198a53ee58948c92ab
   synced_at: 2026-10-16T21:52:53.019Z
 created_at: 2026-04-04T20:08:28.000Z
-updated_at: 2026-07-06T18:12:38.284Z
+updated_at: 2026-10-16T22:21:22.551Z
 ---
 
 Currently the CLI has 0 tests. Add Vitest tests for:

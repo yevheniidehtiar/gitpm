@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.11](https://github.com/yevheniidehtiar/gitpm/compare/ui-v0.1.10...ui-v0.1.11) (2026-10-16)
+
+
+### Features
+
+* **analytics:** blocked-count rollups, tree-browser progress bars, markdown audit report ([#243](https://github.com/yevheniidehtiar/gitpm/issues/243)) ([58ff4f7](https://github.com/yevheniidehtiar/gitpm/commit/58ff4f7dc0c2b27ed74e1507728bc1903d4553a8))
+* **graph:** body #N reference edges and critical-path highlighting ([#245](https://github.com/yevheniidehtiar/gitpm/issues/245)) ([9e6b894](https://github.com/yevheniidehtiar/gitpm/commit/9e6b894017697109a7b2b3d0bd62f6814770af9d))
+* **sprint:** interactive sprint plan command and points-based capacity tracking ([#244](https://github.com/yevheniidehtiar/gitpm/issues/244)) ([86c9e36](https://github.com/yevheniidehtiar/gitpm/commit/86c9e36c3df6b5ea16f5e6f543d8126faad4a976))
+
 ## [0.1.10](https://github.com/yevheniidehtiar/gitpm/compare/ui-v0.1.9...ui-v0.1.10) (2026-04-12)
 
 

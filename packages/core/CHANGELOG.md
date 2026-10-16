@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.13](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.12...core-v0.1.13) (2026-10-16)
+
+
+### Features
+
+* **analytics:** blocked-count rollups, tree-browser progress bars, markdown audit report ([#243](https://github.com/yevheniidehtiar/gitpm/issues/243)) ([58ff4f7](https://github.com/yevheniidehtiar/gitpm/commit/58ff4f7dc0c2b27ed74e1507728bc1903d4553a8))
+* **graph:** body #N reference edges and critical-path highlighting ([#245](https://github.com/yevheniidehtiar/gitpm/issues/245)) ([9e6b894](https://github.com/yevheniidehtiar/gitpm/commit/9e6b894017697109a7b2b3d0bd62f6814770af9d))
+* **sync-linear:** add Linear integration adapter ([#241](https://github.com/yevheniidehtiar/gitpm/issues/241)) ([8e9b7e4](https://github.com/yevheniidehtiar/gitpm/commit/8e9b7e42ae126a557e953f2692f54558caf1cf04))
+
 ## [0.1.12](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.11...core-v0.1.12) (2026-04-26)
 
 
