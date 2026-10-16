@@ -370,4 +370,4 @@ Keys are sorted alphabetically and whitespace is normalized, ensuring stable has
 | `GITHUB_TOKEN` | GitHub | Personal access token with `repo` scope |
 | `GITLAB_TOKEN` | GitLab | Personal access token with `api` scope |
 | `JIRA_TOKEN` | Jira | API token from [Atlassian account settings](https://id.atlassian.com/manage-profile/security/api-tokens) |
-| `LINEAR_API_KEY` | Linear | Personal API key from Linear **Settings → Security & access**. Not read automatically: pass it with `--token "$LINEAR_API_KEY"` |
+| `LINEAR_API_KEY` | Linear | Personal API key from Linear **Settings → Security & access**. Read automatically by the Linear adapter; `--api-key` overrides it |
