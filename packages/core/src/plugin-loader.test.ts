@@ -58,6 +58,20 @@ describe('GitpmConfig schema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('accepts a config that sets only some hook events', () => {
+    const result = gitpmConfigSchema.safeParse({
+      hooks: { 'post-sync': './scripts/notify.ts' },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects unknown hook events', () => {
+    const result = gitpmConfigSchema.safeParse({
+      hooks: { 'on-coffee': './scripts/brew.ts' },
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('applies defaults for empty object', () => {
     const result = gitpmConfigSchema.safeParse({});
     expect(result.success).toBe(true);

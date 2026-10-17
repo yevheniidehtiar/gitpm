@@ -32,7 +32,7 @@ export async function loadQualityConfig(
       return {
         ok: false,
         error: new Error(
-          `Invalid quality config at ${configPath}: ${result.error.message}`,
+          `Invalid quality config at ${configPath}: ${z.prettifyError(result.error)}`,
         ),
       };
     }

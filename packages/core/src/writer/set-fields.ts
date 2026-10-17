@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { Result } from '../schemas/common.js';
 import type { ParsedEntity } from '../schemas/index.js';
 import {
@@ -196,7 +197,9 @@ export function applyAssignments(
       if (!result.success) {
         return {
           ok: false,
-          error: new Error(`Validation failed: ${result.error.message}`),
+          error: new Error(
+            `Validation failed: ${z.prettifyError(result.error)}`,
+          ),
         };
       }
       return { ok: true, value: result.data };
@@ -206,7 +209,9 @@ export function applyAssignments(
       if (!result.success) {
         return {
           ok: false,
-          error: new Error(`Validation failed: ${result.error.message}`),
+          error: new Error(
+            `Validation failed: ${z.prettifyError(result.error)}`,
+          ),
         };
       }
       return { ok: true, value: result.data };
@@ -216,7 +221,9 @@ export function applyAssignments(
       if (!result.success) {
         return {
           ok: false,
-          error: new Error(`Validation failed: ${result.error.message}`),
+          error: new Error(
+            `Validation failed: ${z.prettifyError(result.error)}`,
+          ),
         };
       }
       return { ok: true, value: result.data };
@@ -226,7 +233,9 @@ export function applyAssignments(
       if (!result.success) {
         return {
           ok: false,
-          error: new Error(`Validation failed: ${result.error.message}`),
+          error: new Error(
+            `Validation failed: ${z.prettifyError(result.error)}`,
+          ),
         };
       }
       return { ok: true, value: result.data };
@@ -236,7 +245,9 @@ export function applyAssignments(
       if (!result.success) {
         return {
           ok: false,
-          error: new Error(`Validation failed: ${result.error.message}`),
+          error: new Error(
+            `Validation failed: ${z.prettifyError(result.error)}`,
+          ),
         };
       }
       return { ok: true, value: result.data };
