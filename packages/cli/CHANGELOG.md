@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.13](https://github.com/yevheniidehtiar/gitpm/compare/cli-v0.1.12...cli-v0.1.13) (2026-10-17)
+
+
+### Bug Fixes
+
+* **cli:** upgrade to commander 15 and require Node 22.12+ ([#276](https://github.com/yevheniidehtiar/gitpm/issues/276)) ([03c02be](https://github.com/yevheniidehtiar/gitpm/commit/03c02bebc4a33351842aa3d772c925546b212115))
+
 ## [0.1.12](https://github.com/yevheniidehtiar/gitpm/compare/cli-v0.1.11...cli-v0.1.12) (2026-10-16)
 
 

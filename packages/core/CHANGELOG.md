@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.14](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.13...core-v0.1.14) (2026-10-17)
+
+
+### Bug Fixes
+
+* migrate core and sync-github to zod 4 ([#274](https://github.com/yevheniidehtiar/gitpm/issues/274)) ([922bdab](https://github.com/yevheniidehtiar/gitpm/commit/922bdababf8064658ce2b500094c638d08e80a63))
+
 ## [0.1.13](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.12...core-v0.1.13) (2026-10-16)
 
 

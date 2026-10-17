@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.12](https://github.com/yevheniidehtiar/gitpm/compare/ui-v0.1.11...ui-v0.1.12) (2026-10-17)
+
+
+### Features
+
+* **ui:** upgrade @hono/node-server to 2.1.5 ([#279](https://github.com/yevheniidehtiar/gitpm/issues/279)) ([563d064](https://github.com/yevheniidehtiar/gitpm/commit/563d064f7c27bbbef2b2ce11ba48d95ca0b746c0))
+
+
+### Bug Fixes
+
+* **ui:** use unique React keys for breadcrumbs ([#277](https://github.com/yevheniidehtiar/gitpm/issues/277)) ([11c354f](https://github.com/yevheniidehtiar/gitpm/commit/11c354f04d21dc1e748b8e1fe9b9a72b463f03bf))
+
 ## [0.1.11](https://github.com/yevheniidehtiar/gitpm/compare/ui-v0.1.10...ui-v0.1.11) (2026-10-16)
 
 
