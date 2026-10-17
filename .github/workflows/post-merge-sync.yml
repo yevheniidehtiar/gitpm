@@ -21,6 +21,7 @@ on:
 permissions:
   contents: write
   issues: write
+  pull-requests: write
 
 jobs:
   sync-to-github:
@@ -28,8 +29,12 @@ jobs:
     runs-on: ubuntu-latest
     # workflow_dispatch lets the UI pick any branch, but the writeback step
     # below pushes to master — guard against a misclick that would overwrite
-    # master with a feature branch's .meta/ state.
-    if: github.ref == 'refs/heads/master'
+    # master with a feature branch's .meta/ state. Also skip the merge of our
+    # own writeback PR (its squash commit keeps the PR title) so the sync
+    # never loops on itself.
+    if: >-
+      github.ref == 'refs/heads/master' &&
+      !startsWith(github.event.head_commit.message, 'chore(pm): persist GitHub sync metadata')
     steps:
       - uses: actions/checkout@v4
 
@@ -53,14 +58,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Persist sync writebacks (github.issue_number on entities,
-      # .meta/sync/github-state.json) to a dedicated snapshot branch.
-      # Master branch protection blocks direct bot pushes (PR + signed
-      # commits required), so this branch is the side-channel record of
-      # the latest sync state — maintainers can cherry-pick or open a PR
-      # from it when reconciliation is needed. PR validation
+      # .meta/sync/github-state.json) through a PR. Master branch protection
+      # blocks direct bot pushes (PR + signed commits required), so the bot
+      # force-pushes a dedicated branch and opens, or refreshes, one PR from
+      # it for a maintainer to squash-merge. PR validation
       # (`pr-validation.yml`) and the pre-push hook (`.githooks/pre-push`)
-      # block stale `.meta/` from reaching master in the first place.
-      - name: Snapshot sync writebacks
+      # still block unsynced new entities from reaching master.
+      #
+      # Needs "Allow GitHub Actions to create and approve pull requests"
+      # enabled in the repository's Actions settings. PRs opened with
+      # GITHUB_TOKEN do not trigger other workflows, so required checks do
+      # not run on the writeback PR.
+      - name: Open PR with sync writebacks
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: chore/sync-state-snapshot
+          TITLE: 'chore(pm): persist GitHub sync metadata'
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
@@ -69,5 +82,12 @@ jobs:
             echo "No sync writebacks to commit."
             exit 0
           fi
-          git commit -m "chore(pm): persist GitHub sync metadata"
-          git push -f origin HEAD:chore/sync-state-snapshot
+          git commit -m "$TITLE"
+          git push -f origin "HEAD:$BRANCH"
+          EXISTING=$(gh pr list --head "$BRANCH" --base master --state open --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            echo "Refreshed existing writeback PR #$EXISTING."
+            exit 0
+          fi
+          gh pr create --base master --head "$BRANCH" --title "$TITLE" \
+            --body "Automated by post-merge-sync.yml after $GITHUB_SHA. Persists the github.* sync blocks and .meta/sync/github-state.json written by gitpm push. Merge it before the next .meta/ change lands so synced entities keep their issue numbers."
