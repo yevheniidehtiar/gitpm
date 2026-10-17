@@ -26,6 +26,9 @@
     "directory": "packages/cli"
   },
   "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "bin": {
     "gitpm": "./dist/index.js"
   },
@@ -39,7 +42,7 @@
     "@gitpm/core": "workspace:*",
     "@inquirer/prompts": "^8.3.2",
     "chalk": "^5.3.0",
-    "commander": "^14.0.3",
+    "commander": "^15.0.0",
     "ora": "^9.3.0"
   },
   "peerDependencies": {

@@ -4,7 +4,7 @@
 
 ## Prerequisites
 
-- Node.js 20+ (Bun also works)
+- Node.js 22.12+ (Bun also works)
 - A token for the tracker with read and write access to issues. GitHub reads `GITHUB_TOKEN` or `gh auth token`; GitLab and Jira take `--token`.
 - A Git repository to hold `.meta/`
 
