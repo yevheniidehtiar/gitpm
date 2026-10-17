@@ -2,7 +2,7 @@
 type: story
 id: gZqoT27kxWyx
 title: Add test coverage for packages/sync-github to 100%
-status: in_review
+status: done
 priority: high
 assignee: null
 labels:
@@ -11,12 +11,12 @@ labels:
 estimate: null
 epic_ref:
   id: xGG0RMogvzyo
-created_at: 2026-04-12T19:34:57.917Z
-updated_at: 2026-04-19T12:50:08.430Z
 github:
   issue_number: 167
   repo: yevheniidehtiar/gitpm
   synced_at: 2026-04-12T19:33:41.549Z
+created_at: 2026-04-12T19:34:57.917Z
+updated_at: 2026-10-17T12:39:19.675Z
 ---
 
 ## Objective

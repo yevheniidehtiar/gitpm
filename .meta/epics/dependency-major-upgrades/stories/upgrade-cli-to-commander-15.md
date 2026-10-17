@@ -2,7 +2,7 @@
 type: story
 id: Bjw4u-hEDjqh
 title: Upgrade CLI to commander 15
-status: in_review
+status: done
 priority: medium
 assignee: null
 labels:
@@ -17,7 +17,7 @@ github:
   last_sync_hash: sha256:7b68da777ef052e1affea3ec6c2a8fa4860f14254d1c4b3d8212000f4f0af941
   synced_at: 2026-10-17T11:20:18.504Z
 created_at: 2026-10-16T21:51:41.391Z
-updated_at: 2026-10-17T07:30:32.155Z
+updated_at: 2026-10-17T12:39:18.074Z
 ---
 
 ## Why

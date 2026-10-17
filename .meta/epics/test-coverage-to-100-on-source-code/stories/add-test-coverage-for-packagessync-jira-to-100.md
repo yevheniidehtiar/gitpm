@@ -2,7 +2,7 @@
 type: story
 id: SuODAY7F_oap
 title: Add test coverage for packages/sync-jira to 100%
-status: in_review
+status: done
 priority: high
 assignee: null
 labels:
@@ -11,12 +11,12 @@ labels:
 estimate: null
 epic_ref:
   id: xGG0RMogvzyo
-created_at: 2026-04-12T19:35:03.249Z
-updated_at: 2026-04-19T12:52:40.695Z
 github:
   issue_number: 169
   repo: yevheniidehtiar/gitpm
   synced_at: 2026-04-12T19:33:41.549Z
+created_at: 2026-04-12T19:35:03.249Z
+updated_at: 2026-10-17T12:39:20.183Z
 ---
 
 ## Objective
