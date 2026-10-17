@@ -13,6 +13,11 @@ epic_ref:
   id: KVvXwhgJEyic
 created_at: 2026-10-17T08:22:43.489Z
 updated_at: 2026-10-17T08:36:03.044Z
+github:
+  issue_number: 288
+  repo: yevheniidehtiar/gitpm
+  last_sync_hash: sha256:2732f8ca5aa164d014abc4c59107f70d1f01fd3a0e204e07fdfc26b002610578
+  synced_at: 2026-10-17T11:20:25.415Z
 ---
 
 Create the `@gitpm/sync-bitbucket` package (tsup build, vitest, release-please component) with a typed Bitbucket Cloud REST 2.0 client:

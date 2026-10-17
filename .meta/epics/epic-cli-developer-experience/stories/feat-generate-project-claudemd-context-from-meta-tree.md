@@ -14,8 +14,8 @@ epic_ref:
 github:
   issue_number: 46
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:05f30d4d30824fbc2f33414458de02e78ba967ac2d480acb0f4ea4381ca2b525
-  synced_at: 2026-10-16T21:52:53.875Z
+  last_sync_hash: sha256:29e1d710690edfe4b18f605bc7b32fc91eaf66ff9a5382941ef86e44e8e04c35
+  synced_at: 2026-10-17T11:20:27.405Z
 created_at: 2026-04-05T09:49:47.000Z
 updated_at: 2026-10-16T22:21:22.723Z
 ---

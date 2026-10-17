@@ -11,6 +11,11 @@ milestone_ref:
   id: lFNL-hn79Edx
 created_at: 2026-10-17T08:22:26.498Z
 updated_at: 2026-10-17T08:22:26.498Z
+github:
+  issue_number: 282
+  repo: yevheniidehtiar/gitpm
+  last_sync_hash: sha256:654d333fe2f0bd1d3e958c97c78455b96c5dea03f27a4b92593789d8973db878
+  synced_at: 2026-10-17T11:20:17.206Z
 ---
 
 ## Overview
