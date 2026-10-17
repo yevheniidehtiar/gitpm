@@ -2,7 +2,7 @@
 type: story
 id: OKEVLH7e5TsM
 title: Migrate schemas from zod 3 to zod 4
-status: in_review
+status: done
 priority: high
 assignee: null
 labels:
@@ -17,7 +17,7 @@ github:
   last_sync_hash: sha256:56ea4c53e98f89d115c66edcbf1e0a3e0bf5ba5de384a0767d91c3732e960885
   synced_at: 2026-10-16T21:52:45.895Z
 created_at: 2026-10-16T21:51:40.335Z
-updated_at: 2026-10-17T07:23:24.356Z
+updated_at: 2026-10-17T11:21:49.212Z
 ---
 
 ## Why

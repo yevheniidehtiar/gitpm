@@ -2,7 +2,7 @@
 type: story
 id: ZYZuAg-b_4Tj
 title: Scaffold @gitpm/sync-bitbucket package and REST API client
-status: in_review
+status: done
 priority: high
 assignee: null
 labels:
@@ -12,7 +12,7 @@ estimate: 3
 epic_ref:
   id: KVvXwhgJEyic
 created_at: 2026-10-17T08:22:43.489Z
-updated_at: 2026-10-17T08:36:03.044Z
+updated_at: 2026-10-17T11:21:50.228Z
 ---
 
 Create the `@gitpm/sync-bitbucket` package (tsup build, vitest, release-please component) with a typed Bitbucket Cloud REST 2.0 client:

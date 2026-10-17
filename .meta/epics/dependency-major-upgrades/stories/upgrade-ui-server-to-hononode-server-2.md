@@ -2,7 +2,7 @@
 type: story
 id: YSpP2PWYVvU9
 title: Upgrade UI server to @hono/node-server 2
-status: in_review
+status: done
 priority: medium
 assignee: null
 labels:
@@ -18,7 +18,7 @@ github:
   last_sync_hash: sha256:b02957d626d1fec7c9b80e56776c801c99a2afe033e33a850cf4358f89641c18
   synced_at: 2026-10-16T21:52:47.331Z
 created_at: 2026-10-16T21:51:41.876Z
-updated_at: 2026-10-17T08:26:08.771Z
+updated_at: 2026-10-17T11:21:49.721Z
 ---
 
 ## Why
