@@ -2,7 +2,7 @@
 type: story
 id: Bjw4u-hEDjqh
 title: Upgrade CLI to commander 15
-status: todo
+status: in_review
 priority: medium
 assignee: null
 labels:
@@ -11,13 +11,13 @@ labels:
 estimate: null
 epic_ref:
   id: 3xy8aacTSvZu
-created_at: 2026-10-16T21:51:41.391Z
-updated_at: 2026-10-16T21:51:41.391Z
 github:
   issue_number: 261
   repo: yevheniidehtiar/gitpm
   last_sync_hash: sha256:3f41ae5cce1eceefdf3470d39b58af33618ec1d4f03bd4be1ca45a6c1fc1a390
   synced_at: 2026-10-16T21:52:46.701Z
+created_at: 2026-10-16T21:51:41.391Z
+updated_at: 2026-10-17T07:30:32.155Z
 ---
 
 ## Why
