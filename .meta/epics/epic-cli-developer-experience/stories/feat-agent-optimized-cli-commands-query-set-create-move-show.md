@@ -14,6 +14,7 @@ epic_ref:
 github:
   issue_number: 131
   repo: yevheniidehtiar/gitpm
+  synced_at: 2026-04-12T19:33:41.549Z
 created_at: 2026-04-12T10:52:54.936Z
 updated_at: 2026-04-12T10:52:54.936Z
 ---
