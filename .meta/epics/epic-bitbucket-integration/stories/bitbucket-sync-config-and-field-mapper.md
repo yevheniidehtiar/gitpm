@@ -13,6 +13,11 @@ epic_ref:
   id: KVvXwhgJEyic
 created_at: 2026-10-17T08:22:43.848Z
 updated_at: 2026-10-17T08:22:43.848Z
+github:
+  issue_number: 284
+  repo: yevheniidehtiar/gitpm
+  last_sync_hash: sha256:4ed1f8fdfff1b9d63e8bb9cf375cefb4108d4076c5534a7d48a293826df9d60f
+  synced_at: 2026-10-17T11:20:23.343Z
 ---
 
 Add `.meta/sync/bitbucket-config.yaml` (zod schema) and `mapper.ts`:

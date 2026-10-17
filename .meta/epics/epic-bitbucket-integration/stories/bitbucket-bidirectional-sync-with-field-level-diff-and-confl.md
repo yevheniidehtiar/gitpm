@@ -13,6 +13,11 @@ epic_ref:
   id: KVvXwhgJEyic
 created_at: 2026-10-17T08:22:45.310Z
 updated_at: 2026-10-17T08:22:45.310Z
+github:
+  issue_number: 283
+  repo: yevheniidehtiar/gitpm
+  last_sync_hash: sha256:37af1e2424feb64604939995daab242a8f3fdbd96a97a051ae5ac308f86b53a8
+  synced_at: 2026-10-17T11:20:22.764Z
 ---
 
 `gitpm sync` / `pull` for Bitbucket:

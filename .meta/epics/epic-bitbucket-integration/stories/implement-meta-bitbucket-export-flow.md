@@ -13,6 +13,11 @@ epic_ref:
   id: KVvXwhgJEyic
 created_at: 2026-10-17T08:22:44.682Z
 updated_at: 2026-10-17T08:22:44.682Z
+github:
+  issue_number: 287
+  repo: yevheniidehtiar/gitpm
+  last_sync_hash: sha256:a7c6aa4a171b24ede7780b8ea1039aef3e956924dcb49ae85e7cd9b5c5771b09
+  synced_at: 2026-10-17T11:20:25.054Z
 ---
 
 `gitpm push` for the Bitbucket adapter:
