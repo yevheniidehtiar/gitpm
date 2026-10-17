@@ -60,6 +60,25 @@ type: story
     expect(result.ok).toBe(false);
   });
 
+  it('reports validation errors as readable text with the field path', () => {
+    const content = `---
+type: story
+id: "s1"
+title: "S"
+status: wat
+priority: high
+---`;
+    const result = parseFileContent(content, '/test/bad-status.md');
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain(
+      'Validation failed for story in /test/bad-status.md',
+    );
+    expect(result.error.message).toContain('Invalid option');
+    expect(result.error.message).toContain('→ at status');
+    expect(result.error.message).not.toContain('"code"');
+  });
+
   it('returns error for YAML file that parses to a non-object', () => {
     const result = parseFileContent('42', '/test/scalar.yaml');
     expect(result.ok).toBe(false);

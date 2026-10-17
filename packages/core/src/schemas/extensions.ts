@@ -48,7 +48,7 @@ export async function loadSchemaExtensions(
       return {
         ok: false,
         error: new Error(
-          `Invalid schema extensions in ${filePath}: ${validated.error.message}`,
+          `Invalid schema extensions in ${filePath}: ${z.prettifyError(validated.error)}`,
         ),
       };
     }
@@ -84,10 +84,10 @@ export function buildExtensionFields(
     return null;
   }
 
-  const shape: z.ZodRawShape = {};
+  const shape: Record<string, z.ZodType> = {};
 
   for (const [fieldName, fieldDef] of Object.entries(entityExt.fields)) {
-    let fieldSchema: z.ZodTypeAny;
+    let fieldSchema: z.ZodType;
 
     switch (fieldDef.type) {
       case 'string': {
@@ -128,7 +128,7 @@ export function buildExtensionFields(
 
 /**
  * Extend a base Zod object schema with custom fields from extensions.
- * Uses passthrough() to preserve unknown fields during parsing.
+ * Uses loose() to preserve unknown fields during parsing.
  */
 export function extendEntitySchema<T extends z.ZodRawShape>(
   baseSchema: z.ZodObject<T>,
@@ -138,12 +138,10 @@ export function extendEntitySchema<T extends z.ZodRawShape>(
   const customFields = buildExtensionFields(extensions, entityType);
 
   if (!customFields) {
-    // No extensions for this entity type — use passthrough to preserve any extra fields
-    return baseSchema.passthrough() as unknown as z.ZodObject<T>;
+    // No extensions for this entity type — use loose() to preserve any extra fields
+    return baseSchema.loose() as unknown as z.ZodObject<T>;
   }
 
-  // Extend schema with custom fields and use passthrough for any other extras
-  return baseSchema
-    .extend(customFields)
-    .passthrough() as unknown as z.ZodObject<T>;
+  // Extend schema with custom fields and use loose() for any other extras
+  return baseSchema.extend(customFields).loose() as unknown as z.ZodObject<T>;
 }

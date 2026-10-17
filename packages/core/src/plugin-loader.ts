@@ -1,6 +1,7 @@
 import { access, readdir, readFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { z } from 'zod';
 import type {
   ExportResult,
   ImportResult,
@@ -49,7 +50,7 @@ export async function loadGitpmConfig(
           return {
             ok: false,
             error: new Error(
-              `Invalid config in ${configPath}: ${validated.error.message}`,
+              `Invalid config in ${configPath}: ${z.prettifyError(validated.error)}`,
             ),
           };
         }
@@ -64,7 +65,7 @@ export async function loadGitpmConfig(
         return {
           ok: false,
           error: new Error(
-            `Invalid config in ${configPath}: ${validated.error.message}`,
+            `Invalid config in ${configPath}: ${z.prettifyError(validated.error)}`,
           ),
         };
       }

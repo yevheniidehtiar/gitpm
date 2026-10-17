@@ -22,7 +22,7 @@ export const gitpmConfigSchema = z.object({
       '@gitpm/sync-linear',
     ]),
   hooks: z
-    .record(hookEventSchema, z.union([z.string(), z.array(z.string())]))
+    .partialRecord(hookEventSchema, z.union([z.string(), z.array(z.string())]))
     .default({}),
 });
 

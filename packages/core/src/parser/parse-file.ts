@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import matter from 'gray-matter';
 import YAML from 'yaml';
+import { z } from 'zod';
 import type { Result } from '../schemas/common.js';
 import type { SchemaExtensions } from '../schemas/extensions.js';
 import { extendEntitySchema } from '../schemas/extensions.js';
@@ -147,7 +148,7 @@ function parseEntityData(
     return {
       ok: false,
       error: new Error(
-        `Validation failed for ${type} in ${filePath}: ${result.error.message}`,
+        `Validation failed for ${type} in ${filePath}: ${z.prettifyError(result.error)}`,
       ),
     };
   }
