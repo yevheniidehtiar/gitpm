@@ -8,7 +8,7 @@ Thank you for your interest in contributing to GitPM! This guide will help you g
 
 - [Bun](https://bun.sh/) (latest stable version)
 - [Git](https://git-scm.com/)
-- Node.js 20+ (for build matrix compatibility)
+- Node.js 22.12+ (the build matrix tests Node 22 and 24)
 
 ### Getting Started
 

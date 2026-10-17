@@ -11,7 +11,7 @@ If you want an AI agent to do the setup for you, point it at the [agent setup gu
 
 ## Prerequisites
 
-- Node.js 20 or newer (Bun works too)
+- Node.js 22.12 or newer (Bun works too)
 - A Git repository that will hold `.meta/`
 - Optional: an access token for your tracker with read and write access to issues
 
