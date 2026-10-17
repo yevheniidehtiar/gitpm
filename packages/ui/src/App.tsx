@@ -193,7 +193,7 @@ function TopBar() {
     <header className="h-12 bg-white border-b border-gray-200 flex items-center px-4 justify-between">
       <div className="flex items-center gap-1 text-sm text-gray-600">
         {breadcrumbs.map((b, i) => (
-          <span key={b.to}>
+          <span key={b.label}>
             {i > 0 && <span className="mx-1 text-gray-300">/</span>}
             <Link to={b.to} className="hover:text-gray-900">
               {b.label}
