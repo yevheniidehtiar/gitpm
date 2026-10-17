@@ -52,6 +52,13 @@
         "@types/node": "^26.6.5",
       },
     },
+    "packages/sync-bitbucket": {
+      "name": "@gitpm/sync-bitbucket",
+      "version": "0.1.0",
+      "dependencies": {
+        "@gitpm/core": "workspace:*",
+      },
+    },
     "packages/sync-github": {
       "name": "@gitpm/sync-github",
       "version": "0.1.10",
@@ -208,6 +215,8 @@
     "@gitpm/cli": ["@gitpm/cli@workspace:packages/cli"],
 
     "@gitpm/core": ["@gitpm/core@workspace:packages/core"],
+
+    "@gitpm/sync-bitbucket": ["@gitpm/sync-bitbucket@workspace:packages/sync-bitbucket"],
 
     "@gitpm/sync-github": ["@gitpm/sync-github@workspace:packages/sync-github"],
 

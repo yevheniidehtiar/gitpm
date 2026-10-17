@@ -1,0 +1,23 @@
+{
+  "pagelen": 2,
+  "size": 3,
+  "page": 2,
+  "values": [
+    {
+      "id": 3,
+      "title": "Crash on empty cart",
+      "content": { "raw": "", "markup": "markdown" },
+      "state": "resolved",
+      "kind": "bug",
+      "priority": "blocker",
+      "assignee": null,
+      "reporter": null,
+      "milestone": null,
+      "component": null,
+      "version": null,
+      "votes": 0,
+      "created_on": "2026-09-04T10:00:00.000000+00:00",
+      "updated_on": "2026-09-05T10:00:00.000000+00:00"
+    }
+  ]
+}
