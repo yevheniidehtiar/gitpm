@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.11](https://github.com/yevheniidehtiar/gitpm/compare/sync-github-v0.1.10...sync-github-v0.1.11) (2026-10-17)
+
+
+### Bug Fixes
+
+* migrate core and sync-github to zod 4 ([#274](https://github.com/yevheniidehtiar/gitpm/issues/274)) ([922bdab](https://github.com/yevheniidehtiar/gitpm/commit/922bdababf8064658ce2b500094c638d08e80a63))
+
 ## [0.1.10](https://github.com/yevheniidehtiar/gitpm/compare/sync-github-v0.1.9...sync-github-v0.1.10) (2026-10-16)
 
 

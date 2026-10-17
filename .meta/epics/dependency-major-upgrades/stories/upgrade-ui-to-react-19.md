@@ -2,7 +2,7 @@
 type: story
 id: Y3F85ULIFfUy
 title: Upgrade UI to React 19
-status: in_review
+status: done
 priority: medium
 assignee: null
 labels:
@@ -17,7 +17,7 @@ github:
   last_sync_hash: sha256:cdc11476a205744b9e91cf8bd76bac45f02e2101f1207d6713e35e5b49dea3b4
   synced_at: 2026-10-17T11:20:19.794Z
 created_at: 2026-10-16T21:51:40.859Z
-updated_at: 2026-10-17T07:44:06.757Z
+updated_at: 2026-10-17T12:39:18.608Z
 ---
 
 ## Why

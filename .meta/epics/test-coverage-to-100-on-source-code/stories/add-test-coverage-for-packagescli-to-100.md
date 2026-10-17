@@ -2,7 +2,7 @@
 type: story
 id: U6BKvIRC58Dp
 title: Add test coverage for packages/cli to 100%
-status: in_review
+status: done
 priority: high
 assignee: null
 labels:
@@ -11,12 +11,12 @@ labels:
 estimate: null
 epic_ref:
   id: xGG0RMogvzyo
-created_at: 2026-04-12T19:35:05.843Z
-updated_at: 2026-04-19T12:45:55.337Z
 github:
   issue_number: 165
   repo: yevheniidehtiar/gitpm
   synced_at: 2026-04-12T19:33:41.549Z
+created_at: 2026-04-12T19:35:05.843Z
+updated_at: 2026-10-17T12:39:19.145Z
 ---
 
 ## Objective
