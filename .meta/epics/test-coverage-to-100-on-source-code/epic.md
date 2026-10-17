@@ -14,6 +14,7 @@ updated_at: 2026-04-12T19:33:41.549Z
 github:
   issue_number: 164
   repo: yevheniidehtiar/gitpm
+  synced_at: 2026-04-12T19:33:41.549Z
 ---
 
 ## Goal
