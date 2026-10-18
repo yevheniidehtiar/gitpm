@@ -15,7 +15,7 @@ GitPM's CLI has 19 commands for editing your `.meta/` project tree, syncing with
 | Tree | `move` | Move a story between epics or to standalone |
 | Tree | `archive` | Move done or cancelled entities older than N days to `.meta/archive/` |
 | Tree | `commit` | Commit all `.meta/` changes atomically |
-| Sync | `import` | Import project data from GitHub, GitLab or Jira into `.meta/` |
+| Sync | `import` | Import project data from GitHub, GitLab, Jira, Linear or Bitbucket into `.meta/` |
 | Sync | `push` | Push local `.meta/` changes to the remote platform |
 | Sync | `pull` | Pull remote changes into local `.meta/` |
 | Sync | `sync` | Bidirectional sync with conflict resolution |
@@ -33,7 +33,7 @@ These options apply to all commands:
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--meta-dir <path>` | Path to the `.meta/` directory | `.meta` |
-| `--token <token>` | Personal access token (GitHub or GitLab) | (auto-resolved) |
+| `--token <token>` | Access token for the active adapter | (auto-resolved) |
 | `--version` | Print version | |
 | `--help` | Print help | |
 
@@ -51,8 +51,11 @@ Credentials are resolved per adapter, in priority order:
 | `gitlab` | `GITLAB_TOKEN` | | |
 | `jira` | `JIRA_TOKEN` | `JIRA_EMAIL` | |
 | `linear` | `--api-key` or `LINEAR_API_KEY` | | |
+| `bitbucket` | `BITBUCKET_TOKEN` | `BITBUCKET_EMAIL` | |
 
 An adapter never receives another adapter's token. If no token is found, the adapter exits with an error message.
+
+For Bitbucket, setting `BITBUCKET_EMAIL` makes the token an Atlassian API token sent with HTTP Basic auth. Without it, the token is sent as a Bearer workspace or repository access token. See [Bitbucket authentication](sync-guide.md#authentication).
 
 ---
 
@@ -148,7 +151,7 @@ Validation failed with 2 error(s) and 1 warning(s)
 
 ## `gitpm import`
 
-Import project data from GitHub or GitLab into `.meta/` files.
+Import project data from GitHub, GitLab, Jira, Linear or Bitbucket into `.meta/` files.
 
 ```
 gitpm import [options]
@@ -158,12 +161,15 @@ gitpm import [options]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--source <source>` | Source platform: `github` or `gitlab` | `github` |
-| `--repo <owner/repo>` | GitHub repository (required for GitHub) | |
-| `--project <value>` | GitHub Project number or GitLab project path | |
-| `--token <token>` | Personal access token | (auto-resolved) |
-| `--base-url <url>` | GitLab base URL | `https://gitlab.com` |
-| `--link-strategy <strategy>` | Epic-story linkage strategy | `all` |
+| `--source <source>` | Source platform: `github`, `gitlab`, `jira`, `linear` or `bitbucket` | `github` |
+| `--repo <owner/repo>` | GitHub repository (required for GitHub), or Bitbucket `workspace/repo_slug` | |
+| `--project <value>` | GitHub Project number, GitLab project path, or Bitbucket `workspace/repo_slug` | |
+| `--token <token>` | Access token | (auto-resolved) |
+| `--base-url <url>` | GitLab base URL, or Bitbucket API URL | `https://gitlab.com`, `https://api.bitbucket.org/2.0` |
+| `--link-strategy <strategy>` | Epic-story linkage strategy (GitHub and GitLab) | `all` |
+| `--adapter <name>` | Force a specific adapter by name, instead of `--source` | |
+
+Bitbucket links stories to epics through `epic_linkage` in `.meta/sync/bitbucket-config.yaml`, not `--link-strategy`. See [Epic linkage](sync-guide.md#epic-linkage).
 
 **Link strategies (GitHub):**
 
@@ -201,6 +207,9 @@ gitpm import --source gitlab --project mygroup/myproject
 gitpm import --source gitlab --project mygroup/myproject \
   --base-url https://gitlab.mycompany.com --token glpat-...
 
+# Import from Bitbucket Cloud (reads BITBUCKET_TOKEN and BITBUCKET_EMAIL)
+gitpm import --source bitbucket --repo myteam/myrepo
+
 # Use a specific link strategy
 gitpm import --repo myorg/myrepo --link-strategy sub-issues
 ```
@@ -224,7 +233,7 @@ Run `gitpm validate` to verify the imported tree.
 
 ## `gitpm push`
 
-Push local `.meta/` changes to GitHub or GitLab. The target platform is auto-detected from the sync configuration created during import.
+Push local `.meta/` changes to the remote platform. The platform is auto-detected from the sync configuration created during import.
 
 ```
 gitpm push [options]
@@ -237,6 +246,7 @@ gitpm push [options]
 | `--token <token>` | Personal access token | (auto-resolved) |
 | `--dry-run` | Preview changes without pushing | `false` |
 | `--yes` | Skip confirmation prompt | `false` |
+| `--adapter <name>` | Force a specific adapter, e.g. `bitbucket` | (auto-detected) |
 
 **Examples:**
 
@@ -275,7 +285,7 @@ Changes to push:
 
 ## `gitpm pull`
 
-Pull changes from GitHub or GitLab into the local `.meta/` directory. The platform is auto-detected from sync configuration.
+Pull changes from the remote platform into the local `.meta/` directory. The platform is auto-detected from sync configuration.
 
 ```
 gitpm pull [options]
@@ -287,6 +297,7 @@ gitpm pull [options]
 |--------|-------------|---------|
 | `--token <token>` | Personal access token | (auto-resolved) |
 | `--strategy <strategy>` | Conflict resolution strategy | `remote-wins` |
+| `--adapter <name>` | Force a specific adapter, e.g. `bitbucket` | (auto-detected) |
 
 **Conflict resolution strategies:**
 
@@ -326,7 +337,7 @@ Pull complete.
 
 ## `gitpm sync`
 
-Bidirectional sync between the local `.meta/` directory and GitHub or GitLab. Combines push and pull into a single operation with conflict resolution.
+Bidirectional sync between the local `.meta/` directory and the remote platform. Combines push and pull into a single operation with conflict resolution.
 
 ```
 gitpm sync [options]
@@ -340,6 +351,7 @@ gitpm sync [options]
 | `--strategy <strategy>` | Conflict resolution strategy | `ask` |
 | `--dry-run` | Preview changes without syncing | `false` |
 | `--yes` | Skip confirmation prompt | `false` |
+| `--adapter <name>` | Force a specific adapter, e.g. `bitbucket` | (auto-detected) |
 
 **Examples:**
 
