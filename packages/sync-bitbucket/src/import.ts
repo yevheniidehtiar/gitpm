@@ -3,6 +3,7 @@ import { access } from 'node:fs/promises';
 import { join, posix, relative, sep } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import type {
+  BitbucketSync,
   Epic,
   ImportResult,
   Milestone,
@@ -30,6 +31,7 @@ import { bbIssueToFields, labelsToBbKind } from './mapper.js';
 import type { SyncState, SyncStateEntry } from './state.js';
 import {
   BITBUCKET_STATE_FILE,
+  computeContentHash,
   createInitialState,
   loadState,
   saveState,
@@ -138,28 +140,87 @@ async function loadExisting(
     };
   }
 
-  if (!(await exists(join(metaDir, 'sync', BITBUCKET_STATE_FILE)))) {
-    return { ok: true, value: existing };
-  }
-  const state = await loadState(metaDir);
-  if (!state.ok) return state;
-  // State from another repository maps foreign issue ids: ignore it.
-  if (
-    state.value.workspace !== workspace ||
-    state.value.repo_slug !== repoSlug
-  ) {
-    return { ok: true, value: existing };
-  }
-  existing.state = state.value;
-  for (const [entityId, entry] of Object.entries(state.value.entities)) {
-    if (entry.bitbucket_issue_id !== undefined) {
-      existing.issueEntityIds.set(entry.bitbucket_issue_id, entityId);
+  const remember = (entityId: string, sync: RemoteLink) => {
+    if (sync.issue_id !== undefined) {
+      existing.issueEntityIds.set(sync.issue_id, entityId);
     }
-    if (entry.bitbucket_milestone_name !== undefined) {
-      existing.milestoneEntityIds.set(entry.bitbucket_milestone_name, entityId);
+    if (sync.milestone_name !== undefined) {
+      existing.milestoneEntityIds.set(sync.milestone_name, entityId);
     }
+  };
+
+  if (await exists(join(metaDir, 'sync', BITBUCKET_STATE_FILE))) {
+    const state = await loadState(metaDir);
+    if (!state.ok) return state;
+    // State from another repository maps foreign issue ids: ignore it.
+    if (
+      state.value.workspace === workspace &&
+      state.value.repo_slug === repoSlug
+    ) {
+      existing.state = state.value;
+      for (const [entityId, entry] of Object.entries(state.value.entities)) {
+        remember(entityId, {
+          issue_id: entry.bitbucket_issue_id,
+          milestone_name: entry.bitbucket_milestone_name,
+        });
+      }
+    }
+  }
+
+  // Like export, a frontmatter block for this repository wins over the state.
+  for (const entity of [
+    ...tree.value.milestones,
+    ...tree.value.epics,
+    ...tree.value.stories,
+  ]) {
+    const block = ownBlock(entity.bitbucket, workspace, repoSlug);
+    if (block) remember(entity.id, block);
   }
   return { ok: true, value: existing };
+}
+
+type RemoteLink = Pick<BitbucketSync, 'issue_id' | 'milestone_name'>;
+
+/** A sync block only counts when it points at the repository we import from. */
+function ownBlock(
+  block: BitbucketSync | null | undefined,
+  workspace: string,
+  repoSlug: string,
+): BitbucketSync | undefined {
+  return block && block.workspace === workspace && block.repo_slug === repoSlug
+    ? block
+    : undefined;
+}
+
+/**
+ * Stamp the `bitbucket:` block. An unchanged block is kept as is, so a no-op
+ * re-import does not bump `synced_at`.
+ */
+function withSyncBlock<T extends ImportedEntity>(
+  entity: T,
+  link: RemoteLink,
+  workspace: string,
+  repoSlug: string,
+  now: string,
+): T {
+  const previous = ownBlock(entity.bitbucket, workspace, repoSlug);
+  const block: BitbucketSync = {
+    ...previous,
+    ...link,
+    workspace,
+    repo_slug: repoSlug,
+    last_sync_hash: computeContentHash(entity),
+    synced_at: previous?.synced_at ?? now,
+  };
+  const unchanged =
+    previous &&
+    previous.issue_id === block.issue_id &&
+    previous.milestone_name === block.milestone_name &&
+    previous.last_sync_hash === block.last_sync_hash;
+  return {
+    ...entity,
+    bitbucket: unchanged ? previous : { ...block, synced_at: now },
+  };
 }
 
 function existingOfType<T extends ImportedEntity['type']>(
@@ -419,7 +480,21 @@ async function runImport(
 
   // --- Write entities that changed ---
   const writtenPaths: string[] = [];
-  for (const { entity, previous } of candidates) {
+  for (const candidate of candidates) {
+    const remote = remoteIds[candidate.entity.id];
+    const entity = withSyncBlock(
+      candidate.entity,
+      {
+        ...(remote?.issueId !== undefined && { issue_id: remote.issueId }),
+        ...(remote?.milestoneName !== undefined && {
+          milestone_name: remote.milestoneName,
+        }),
+      },
+      workspace,
+      repoSlug,
+      now,
+    );
+    const { previous } = candidate;
     if (previous && isDeepStrictEqual(entity, previous)) continue;
     if (previous) {
       const issue = issuesByEntityId.get(entity.id);

@@ -19,7 +19,7 @@ import { createDefaultConfig, loadConfig } from '../config.js';
 import type { BitbucketImportOptions } from '../import.js';
 import { importFromBitbucket } from '../import.js';
 import { epicMarker } from '../mapper.js';
-import { loadState, saveState } from '../state.js';
+import { computeContentHash, loadState, saveState } from '../state.js';
 import type { BbIssue, BbMilestone } from '../types.js';
 
 const fixtureIssues = importIssues as BbIssue[];
@@ -286,6 +286,37 @@ describe('importFromBitbucket', () => {
       updated_at: '2026-09-10T10:00:00.000Z',
       created_at: card.created_at,
     });
+  });
+
+  it('writes a bitbucket sync block on every imported entity', async () => {
+    await run();
+    const t = await tree();
+
+    const card = byTitle(t.stories, 'Card form validation');
+    expect(card.bitbucket).toMatchObject({
+      issue_id: 3,
+      workspace: 'acme',
+      repo_slug: 'widgets',
+    });
+    expect(card.bitbucket?.last_sync_hash).toBe(computeContentHash(card));
+    expect(byTitle(t.milestones, 'v1.0').bitbucket).toMatchObject({
+      milestone_name: 'v1.0',
+      workspace: 'acme',
+    });
+    expect(byTitle(t.milestones, 'v1.0').bitbucket?.issue_id).toBeUndefined();
+  });
+
+  it('matches entities by their sync block when the state file is gone', async () => {
+    await run();
+    const before = await tree();
+    await rm(join(metaDir, 'sync', 'bitbucket-state.json'));
+
+    const result = await run();
+    expect(result.ok && result.value.writtenPaths).toEqual([]);
+    const after = await tree();
+    expect(after.stories.map((s) => s.id).sort()).toEqual(
+      before.stories.map((s) => s.id).sort(),
+    );
   });
 
   it('appends new milestones to an existing roadmap', async () => {
