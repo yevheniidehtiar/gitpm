@@ -165,9 +165,9 @@ export function labelsToBbKind(
 // --- Epic linkage ---
 
 // Linear-time: fixed delimiters and an id charset without whitespace or '>'
-// (entity ids are nanoid-style), so no ambiguous repetition to backtrack on.
-const EPIC_MARKER_RE = /<!-- ?gitpm:epic=([\w-]+) ?-->/;
-const EPIC_MARKER_SPLIT_RE = /<!-- ?gitpm:epic=[\w-]+ ?-->/;
+// (entity ids are nanoid-style, capped at 64 chars), so no ambiguous repetition to backtrack on.
+const EPIC_MARKER_RE = /<!-- ?gitpm:epic=([A-Za-z0-9_-]{1,64}) ?-->/;
+const EPIC_MARKER_SPLIT_RE = /<!-- ?gitpm:epic=[A-Za-z0-9_-]{1,64} ?-->/;
 
 export function epicMarker(epicId: string): string {
   return `<!-- gitpm:epic=${epicId} -->`;
