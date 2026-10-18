@@ -2,7 +2,7 @@
   "name": "@gitpm/cli",
   "version": "0.1.13",
   "license": "MIT",
-  "description": "Git-native project management CLI — manage roadmaps, epics, and stories from a .meta/ tree synced with GitHub, GitLab, Jira, and Linear",
+  "description": "Git-native project management CLI \u2014 manage roadmaps, epics, and stories from a .meta/ tree synced with GitHub, GitLab, Jira, Linear, and Bitbucket",
   "keywords": [
     "gitpm",
     "project-management",
@@ -10,6 +10,7 @@
     "gitlab",
     "jira",
     "linear",
+    "bitbucket",
     "issues",
     "roadmap",
     "epics",
@@ -49,7 +50,8 @@
     "@gitpm/sync-github": "workspace:*",
     "@gitpm/sync-gitlab": "workspace:*",
     "@gitpm/sync-jira": "workspace:*",
-    "@gitpm/sync-linear": "workspace:*"
+    "@gitpm/sync-linear": "workspace:*",
+    "@gitpm/sync-bitbucket": "workspace:*"
   },
   "peerDependenciesMeta": {
     "@gitpm/sync-github": {
@@ -62,6 +64,9 @@
       "optional": true
     },
     "@gitpm/sync-linear": {
+      "optional": true
+    },
+    "@gitpm/sync-bitbucket": {
       "optional": true
     }
   }
