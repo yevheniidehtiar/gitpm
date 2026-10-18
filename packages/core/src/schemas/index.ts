@@ -1,4 +1,5 @@
 export type {
+  BitbucketSync,
   EntityId,
   EntityRef,
   GitHubSync,
@@ -10,6 +11,7 @@ export type {
   Status,
 } from './common.js';
 export {
+  bitbucketSyncSchema,
   entityIdSchema,
   entityRefSchema,
   gitHubSyncSchema,
