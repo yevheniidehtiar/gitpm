@@ -35,6 +35,8 @@
     "build": "tsup"
   },
   "dependencies": {
-    "@gitpm/core": "workspace:*"
+    "@gitpm/core": "workspace:*",
+    "yaml": "^2.6.0",
+    "zod": "^4.6.7"
   }
 }
