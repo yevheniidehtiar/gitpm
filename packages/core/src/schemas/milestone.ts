@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  bitbucketSyncSchema,
   entityIdSchema,
   gitHubSyncSchema,
   gitLabSyncSchema,
@@ -18,6 +19,7 @@ export const milestoneFrontmatterSchema = z.object({
   jira: jiraSyncSchema.nullable().optional(),
   gitlab: gitLabSyncSchema.nullable().optional(),
   linear: linearSyncSchema.nullable().optional(),
+  bitbucket: bitbucketSyncSchema.nullable().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });

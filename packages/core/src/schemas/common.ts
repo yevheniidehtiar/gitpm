@@ -67,6 +67,18 @@ export const linearSyncSchema = z.object({
 });
 export type LinearSync = z.infer<typeof linearSyncSchema>;
 
+export const bitbucketSyncSchema = z.object({
+  issue_id: z.number().int().optional(),
+  /** Bitbucket milestones have no writable id over REST 2.0; linked by name. */
+  milestone_name: z.string().optional(),
+  workspace: z.string(),
+  repo_slug: z.string(),
+  /** Optional for pre-sync entities (imported or hand-written before first push). */
+  last_sync_hash: z.string().optional(),
+  synced_at: z.string(),
+});
+export type BitbucketSync = z.infer<typeof bitbucketSyncSchema>;
+
 export type Result<T, E = Error> =
   | { ok: true; value: T }
   | { ok: false; error: E };
