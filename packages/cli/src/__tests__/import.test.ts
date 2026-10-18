@@ -227,11 +227,44 @@ describe('gitpm import', () => {
     );
   });
 
+  it('resolves bitbucket credentials for --source bitbucket', async () => {
+    const bitbucketAdapter = createMockAdapter('bitbucket', 'Bitbucket');
+    mockFindAdapterByName.mockReturnValue(bitbucketAdapter);
+    mockResolveCredentials.mockReturnValue({
+      token: 'bb-tok',
+      email: 'dev@example.com',
+    });
+    mockAdapterImport.mockResolvedValue({ ok: true, value: importSummary });
+
+    await run(
+      '--source',
+      'bitbucket',
+      '--repo',
+      'acme/widgets',
+      '--meta-dir',
+      '/tmp/meta',
+    );
+
+    expect(mockFindAdapterByName).toHaveBeenCalledWith(
+      expect.anything(),
+      'bitbucket',
+    );
+    expect(mockResolveCredentials).toHaveBeenCalledWith('bitbucket', undefined);
+    expect(mockAdapterImport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repo: 'acme/widgets',
+        token: 'bb-tok',
+        email: 'dev@example.com',
+      }),
+    );
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
   it('exits with code 1 for unknown source', async () => {
     mockFindAdapterByName.mockReturnValue(null);
 
     await expect(
-      run('--source', 'bitbucket', '--meta-dir', '/tmp/meta'),
+      run('--source', 'azure-devops', '--meta-dir', '/tmp/meta'),
     ).rejects.toThrow('process.exit');
     expect(exitSpy).toHaveBeenCalledWith(1);
     const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');

@@ -13,6 +13,8 @@ const ENV_KEYS = [
   'GITLAB_TOKEN',
   'JIRA_TOKEN',
   'JIRA_EMAIL',
+  'BITBUCKET_TOKEN',
+  'BITBUCKET_EMAIL',
 ] as const;
 
 describe('resolveCredentials', () => {
@@ -134,6 +136,48 @@ describe('resolveCredentials', () => {
         token: undefined,
         email: undefined,
       });
+    });
+  });
+
+  describe('bitbucket', () => {
+    it('reads BITBUCKET_TOKEN and BITBUCKET_EMAIL', async () => {
+      process.env.GITHUB_TOKEN = 'gh-env';
+      process.env.JIRA_TOKEN = 'jira-env';
+      process.env.BITBUCKET_TOKEN = 'bb-env';
+      process.env.BITBUCKET_EMAIL = 'dev@example.com';
+      const { resolveCredentials } = await import('../utils/auth.js');
+      expect(resolveCredentials('bitbucket')).toEqual({
+        token: 'bb-env',
+        email: 'dev@example.com',
+      });
+      expect(mockExecSync).not.toHaveBeenCalled();
+    });
+
+    it('returns no email for a bare access token', async () => {
+      process.env.BITBUCKET_TOKEN = 'bb-env';
+      const { resolveCredentials } = await import('../utils/auth.js');
+      expect(resolveCredentials('bitbucket')).toEqual({
+        token: 'bb-env',
+        email: undefined,
+      });
+    });
+
+    it('prefers the CLI token over BITBUCKET_TOKEN and keeps the email', async () => {
+      process.env.BITBUCKET_TOKEN = 'bb-env';
+      process.env.BITBUCKET_EMAIL = 'dev@example.com';
+      const { resolveCredentials } = await import('../utils/auth.js');
+      expect(resolveCredentials('bitbucket', 'bb-cli')).toEqual({
+        token: 'bb-cli',
+        email: 'dev@example.com',
+      });
+    });
+
+    it('returns no token rather than a GitHub token', async () => {
+      process.env.GITHUB_TOKEN = 'gh-env';
+      mockExecSync.mockReturnValue('gh-cli-token');
+      const { resolveCredentials } = await import('../utils/auth.js');
+      expect(resolveCredentials('bitbucket').token).toBeUndefined();
+      expect(mockExecSync).not.toHaveBeenCalled();
     });
   });
 

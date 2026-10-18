@@ -26,7 +26,7 @@ export const importCommand = new Command('import')
   .description('Import project data from a remote platform into .meta/')
   .option(
     '--source <source>',
-    'Source platform: github, gitlab, jira, or linear (default: github)',
+    'Source platform: github, gitlab, jira, linear, or bitbucket (default: github)',
     'github',
   )
   .option('--repo <owner/repo>', 'GitHub repository (owner/repo)')

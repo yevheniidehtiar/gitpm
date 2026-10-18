@@ -20,6 +20,7 @@ export const gitpmConfigSchema = z.object({
       '@gitpm/sync-gitlab',
       '@gitpm/sync-jira',
       '@gitpm/sync-linear',
+      '@gitpm/sync-bitbucket',
     ]),
   hooks: z
     .partialRecord(hookEventSchema, z.union([z.string(), z.array(z.string())]))

@@ -27,12 +27,14 @@
         "ora": "^9.3.0",
       },
       "peerDependencies": {
+        "@gitpm/sync-bitbucket": "workspace:*",
         "@gitpm/sync-github": "workspace:*",
         "@gitpm/sync-gitlab": "workspace:*",
         "@gitpm/sync-jira": "workspace:*",
         "@gitpm/sync-linear": "workspace:*",
       },
       "optionalPeers": [
+        "@gitpm/sync-bitbucket",
         "@gitpm/sync-github",
         "@gitpm/sync-gitlab",
         "@gitpm/sync-jira",
