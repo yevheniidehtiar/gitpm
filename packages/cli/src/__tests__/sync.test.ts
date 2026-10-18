@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mockAdapterSync = vi.fn();
 const mockAdapterExport = vi.fn();
 const mockResolveAdapter = vi.fn();
-const mockResolveToken = vi.fn();
+const mockResolveCredentials = vi.fn();
 const mockConfirm = vi.fn();
 const mockPromptConflictResolution = vi.fn();
 const mockRunHooks = vi.fn();
@@ -16,7 +16,7 @@ vi.mock('../utils/adapters.js', () => ({
 }));
 
 vi.mock('../utils/auth.js', () => ({
-  resolveToken: (...args: unknown[]) => mockResolveToken(...args),
+  resolveCredentials: (...args: unknown[]) => mockResolveCredentials(...args),
 }));
 
 vi.mock('../utils/conflict-ui.js', () => ({
@@ -88,7 +88,7 @@ describe('gitpm sync', () => {
     exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {
       throw new Error('process.exit');
     }) as never);
-    mockResolveToken.mockResolvedValue('mock-token');
+    mockResolveCredentials.mockReturnValue({ token: 'mock-token' });
     mockRunHooks.mockResolvedValue({ ok: true, value: undefined });
     setupMockAdapter();
   });
@@ -217,12 +217,14 @@ describe('gitpm sync', () => {
 
   it('syncs with GitLab in dry-run mode', async () => {
     setupMockAdapter('gitlab', 'GitLab');
+    mockResolveCredentials.mockReturnValue({ token: 'gl-tok' });
     mockAdapterSync.mockResolvedValue({ ok: true, value: syncResult });
 
     await run('--dry-run', '--token', 'gl-tok', '--meta-dir', '/tmp/meta');
 
+    expect(mockResolveCredentials).toHaveBeenCalledWith('gitlab', 'gl-tok');
     expect(mockAdapterSync).toHaveBeenCalledWith(
-      expect.objectContaining({ dryRun: true }),
+      expect.objectContaining({ dryRun: true, token: 'gl-tok' }),
     );
     expect(exitSpy).not.toHaveBeenCalled();
   });

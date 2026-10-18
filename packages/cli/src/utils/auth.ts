@@ -1,28 +1,63 @@
 import { execSync } from 'node:child_process';
 
-/**
- * Resolve a GitHub token from multiple sources in priority order:
- * 1. Explicit CLI --token flag
- * 2. GITHUB_TOKEN environment variable
- * 3. GitHub CLI (`gh auth token`)
- */
-export async function resolveToken(cliToken?: string): Promise<string> {
-  if (cliToken) return cliToken;
+export interface AdapterCredentialSpec {
+  /** Environment variable holding the adapter's token. */
+  tokenEnv: string;
+  /** Environment variable holding the account email, for adapters that need one. */
+  emailEnv?: string;
+  /** Last-resort token source when neither --token nor tokenEnv is set. */
+  fallback?: () => string | undefined;
+}
 
-  const envToken = process.env.GITHUB_TOKEN;
-  if (envToken) return envToken;
+export interface ResolvedCredentials {
+  token?: string;
+  email?: string;
+}
 
+function ghAuthToken(): string | undefined {
   try {
-    const ghToken = execSync('gh auth token', {
+    const token = execSync('gh auth token', {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
     }).trim();
-    if (ghToken) return ghToken;
+    return token || undefined;
   } catch {
-    // gh CLI not installed or not authenticated — fall through
+    // gh CLI not installed or not authenticated
+    return undefined;
   }
+}
 
-  throw new Error(
-    "No GitHub token found. Provide via --token flag, GITHUB_TOKEN env var, or install GitHub CLI (gh) and run 'gh auth login'.",
-  );
+/**
+ * Where each adapter reads its credentials from. Adding an adapter is one entry.
+ * Adapters missing from this table (e.g. linear, which reads LINEAR_API_KEY
+ * itself) only receive an explicit --token.
+ */
+export const ADAPTER_CREDENTIALS: Record<string, AdapterCredentialSpec> = {
+  github: { tokenEnv: 'GITHUB_TOKEN', fallback: ghAuthToken },
+  gitlab: { tokenEnv: 'GITLAB_TOKEN' },
+  jira: { tokenEnv: 'JIRA_TOKEN', emailEnv: 'JIRA_EMAIL' },
+};
+
+function envValue(name: string | undefined): string | undefined {
+  if (!name) return undefined;
+  return process.env[name] || undefined;
+}
+
+/**
+ * Resolve credentials for an adapter in priority order:
+ * 1. Explicit CLI --token flag
+ * 2. The adapter's token environment variable
+ * 3. The adapter's fallback (GitHub: `gh auth token`)
+ *
+ * Never throws: a missing token is reported by the adapter itself.
+ */
+export function resolveCredentials(
+  adapterName: string,
+  cliToken?: string,
+): ResolvedCredentials {
+  const spec = ADAPTER_CREDENTIALS[adapterName];
+  const token =
+    cliToken || envValue(spec?.tokenEnv) || spec?.fallback?.() || undefined;
+  const email = envValue(spec?.emailEnv);
+  return { token, email };
 }
