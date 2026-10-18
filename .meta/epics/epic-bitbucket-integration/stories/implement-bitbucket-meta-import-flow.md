@@ -2,7 +2,7 @@
 type: story
 id: aKs9FUGEAX-F
 title: Implement Bitbucket → .meta import flow
-status: backlog
+status: in_review
 priority: high
 assignee: null
 labels:
@@ -11,13 +11,13 @@ labels:
 estimate: 3
 epic_ref:
   id: KVvXwhgJEyic
-created_at: 2026-10-17T08:22:44.199Z
-updated_at: 2026-10-17T08:22:44.199Z
 github:
   issue_number: 286
   repo: yevheniidehtiar/gitpm
   last_sync_hash: sha256:3a37dd7a4198655b08901b2f7101d4022d26bef8abc13cdf094a710bae130d27
   synced_at: 2026-10-17T11:20:24.306Z
+created_at: 2026-10-17T08:22:44.199Z
+updated_at: 2026-10-18T19:49:09.780Z
 ---
 
 `gitpm import --source bitbucket`:
