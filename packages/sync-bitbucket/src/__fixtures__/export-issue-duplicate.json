@@ -1,0 +1,16 @@
+{
+  "id": 41,
+  "title": "Card form validation",
+  "content": { "raw": "Validate PAN and CVC", "markup": "markdown" },
+  "state": "duplicate",
+  "kind": "enhancement",
+  "priority": "trivial",
+  "assignee": null,
+  "reporter": { "account_id": "557058:def", "display_name": "Linus" },
+  "milestone": null,
+  "component": null,
+  "version": null,
+  "votes": 0,
+  "created_on": "2026-09-03T10:00:00.000000+00:00",
+  "updated_on": "2026-09-03T10:00:00.000000+00:00"
+}

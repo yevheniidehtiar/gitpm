@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  bitbucketSyncSchema,
   entityRefSchema,
   epicSchema,
   gitHubSyncSchema,
@@ -50,6 +51,47 @@ describe('Common schemas', () => {
     const parsed = gitHubSyncSchema.parse(preSync);
     expect(parsed.repo).toBe('org/repo');
     expect(parsed.last_sync_hash).toBeUndefined();
+  });
+
+  it('validates bitbucket sync', () => {
+    const valid = {
+      issue_id: 12,
+      workspace: 'acme',
+      repo_slug: 'widgets',
+      last_sync_hash: 'sha256:abc',
+      synced_at: '2026-01-01T00:00:00Z',
+    };
+    expect(bitbucketSyncSchema.parse(valid)).toEqual(valid);
+    expect(() => bitbucketSyncSchema.parse({ workspace: 'acme' })).toThrow();
+  });
+
+  it('accepts a bitbucket block on stories, epics and milestones', () => {
+    const bitbucket = {
+      workspace: 'acme',
+      repo_slug: 'widgets',
+      synced_at: '2026-01-01T00:00:00Z',
+    };
+    const base = { id: 'x', title: 'X', status: 'todo', filePath: '/x.md' };
+    const story = storySchema.parse({
+      ...base,
+      type: 'story',
+      priority: 'low',
+      bitbucket: { ...bitbucket, issue_id: 1 },
+    });
+    const epic = epicSchema.parse({
+      ...base,
+      type: 'epic',
+      priority: 'low',
+      bitbucket: { ...bitbucket, issue_id: 2 },
+    });
+    const milestone = milestoneSchema.parse({
+      ...base,
+      type: 'milestone',
+      bitbucket: { ...bitbucket, milestone_name: 'v1.0' },
+    });
+    expect(story.bitbucket?.issue_id).toBe(1);
+    expect(epic.bitbucket?.issue_id).toBe(2);
+    expect(milestone.bitbucket?.milestone_name).toBe('v1.0');
   });
 });
 
