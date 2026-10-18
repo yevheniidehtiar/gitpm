@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { writeFile as fsWriteFile, mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { ParsedEntity, Result } from '@gitpm/core';
+import { parseTree } from '@gitpm/core';
 import { z } from 'zod';
 
 export const BITBUCKET_STATE_FILE = 'bitbucket-state.json';
@@ -12,6 +13,16 @@ export const syncStateEntrySchema = z.object({
   bitbucket_milestone_name: z.string().optional(),
   local_hash: z.string(),
   remote_hash: z.string(),
+  /**
+   * Per-field hashes at the last sync, one set per side, for the field-level
+   * three-way diff. Absent for entries written by import or export.
+   */
+  field_hashes: z
+    .object({
+      local: z.record(z.string(), z.string()),
+      remote: z.record(z.string(), z.string()),
+    })
+    .optional(),
   synced_at: z.string(),
 });
 export type SyncStateEntry = z.infer<typeof syncStateEntrySchema>;
@@ -47,6 +58,59 @@ export async function loadState(metaDir: string): Promise<Result<SyncState>> {
       error: new Error(`Failed to load sync state: ${err}`),
     };
   }
+}
+
+/**
+ * Rebuild the state from the `bitbucket:` frontmatter blocks that point at
+ * `workspace/repoSlug`, for when `bitbucket-state.json` is missing. Entities
+ * without a `last_sync_hash` get an empty baseline, so any difference counts
+ * as a change. Not persisted: the caller saves it after a successful run.
+ */
+export async function reconstructState(
+  metaDir: string,
+  workspace: string,
+  repoSlug: string,
+): Promise<Result<SyncState>> {
+  const tree = await parseTree(metaDir);
+  if (!tree.ok) {
+    return {
+      ok: false,
+      error: new Error(
+        `Failed to reconstruct Bitbucket sync state: ${tree.error.message}`,
+      ),
+    };
+  }
+
+  const entities: Record<string, SyncStateEntry> = {};
+  for (const entity of [
+    ...tree.value.milestones,
+    ...tree.value.epics,
+    ...tree.value.stories,
+  ]) {
+    const block = entity.bitbucket;
+    if (!block || block.workspace !== workspace) continue;
+    if (block.repo_slug !== repoSlug) continue;
+    const entry: SyncStateEntry = {
+      local_hash: block.last_sync_hash ?? '',
+      remote_hash: block.last_sync_hash ?? '',
+      synced_at: block.synced_at,
+    };
+    if (block.issue_id !== undefined) entry.bitbucket_issue_id = block.issue_id;
+    if (block.milestone_name !== undefined) {
+      entry.bitbucket_milestone_name = block.milestone_name;
+    }
+    entities[entity.id] = entry;
+  }
+
+  return {
+    ok: true,
+    value: {
+      workspace,
+      repo_slug: repoSlug,
+      last_sync: new Date().toISOString(),
+      entities,
+    },
+  };
 }
 
 export async function saveState(

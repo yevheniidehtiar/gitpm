@@ -2,11 +2,13 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Epic, Milestone, ParsedEntity, Story } from '@gitpm/core';
+import { writeFile as writeEntity } from '@gitpm/core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   computeContentHash,
   createInitialState,
   loadState,
+  reconstructState,
   saveState,
 } from '../state.js';
 
@@ -145,5 +147,62 @@ describe('loadState / saveState', () => {
     expect(loaded.ok).toBe(false);
     if (loaded.ok) return;
     expect(loaded.error.message).toContain('Invalid Bitbucket sync state');
+  });
+});
+
+describe('reconstructState', () => {
+  const block = {
+    workspace: 'acme',
+    repo_slug: 'widgets',
+    synced_at: '2026-10-01T00:00:00.000Z',
+  };
+
+  it('rebuilds entries from blocks for the given repository only', async () => {
+    const entities: (Story | Epic | Milestone)[] = [
+      {
+        ...story,
+        filePath: join(metaDir, 'stories/fix-login.md'),
+        bitbucket: { ...block, issue_id: 7, last_sync_hash: 'sha256:abc' },
+      },
+      {
+        ...milestone,
+        filePath: join(metaDir, 'roadmap/milestones/v1.md'),
+        bitbucket: { ...block, milestone_name: 'v1' },
+      },
+      {
+        ...epic,
+        filePath: join(metaDir, 'epics/checkout/epic.md'),
+        bitbucket: { ...block, repo_slug: 'other', issue_id: 9 },
+      },
+    ];
+    for (const entity of entities) {
+      const written = await writeEntity(entity, entity.filePath);
+      if (!written.ok) throw written.error;
+    }
+
+    const result = await reconstructState(metaDir, 'acme', 'widgets');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.workspace).toBe('acme');
+    expect(result.value.entities).toEqual({
+      'story-1': {
+        bitbucket_issue_id: 7,
+        local_hash: 'sha256:abc',
+        remote_hash: 'sha256:abc',
+        synced_at: block.synced_at,
+      },
+      'ms-1': {
+        bitbucket_milestone_name: 'v1',
+        local_hash: '',
+        remote_hash: '',
+        synced_at: block.synced_at,
+      },
+    });
+  });
+
+  it('returns an empty state for a tree without blocks', async () => {
+    const result = await reconstructState(metaDir, 'acme', 'widgets');
+    expect(result.ok && result.value.entities).toEqual({});
   });
 });
