@@ -164,7 +164,10 @@ export function labelsToBbKind(
 
 // --- Epic linkage ---
 
-const EPIC_MARKER_RE = /\n*<!--\s*gitpm:epic=([^\s>]+)\s*-->\n*/g;
+// Linear-time: fixed delimiters and an id charset without whitespace or '>'
+// (entity ids are nanoid-style), so no ambiguous repetition to backtrack on.
+const EPIC_MARKER_RE = /<!-- ?gitpm:epic=([\w-]+) ?-->/;
+const EPIC_MARKER_SPLIT_RE = /<!-- ?gitpm:epic=[\w-]+ ?-->/;
 
 export function epicMarker(epicId: string): string {
   return `<!-- gitpm:epic=${epicId} -->`;
@@ -172,13 +175,17 @@ export function epicMarker(epicId: string): string {
 
 /** The epic id from the first `<!-- gitpm:epic=<id> -->` marker, or null. */
 export function extractEpicMarker(body: string): string | null {
-  const match = new RegExp(EPIC_MARKER_RE.source).exec(body);
+  const match = EPIC_MARKER_RE.exec(body);
   return match?.[1] ?? null;
 }
 
 /** Remove every epic marker from a Bitbucket body. */
 export function stripEpicMarker(body: string): string {
-  return body.replace(EPIC_MARKER_RE, '\n\n').trim();
+  return body
+    .split(EPIC_MARKER_SPLIT_RE)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+    .join('\n\n');
 }
 
 /** Replace any epic marker in `body` with one for `epicId` (or none if null). */

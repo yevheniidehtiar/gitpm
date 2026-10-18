@@ -177,6 +177,23 @@ describe('epic marker', () => {
     expect(stripEpicMarker('a\n<!-- gitpm:epic=x -->\nb')).toBe('a\n\nb');
   });
 
+  it('accepts the compact marker form and strips repeated markers', () => {
+    expect(extractEpicMarker('<!--gitpm:epic=a_B-1-->')).toBe('a_B-1');
+    expect(
+      stripEpicMarker(`x\n${epicMarker('a')}\n\n${epicMarker('b')}\ny`),
+    ).toBe('x\n\ny');
+  });
+
+  it('stays fast on adversarial bodies', () => {
+    const newlines = `${'\n'.repeat(50_000)}x`;
+    const prefixes = `<!--gitpm:epic=${'<!--gitpm:epic=!'.repeat(20_000)}`;
+    const start = performance.now();
+    expect(stripEpicMarker(newlines)).toBe('x');
+    expect(extractEpicMarker(prefixes)).toBeNull();
+    expect(stripEpicMarker(prefixes)).toBe(prefixes);
+    expect(performance.now() - start).toBeLessThan(500);
+  });
+
   it('replaces an existing marker instead of appending', () => {
     const body = withEpicMarker(withEpicMarker('Body', 'ep-1'), 'ep-2');
     expect(body).toBe('Body\n\n<!-- gitpm:epic=ep-2 -->');
