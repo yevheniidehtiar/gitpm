@@ -74,6 +74,7 @@ describe('resolveAdapter', () => {
     expect(exitSpy).toHaveBeenCalledWith(1);
     const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
     expect(errOutput).toContain('load failed');
+    expect(errOutput).toContain('bun add @gitpm/sync-bitbucket');
   });
 
   it('exits 1 when no adapters are installed', async () => {
@@ -101,9 +102,9 @@ describe('resolveAdapter', () => {
     mockFindAdapterByName.mockReturnValue(null);
 
     const { resolveAdapter } = await import('../utils/adapters.js');
-    await expect(resolveAdapter('/tmp/m/.meta', 'bitbucket')).rejects.toThrow(
-      'process.exit',
-    );
+    await expect(
+      resolveAdapter('/tmp/m/.meta', 'azure-devops'),
+    ).rejects.toThrow('process.exit');
     expect(exitSpy).toHaveBeenCalledWith(1);
     const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
     expect(errOutput).toContain('not found');

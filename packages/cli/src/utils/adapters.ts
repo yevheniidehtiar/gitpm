@@ -39,7 +39,8 @@ export async function resolveAdapter(
         '  bun add @gitpm/sync-github\n' +
         '  bun add @gitpm/sync-gitlab\n' +
         '  bun add @gitpm/sync-jira\n' +
-        '  bun add @gitpm/sync-linear',
+        '  bun add @gitpm/sync-linear\n' +
+        '  bun add @gitpm/sync-bitbucket',
     );
     process.exit(1);
   }
