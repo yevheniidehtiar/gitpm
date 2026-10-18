@@ -36,6 +36,7 @@ export const ADAPTER_CREDENTIALS: Record<string, AdapterCredentialSpec> = {
   github: { tokenEnv: 'GITHUB_TOKEN', fallback: ghAuthToken },
   gitlab: { tokenEnv: 'GITLAB_TOKEN' },
   jira: { tokenEnv: 'JIRA_TOKEN', emailEnv: 'JIRA_EMAIL' },
+  bitbucket: { tokenEnv: 'BITBUCKET_TOKEN', emailEnv: 'BITBUCKET_EMAIL' },
 };
 
 function envValue(name: string | undefined): string | undefined {
