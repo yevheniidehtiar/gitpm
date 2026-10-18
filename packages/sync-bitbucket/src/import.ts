@@ -27,7 +27,7 @@ import {
   classifyIssues,
   resolveStoryEpic,
 } from './linker.js';
-import { bbIssueToFields, labelsToBbKind } from './mapper.js';
+import { bbIssueToFields, mergeKindLabel } from './mapper.js';
 import type { SyncState, SyncStateEntry } from './state.js';
 import {
   BITBUCKET_STATE_FILE,
@@ -232,27 +232,6 @@ function existingOfType<T extends ImportedEntity['type']>(
   return entity?.type === type
     ? (entity as Extract<ImportedEntity, { type: T }>)
     : undefined;
-}
-
-/** Swap the kind label in place, keeping every non-kind label the user added. */
-function mergeKindLabel(
-  current: readonly string[] | undefined,
-  kindLabel: string,
-  config: BitbucketConfig,
-): string[] {
-  if (!current) return [kindLabel];
-  const rest = new Set(labelsToBbKind(current, config).labels);
-  const labels: string[] = [];
-  let placed = false;
-  for (const label of current) {
-    if (rest.has(label)) labels.push(label);
-    else if (!placed) {
-      labels.push(kindLabel);
-      placed = true;
-    }
-  }
-  if (!placed) labels.push(kindLabel);
-  return labels;
 }
 
 /** Pick a free `.meta/` path, suffixing the issue id on a slug collision. */

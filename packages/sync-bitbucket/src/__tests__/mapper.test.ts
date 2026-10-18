@@ -11,6 +11,7 @@ import {
   epicToBbLink,
   extractEpicMarker,
   labelsToBbKind,
+  mergeKindLabel,
   priorityToBbPriority,
   statusToBbState,
   stripEpicMarker,
@@ -349,5 +350,20 @@ describe('entityToBbIssue', () => {
     expect(params.kind).toBe('proposal');
     expect(params.state).toBe('on hold');
     expect(params.content).toEqual({ raw: '' });
+  });
+});
+
+describe('mergeKindLabel', () => {
+  it('swaps the kind label in place and keeps the others', () => {
+    expect(mergeKindLabel(['a', 'kind:bug', 'b'], 'kind:task')).toEqual([
+      'a',
+      'kind:task',
+      'b',
+    ]);
+  });
+
+  it('appends the kind label when there is none', () => {
+    expect(mergeKindLabel(['a'], 'kind:task')).toEqual(['a', 'kind:task']);
+    expect(mergeKindLabel(undefined, 'kind:task')).toEqual(['kind:task']);
   });
 });

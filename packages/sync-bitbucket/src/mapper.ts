@@ -162,6 +162,27 @@ export function labelsToBbKind(
   return { kind: kind ?? DEFAULT_KIND, labels: rest };
 }
 
+/** Swap the kind label in place, keeping every non-kind label the user added. */
+export function mergeKindLabel(
+  current: readonly string[] | undefined,
+  kindLabel: string,
+  config?: MappingConfig,
+): string[] {
+  if (!current) return [kindLabel];
+  const rest = new Set(labelsToBbKind(current, config).labels);
+  const labels: string[] = [];
+  let placed = false;
+  for (const label of current) {
+    if (rest.has(label)) labels.push(label);
+    else if (!placed) {
+      labels.push(kindLabel);
+      placed = true;
+    }
+  }
+  if (!placed) labels.push(kindLabel);
+  return labels;
+}
+
 // --- Epic linkage ---
 
 // Linear-time: fixed delimiters and an id charset without whitespace or '>'

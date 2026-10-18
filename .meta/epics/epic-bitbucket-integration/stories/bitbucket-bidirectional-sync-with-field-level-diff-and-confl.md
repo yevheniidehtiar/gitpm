@@ -2,7 +2,7 @@
 type: story
 id: 1BJFPEgL5hB3
 title: Bitbucket bidirectional sync with field-level diff and conflict resolution
-status: backlog
+status: in_review
 priority: medium
 assignee: null
 labels:
@@ -11,13 +11,13 @@ labels:
 estimate: 3
 epic_ref:
   id: KVvXwhgJEyic
-created_at: 2026-10-17T08:22:45.310Z
-updated_at: 2026-10-17T08:22:45.310Z
 github:
   issue_number: 283
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:37af1e2424feb64604939995daab242a8f3fdbd96a97a051ae5ac308f86b53a8
-  synced_at: 2026-10-17T11:20:22.764Z
+  last_sync_hash: sha256:116c05a495abb4e409e4cffb9f2cf399b64e08ff1a98282ba96431875de1dc30
+  synced_at: 2026-10-18T20:43:17.228Z
+created_at: 2026-10-17T08:22:45.310Z
+updated_at: 2026-10-18T20:42:41.493Z
 ---
 
 `gitpm sync` / `pull` for Bitbucket:

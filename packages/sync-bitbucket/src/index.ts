@@ -1,4 +1,11 @@
 export { bitbucketAdapter } from './adapter.js';
+export type { SyncCheckpoint } from './checkpoint.js';
+export {
+  clearCheckpoint,
+  loadCheckpoint,
+  saveCheckpoint,
+  syncCheckpointSchema,
+} from './checkpoint.js';
 export type {
   BitbucketAuth,
   BitbucketClient,
@@ -24,6 +31,15 @@ export {
   parseConfig,
   saveConfig,
 } from './config.js';
+export { mergeFields, resolveConflicts } from './conflict.js';
+export type { SyncBaseline, SyncField, SyncFields } from './diff.js';
+export {
+  diffSyncFields,
+  fieldHashes,
+  localFields,
+  remoteFields,
+  SYNC_FIELDS,
+} from './diff.js';
 export type { BitbucketExportOptions } from './export.js';
 export { exportToBitbucket } from './export.js';
 export type { BitbucketImportOptions } from './import.js';
@@ -46,6 +62,7 @@ export {
   epicToBbLink,
   extractEpicMarker,
   labelsToBbKind,
+  mergeKindLabel,
   priorityToBbPriority,
   statusToBbState,
   stripEpicMarker,
@@ -57,11 +74,12 @@ export {
   computeContentHash,
   createInitialState,
   loadState,
+  reconstructState,
   saveState,
   syncStateEntrySchema,
   syncStateSchema,
 } from './state.js';
-export type { BitbucketSyncOptions } from './sync.js';
+export type { BitbucketSyncOptions, BitbucketSyncResult } from './sync.js';
 export { syncWithBitbucket } from './sync.js';
 export type {
   BbComment,
