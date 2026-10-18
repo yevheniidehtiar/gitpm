@@ -2,7 +2,7 @@
 type: story
 id: 1BJFPEgL5hB3
 title: Bitbucket bidirectional sync with field-level diff and conflict resolution
-status: in_review
+status: done
 priority: medium
 assignee: null
 labels:
@@ -17,7 +17,7 @@ github:
   last_sync_hash: sha256:116c05a495abb4e409e4cffb9f2cf399b64e08ff1a98282ba96431875de1dc30
   synced_at: 2026-10-18T20:43:17.228Z
 created_at: 2026-10-17T08:22:45.310Z
-updated_at: 2026-10-18T20:42:41.493Z
+updated_at: 2026-10-18T20:47:38.453Z
 ---
 
 `gitpm sync` / `pull` for Bitbucket:

@@ -2,7 +2,7 @@
 type: story
 id: HBCmoeWHPkvq
 title: Wire Bitbucket adapter into the CLI and auto-detection
-status: in_review
+status: done
 priority: medium
 assignee: null
 labels:
@@ -17,7 +17,7 @@ github:
   last_sync_hash: sha256:1ccd9887562d4484676e59fba4037b260d38a1d067afcb8a39ac0d542fa54aff
   synced_at: 2026-10-18T19:45:47.608Z
 created_at: 2026-10-17T08:22:45.600Z
-updated_at: 2026-10-18T19:45:22.213Z
+updated_at: 2026-10-18T20:47:39.105Z
 ---
 
 - Register `@gitpm/sync-bitbucket` in adapter loading and auto-detection (`detectAdapter`)
