@@ -8,7 +8,7 @@ import {
 import chalk from 'chalk';
 import { Command } from 'commander';
 import ora from 'ora';
-import { resolveToken } from '../utils/auth.js';
+import { resolveCredentials } from '../utils/auth.js';
 import { resolveMetaDir } from '../utils/config.js';
 import { printError, printSuccess } from '../utils/output.js';
 
@@ -95,13 +95,7 @@ export const importCommand = new Command('import')
       process.exit(1);
     }
 
-    // Resolve token
-    let token: string | undefined;
-    try {
-      token = await resolveToken(opts.token);
-    } catch {
-      // Token resolution failed — adapter may use other credentials
-    }
+    const { token, email } = resolveCredentials(adapter.name, opts.token);
 
     // Run pre-import hook
     const preHook = await runHooks(config, 'pre-import', {
@@ -118,6 +112,7 @@ export const importCommand = new Command('import')
 
     const result = await adapter.import({
       token,
+      email,
       repo: opts.repo,
       project: opts.project ?? opts.repo,
       projectNumber:

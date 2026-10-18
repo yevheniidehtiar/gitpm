@@ -5,7 +5,7 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 import ora from 'ora';
 import { resolveAdapter } from '../utils/adapters.js';
-import { resolveToken } from '../utils/auth.js';
+import { resolveCredentials } from '../utils/auth.js';
 import { resolveMetaDir } from '../utils/config.js';
 import { promptConflictResolution } from '../utils/conflict-ui.js';
 import { printError, printSuccess } from '../utils/output.js';
@@ -39,17 +39,13 @@ export const syncCommand = new Command('sync')
     const strategy = opts.strategy as ConflictStrategy;
     const { adapter, config } = await resolveAdapter(metaDir, opts.adapter);
 
-    let token: string | undefined;
-    try {
-      token = await resolveToken(opts.token);
-    } catch {
-      // Token resolution failed — adapter may use other credentials
-    }
+    const { token, email } = resolveCredentials(adapter.name, opts.token);
 
     if (opts.dryRun) {
       const spinner = ora('Calculating sync changes...').start();
       const result = await adapter.sync({
         token,
+        email,
         metaDir,
         teamId: opts.team,
         apiKey: opts.apiKey,
@@ -93,6 +89,7 @@ export const syncCommand = new Command('sync')
     const spinner = ora(`Syncing with ${adapter.displayName}...`).start();
     const result = await adapter.sync({
       token,
+      email,
       metaDir,
       teamId: opts.team,
       apiKey: opts.apiKey,

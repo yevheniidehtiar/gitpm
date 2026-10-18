@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockAdapterExport = vi.fn();
 const mockResolveAdapter = vi.fn();
-const mockResolveToken = vi.fn();
+const mockResolveCredentials = vi.fn();
 const mockConfirm = vi.fn();
 const mockRunHooks = vi.fn();
 
@@ -14,7 +14,7 @@ vi.mock('../utils/adapters.js', () => ({
 }));
 
 vi.mock('../utils/auth.js', () => ({
-  resolveToken: (...args: unknown[]) => mockResolveToken(...args),
+  resolveCredentials: (...args: unknown[]) => mockResolveCredentials(...args),
 }));
 
 vi.mock('@gitpm/core', () => ({
@@ -85,7 +85,7 @@ describe('gitpm push', () => {
     exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {
       throw new Error('process.exit');
     }) as never);
-    mockResolveToken.mockResolvedValue('mock-token');
+    mockResolveCredentials.mockReturnValue({ token: 'mock-token' });
     mockRunHooks.mockResolvedValue({ ok: true, value: undefined });
     setupMockAdapter();
   });
@@ -179,9 +179,15 @@ describe('gitpm push', () => {
 
   it('pushes to GitLab when GitLab adapter detects', async () => {
     setupMockAdapter('gitlab', 'GitLab');
+    mockResolveCredentials.mockReturnValue({ token: 'gl-tok' });
     mockAdapterExport.mockResolvedValue({ ok: true, value: exportResult });
 
     await run('--dry-run', '--token', 'gl-tok', '--meta-dir', '/tmp/meta');
+
+    expect(mockResolveCredentials).toHaveBeenCalledWith('gitlab', 'gl-tok');
+    expect(mockAdapterExport).toHaveBeenCalledWith(
+      expect.objectContaining({ token: 'gl-tok' }),
+    );
 
     expect(mockAdapterExport).toHaveBeenCalledWith(
       expect.objectContaining({ dryRun: true }),

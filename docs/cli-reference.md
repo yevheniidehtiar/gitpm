@@ -39,13 +39,20 @@ These options apply to all commands:
 
 ## Authentication
 
-The token is resolved in priority order:
+Credentials are resolved per adapter, in priority order:
 
 1. `--token` flag (highest priority)
-2. `GITHUB_TOKEN` environment variable (GitLab and Jira currently require `--token`)
-3. GitHub CLI fallback (`gh auth token`)
+2. The adapter's environment variable
+3. The adapter's fallback, if it has one
 
-If no token is found, the command exits with an error message.
+| Adapter | Token variable | Other variables | Fallback |
+|---|---|---|---|
+| `github` | `GITHUB_TOKEN` | | `gh auth token` |
+| `gitlab` | `GITLAB_TOKEN` | | |
+| `jira` | `JIRA_TOKEN` | `JIRA_EMAIL` | |
+| `linear` | `--api-key` or `LINEAR_API_KEY` | | |
+
+An adapter never receives another adapter's token. If no token is found, the adapter exits with an error message.
 
 ---
 

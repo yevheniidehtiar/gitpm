@@ -8,7 +8,7 @@ const mockLoadGitpmConfig = vi.fn();
 const mockLoadAdapters = vi.fn();
 const mockFindAdapterByName = vi.fn();
 const mockRunHooks = vi.fn();
-const mockResolveToken = vi.fn();
+const mockResolveCredentials = vi.fn();
 
 function createMockAdapter(name: string, displayName: string) {
   return {
@@ -29,7 +29,7 @@ vi.mock('@gitpm/core', () => ({
 }));
 
 vi.mock('../utils/auth.js', () => ({
-  resolveToken: (...args: unknown[]) => mockResolveToken(...args),
+  resolveCredentials: (...args: unknown[]) => mockResolveCredentials(...args),
 }));
 
 vi.mock('ora', () => ({
@@ -78,7 +78,7 @@ describe('gitpm import', () => {
     githubAdapter = createMockAdapter('github', 'GitHub');
     gitlabAdapter = createMockAdapter('gitlab', 'GitLab');
 
-    mockResolveToken.mockResolvedValue('mock-token');
+    mockResolveCredentials.mockReturnValue({ token: 'mock-token' });
     mockLoadGitpmConfig.mockResolvedValue({
       ok: true,
       value: {
@@ -208,8 +208,23 @@ describe('gitpm import', () => {
       expect.anything(),
       'gitlab',
     );
+    expect(mockResolveCredentials).toHaveBeenCalledWith('gitlab', 'gl-tok');
     expect(mockAdapterImport).toHaveBeenCalled();
     expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it('forwards resolved token and email to the adapter', async () => {
+    mockResolveCredentials.mockReturnValue({
+      token: 'jira-tok',
+      email: 'dev@example.com',
+    });
+    mockAdapterImport.mockResolvedValue({ ok: true, value: importSummary });
+
+    await run('--source', 'gitlab', '--meta-dir', '/tmp/meta');
+
+    expect(mockAdapterImport).toHaveBeenCalledWith(
+      expect.objectContaining({ token: 'jira-tok', email: 'dev@example.com' }),
+    );
   });
 
   it('exits with code 1 for unknown source', async () => {
