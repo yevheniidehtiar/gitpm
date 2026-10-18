@@ -185,13 +185,22 @@ describe('epic marker', () => {
   });
 
   it('stays fast on adversarial bodies', () => {
-    const newlines = `${'\n'.repeat(50_000)}x`;
-    const prefixes = `<!--gitpm:epic=${'<!--gitpm:epic=!'.repeat(20_000)}`;
+    // ~100k chars each, shaped after the CodeQL js/polynomial-redos report.
+    const newlines = `${'\n'.repeat(100_000)}x`;
+    const prefixes = `<!--gitpm:epic=${'<!--gitpm:epic=!'.repeat(6_250)}`;
+    const longId = `<!-- gitpm:epic=${'a'.repeat(100_000)}`;
     const start = performance.now();
     expect(stripEpicMarker(newlines)).toBe('x');
     expect(extractEpicMarker(prefixes)).toBeNull();
     expect(stripEpicMarker(prefixes)).toBe(prefixes);
+    expect(extractEpicMarker(longId)).toBeNull();
+    expect(withEpicMarker(longId, 'ep-1')).toContain(epicMarker('ep-1'));
     expect(performance.now() - start).toBeLessThan(500);
+  });
+
+  it('ignores ids longer than 64 chars', () => {
+    expect(extractEpicMarker(epicMarker('a'.repeat(64)))).toBe('a'.repeat(64));
+    expect(extractEpicMarker(epicMarker('a'.repeat(65)))).toBeNull();
   });
 
   it('replaces an existing marker instead of appending', () => {
