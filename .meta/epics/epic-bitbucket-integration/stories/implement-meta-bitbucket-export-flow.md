@@ -2,7 +2,7 @@
 type: story
 id: _u2fRh8sseDh
 title: Implement .meta → Bitbucket export flow
-status: in_review
+status: done
 priority: high
 assignee: null
 labels:
@@ -17,7 +17,7 @@ github:
   last_sync_hash: sha256:0adf57de52c96855e43f83a7af958ad943f408bfcd205b2ce19340b8f2ad95df
   synced_at: 2026-10-18T19:57:30.030Z
 created_at: 2026-10-17T08:22:44.682Z
-updated_at: 2026-10-18T19:48:10.237Z
+updated_at: 2026-10-18T20:47:38.945Z
 ---
 
 `gitpm push` for the Bitbucket adapter:

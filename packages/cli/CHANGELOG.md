@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.14](https://github.com/yevheniidehtiar/gitpm/compare/cli-v0.1.13...cli-v0.1.14) (2026-10-18)
+
+
+### Features
+
+* **cli:** wire Bitbucket adapter into the CLI and auto-detection ([#299](https://github.com/yevheniidehtiar/gitpm/issues/299)) ([c9a39ec](https://github.com/yevheniidehtiar/gitpm/commit/c9a39ecac5434d091ed59f3a5c06d39df0210aef))
+
+
+### Bug Fixes
+
+* **cli:** resolve GITLAB_TOKEN, JIRA_TOKEN and JIRA_EMAIL per adapter ([#294](https://github.com/yevheniidehtiar/gitpm/issues/294)) ([104bdbc](https://github.com/yevheniidehtiar/gitpm/commit/104bdbcb0196ed032a10251544b0582703fb3198))
+
 ## [0.1.13](https://github.com/yevheniidehtiar/gitpm/compare/cli-v0.1.12...cli-v0.1.13) (2026-10-17)
 
 

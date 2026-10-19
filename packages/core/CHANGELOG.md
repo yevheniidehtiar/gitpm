@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.15](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.14...core-v0.1.15) (2026-10-18)
+
+
+### Features
+
+* **cli:** wire Bitbucket adapter into the CLI and auto-detection ([#299](https://github.com/yevheniidehtiar/gitpm/issues/299)) ([c9a39ec](https://github.com/yevheniidehtiar/gitpm/commit/c9a39ecac5434d091ed59f3a5c06d39df0210aef))
+* **sync-bitbucket:** implement .meta to Bitbucket export flow ([#300](https://github.com/yevheniidehtiar/gitpm/issues/300)) ([e631b80](https://github.com/yevheniidehtiar/gitpm/commit/e631b8049eee98b1ff2ab2c79a69cf17fc63934c))
+
 ## [0.1.14](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.13...core-v0.1.14) (2026-10-17)
 
 
