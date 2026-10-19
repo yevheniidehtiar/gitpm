@@ -9,7 +9,7 @@
 [project]
 site_name = "gitpm"
 site_url = "https://yevheniidehtiar.github.io/gitpm/"
-site_description = "Git-native project management: roadmaps, epics and stories as files in your repo, synced with GitHub, GitLab and Jira."
+site_description = "Git-native project management: roadmaps, epics and stories as files in your repo, synced with GitHub, GitLab, Jira and Bitbucket."
 site_author = "Yevhenii Dehtiar"
 copyright = "Copyright &copy; gitpm contributors. MIT licensed."
 

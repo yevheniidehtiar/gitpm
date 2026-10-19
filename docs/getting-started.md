@@ -1,6 +1,6 @@
 ---
 title: Getting started
-description: Install gitpm, connect it to GitHub, GitLab or Jira, and push your first change.
+description: Install gitpm, connect it to GitHub, GitLab, Jira or Bitbucket, and push your first change.
 ---
 
 # Getting started
@@ -37,6 +37,12 @@ The CLI and the sync adapters are separate npm packages. Install the CLI plus th
     npm install -g @gitpm/cli @gitpm/sync-jira
     ```
 
+=== "Bitbucket"
+
+    ```bash
+    npm install -g @gitpm/cli @gitpm/sync-bitbucket
+    ```
+
 Adapters are discovered at runtime, so there is nothing else to configure. Check the install:
 
 ```bash
@@ -57,7 +63,16 @@ If you already use `gh`, run `gh auth login` once and skip this step. Otherwise:
 export GITHUB_TOKEN="ghp_..."
 ```
 
-For GitLab and Jira, pass the token with `--token`. The [sync guide](sync-guide.md) covers the per-platform settings.
+Other trackers read their own variables, and `--token` always overrides them:
+
+| Tracker | Variables |
+|---|---|
+| GitLab | `GITLAB_TOKEN` |
+| Jira | `JIRA_TOKEN`, `JIRA_EMAIL` |
+| Linear | `LINEAR_API_KEY` |
+| Bitbucket Cloud | `BITBUCKET_TOKEN`, plus `BITBUCKET_EMAIL` for an Atlassian API token. Leave the email unset for a workspace or repository access token. |
+
+The [sync guide](sync-guide.md) covers the per-platform settings, including [Bitbucket token scopes](sync-guide.md#authentication).
 
 !!! warning "Keep tokens out of the repository"
     Never write tokens into `.meta/sync/*.yaml`, commit messages or CI logs. gitpm only reads them from the flag, the environment or `gh`.
@@ -74,7 +89,8 @@ You have two options.
     cd /path/to/your/repo
     gitpm import --repo owner/repo                    # GitHub
     gitpm import --repo owner/repo --project 5        # GitHub, including a Projects (v2) board
-    gitpm import --source gitlab --project group/proj --token "$GITLAB_TOKEN"
+    gitpm import --source gitlab --project group/proj  # GitLab
+    gitpm import --source bitbucket --repo workspace/repo_slug  # Bitbucket Cloud
     ```
 
     Expected output ends with:
@@ -89,7 +105,7 @@ You have two options.
       Files:      52
     ```
 
-    Import also writes `.meta/sync/github-config.yaml` (or the GitLab/Jira equivalent) and a `*-state.json` file. The [migration guide](migration-guide.md) explains how issues are mapped to epics and stories.
+    Import also writes `.meta/sync/github-config.yaml` (or the GitLab, Jira or Bitbucket equivalent) and a `*-state.json` file. The [migration guide](migration-guide.md) explains how issues are mapped to epics and stories.
 
 === "Start from scratch"
 

@@ -23,6 +23,7 @@ All project management data in GitPM is stored as files in the `.meta/` director
 └── sync/
     ├── github-config.yaml              # Sync configuration
     ├── gitlab-config.yaml              # GitLab sync configuration
+    ├── bitbucket-config.yaml           # Bitbucket sync configuration
     └── github-state.json               # Sync state (auto-managed, do not edit)
 ```
 
@@ -92,6 +93,7 @@ The basic unit of work. Stories can belong to an epic or stand alone.
 | `github` | object \| null | No | GitHub sync metadata |
 | `gitlab` | object \| null | No | GitLab sync metadata |
 | `jira` | object \| null | No | Jira sync metadata |
+| `bitbucket` | object \| null | No | Bitbucket sync metadata |
 | `created_at` | string | No | ISO 8601 creation timestamp |
 | `updated_at` | string | No | ISO 8601 update timestamp |
 
@@ -152,6 +154,7 @@ A collection of related stories representing a larger body of work.
 | `github` | object \| null | No | GitHub sync metadata |
 | `gitlab` | object \| null | No | GitLab sync metadata |
 | `jira` | object \| null | No | Jira sync metadata |
+| `bitbucket` | object \| null | No | Bitbucket sync metadata |
 | `created_at` | string | No | ISO 8601 creation timestamp |
 | `updated_at` | string | No | ISO 8601 update timestamp |
 
@@ -210,6 +213,7 @@ A release target or time-based goal that groups epics together.
 | `github` | object \| null | No | GitHub sync metadata |
 | `gitlab` | object \| null | No | GitLab sync metadata |
 | `jira` | object \| null | No | Jira sync metadata |
+| `bitbucket` | object \| null | No | Bitbucket sync metadata |
 | `created_at` | string | No | ISO 8601 creation timestamp |
 | `updated_at` | string | No | ISO 8601 update timestamp |
 
@@ -361,6 +365,20 @@ jira:
   last_sync_hash: "sha256:…"
   synced_at: "2026-03-15T…"
 ```
+
+### Bitbucket Sync
+
+```yaml
+bitbucket:
+  issue_id: 42               # Bitbucket issue ID (stories and epics)
+  milestone_name: "v1.0"     # Bitbucket milestone name (milestones only)
+  workspace: "myteam"        # Bitbucket workspace
+  repo_slug: "myrepo"        # Repository slug
+  last_sync_hash: "sha256:…" # Optional until the first push or sync
+  synced_at: "2026-03-15T…"
+```
+
+Bitbucket milestones have no writable ID over REST 2.0, so milestones are linked by name. See [Bitbucket Cloud](sync-guide.md#bitbucket-cloud) in the sync guide.
 
 ---
 

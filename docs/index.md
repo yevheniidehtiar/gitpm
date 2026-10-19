@@ -1,11 +1,11 @@
 ---
 title: gitpm
-description: Git-native project management. Roadmaps, epics and stories as Markdown files in your repo, synced with GitHub, GitLab and Jira.
+description: Git-native project management. Roadmaps, epics and stories as Markdown files in your repo, synced with GitHub, GitLab, Jira and Bitbucket.
 ---
 
 # gitpm
 
-**gitpm keeps your roadmap, epics and stories as Markdown files in `.meta/` inside your repository and syncs them both ways with GitHub, GitLab or Jira.**
+**gitpm keeps your roadmap, epics and stories as Markdown files in `.meta/` inside your repository and syncs them both ways with GitHub, GitLab, Jira or Bitbucket.**
 
 Your tracker stays the team's UI. The repository becomes the source of truth that you, your reviewers and your AI coding agents can read, diff and edit like any other code.
 
@@ -17,7 +17,7 @@ Your tracker stays the team's UI. The repository becomes the source of truth tha
 gitpm is a Node.js CLI. Install it with the sync adapter for your tracker:
 
 ```bash
-npm install -g @gitpm/cli @gitpm/sync-github   # or @gitpm/sync-gitlab, @gitpm/sync-jira
+npm install -g @gitpm/cli @gitpm/sync-github   # or @gitpm/sync-gitlab, @gitpm/sync-jira, @gitpm/sync-bitbucket
 ```
 
 ## Quick start
@@ -91,7 +91,7 @@ The [getting started guide](getting-started.md) walks through tokens, adapters a
 
     ---
 
-    `push`, `pull` and `sync` against GitHub Issues and Projects, GitLab or Jira, with content hashing and field-level conflict resolution.
+    `push`, `pull` and `sync` against GitHub Issues and Projects, GitLab, Jira or Bitbucket Cloud, with content hashing and field-level conflict resolution.
 
     [:octicons-arrow-right-24: Sync guide](sync-guide.md)
 

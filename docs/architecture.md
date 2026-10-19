@@ -71,7 +71,7 @@ The core package processes `.meta/` files through four stages:
 
 ### Sync Engine
 
-Each sync adapter (GitHub, GitLab, Jira) follows the same three-flow pattern:
+Each sync adapter (GitHub, GitLab, Jira, Linear, Bitbucket) follows the same three-flow pattern:
 
 **Import (remote to local):**
 1. Fetch milestones and issues from the remote platform
