@@ -12,7 +12,8 @@ on:
 # publish credential. Each package on npmjs.com must list this repository,
 # this workflow file name (release.yml) and the "npm" environment as a trusted
 # publisher. A package that does not exist on npm yet has to be published once
-# by hand before a trusted publisher can be configured for it.
+# by hand before a trusted publisher can be configured for it:
+# scripts/publish-manual.sh --publish <package-dir>...
 permissions:
   contents: read
   id-token: write
