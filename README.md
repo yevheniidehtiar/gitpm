@@ -4,7 +4,7 @@
 
 **Project management that lives in your repo.**
 
-Roadmaps, PRDs, epics, and stories as Markdown + YAML in `.meta/` — bidirectionally synced with GitHub, GitLab, and Jira. Built for AI-agentic workflows where code and project context live in one traversable file tree.
+Roadmaps, PRDs, epics, and stories as Markdown + YAML in `.meta/` — bidirectionally synced with GitHub, GitLab, Jira, Linear and Bitbucket (Cloud). Built for AI-agentic workflows where code and project context live in one traversable file tree.
 
 [![Build Matrix](https://github.com/yevheniidehtiar/gitpm/actions/workflows/build-matrix.yml/badge.svg?branch=master)](https://github.com/yevheniidehtiar/gitpm/actions/workflows/build-matrix.yml)
 [![Nightly Integration Tests](https://github.com/yevheniidehtiar/gitpm/actions/workflows/nightly.yml/badge.svg?branch=master)](https://github.com/yevheniidehtiar/gitpm/actions/workflows/nightly.yml)
@@ -22,13 +22,13 @@ Roadmaps, PRDs, epics, and stories as Markdown + YAML in `.meta/` — bidirectio
 
 ## What is GitPM?
 
-GitPM turns your repository's `.meta/` directory into a full project management system. Roadmaps, epics, stories, and milestones are stored as Markdown files with YAML frontmatter — editable by humans, parseable by AI agents, and kept in bidirectional sync with GitHub, GitLab, or Jira.
+GitPM turns your repository's `.meta/` directory into a full project management system. Roadmaps, epics, stories, and milestones are stored as Markdown files with YAML frontmatter — editable by humans, parseable by AI agents, and kept in bidirectional sync with GitHub, GitLab, Jira, Linear or Bitbucket (Cloud).
 
 ## Why GitPM?
 
 **AI-agentic development with full project context.** Your roadmap, epics, and tasks live as files in the repo — right next to the code. AI agents (Claude Code, Cursor, Copilot, custom agents) can read the entire project context from `.meta/` without any API calls. Works fully offline, in air-gapped environments, and on isolated networks with restricted access. The LLM sees what needs to be built, what's in progress, and what's done — all from the file tree.
 
-**Let AI handle project management overhead.** Use Claude (or any LLM) to create, enrich, and resolve issues directly by editing `.meta/` files. Draft stories from a one-line description, auto-generate acceptance criteria, break epics into stories, update statuses as work completes — then sync to GitHub/GitLab/Jira in one command. Saves hours of PM bureaucracy per sprint.
+**Let AI handle project management overhead.** Use Claude (or any LLM) to create, enrich, and resolve issues directly by editing `.meta/` files. Draft stories from a one-line description, auto-generate acceptance criteria, break epics into stories, update statuses as work completes — then sync to GitHub, GitLab, Jira, Linear or Bitbucket in one command. Saves hours of PM bureaucracy per sprint.
 
 **Single source of truth across tools.** Teams often split between GitHub Issues, Jira, spreadsheets, and Notion. GitPM unifies everything into version-controlled files that sync bidirectionally with your tracker. No more stale tickets or context scattered across tools.
 
@@ -83,16 +83,53 @@ npm install -g @gitpm/cli @gitpm/sync-gitlab
 # Jira only
 npm install -g @gitpm/cli @gitpm/sync-jira
 
+# Linear only
+npm install -g @gitpm/cli @gitpm/sync-linear
+
+# Bitbucket Cloud only
+npm install -g @gitpm/cli @gitpm/sync-bitbucket
+
 # Multiple platforms
 npm install -g @gitpm/cli @gitpm/sync-github @gitpm/sync-jira
 ```
 
 Adapters are auto-detected at runtime — no extra configuration needed. The CLI discovers which adapters are installed and uses the one matching your `.meta/sync/` config.
 
+## Add GitPM to an existing project
+
+`gitpm init` is for starting from scratch and writes no sync config. For a project that already has a tracker, import it instead. Import writes the entities under `.meta/` plus `.meta/sync/<platform>-config.yaml` and `.meta/sync/<platform>-state.json`.
+
+1. Import your tracker. Run the command for your platform from the repo root:
+
+   ```bash
+   # GitHub (token from --token, GITHUB_TOKEN or gh auth token)
+   gitpm import --repo owner/repo
+
+   # GitLab (token from GITLAB_TOKEN or --token)
+   gitpm import --source gitlab --project namespace/project
+
+   # Jira Cloud (token from JIRA_TOKEN + JIRA_EMAIL or --token)
+   gitpm import --source jira --site mycompany.atlassian.net --project-key PROJ
+
+   # Linear (API key from LINEAR_API_KEY or --api-key)
+   gitpm import --source linear --team <team-id>
+
+   # Bitbucket Cloud (token from BITBUCKET_TOKEN + BITBUCKET_EMAIL or --token)
+   gitpm import --source bitbucket --repo workspace/repo_slug
+   ```
+
+2. Check the result with `gitpm validate`.
+
+3. Commit `.meta/`, including `.meta/sync/*-state.json`. The state file holds the content hashes that `push`, `pull` and `sync` use for change detection, so it belongs in the repo.
+
+4. Optionally add `gitpm validate` to CI so broken frontmatter fails the PR.
+
+From here on, `gitpm push`, `gitpm pull` and `gitpm sync` read the platform from `.meta/sync/`. See the [Sync Configuration Guide](docs/sync-guide.md) for status and priority mapping per platform.
+
 ## Key Features
 
 - **File-based project management** — roadmaps, epics, stories, milestones, and PRDs as Markdown + YAML frontmatter in `.meta/`
-- **Bidirectional sync** — keep `.meta/` in sync with GitHub Issues, GitLab Issues, or Jira
+- **Bidirectional sync** — keep `.meta/` in sync with GitHub Issues, GitLab Issues, Jira, Linear or Bitbucket Cloud
 - **Plugin architecture** — install only the sync adapters you need; write custom adapters for any platform
 - **CLI-first** — 19 commands: six core (`init`, `validate`, `import`, `push`, `pull`, `sync`), tree editing (`query`, `show`, `set`, `create`, `move`, `archive`, `commit`), planning (`status`, `sprint`, `next`, `audit`, `quality`) and `context` (a project summary for AI agents)
 - **Local web UI** — browse, edit, and visualize your project tree with a React-based interface
@@ -108,20 +145,20 @@ Adapters are auto-detected at runtime — no extra configuration needed. The CLI
 |---------|-------------|
 | `gitpm init [name]` | Scaffold a new `.meta/` directory |
 | `gitpm validate` | Validate the `.meta/` tree against schemas |
-| `gitpm import --source <platform>` | Import from GitHub, GitLab, or Jira into `.meta/` |
+| `gitpm import --source <platform>` | Import from GitHub, GitLab, Jira, Linear or Bitbucket into `.meta/` |
 | `gitpm push` | Push local `.meta/` changes to the remote platform |
 | `gitpm pull` | Pull remote changes into local `.meta/` |
 | `gitpm sync` | Bidirectional sync between `.meta/` and the remote |
 
 Thirteen more commands edit the tree (`query`, `show`, `set`, `create`, `move`, `archive`, `commit`), support planning (`status`, `sprint`, `next`, `audit`, `quality`) and generate a project summary for AI agents (`context`). Run `gitpm --help` for the list.
 
-Global options: `--meta-dir <path>` (default: `.meta`), `--token <token>`, `--adapter <name>`
+Global options: `--meta-dir <path>` (default: `.meta`) and `--token <token>`; `import`, `push`, `pull` and `sync` also take `--adapter <name>`.
 
 See the full [CLI Reference](docs/cli-reference.md) for detailed usage and examples.
 
 ## Plugin System
 
-GitPM uses a plugin architecture for sync adapters. Each platform (GitHub, GitLab, Jira) is a separate package that implements the `SyncAdapter` interface.
+GitPM uses a plugin architecture for sync adapters. Each platform (GitHub, GitLab, Jira, Linear, Bitbucket Cloud) is a separate package that implements the `SyncAdapter` interface.
 
 ### Configuration
 
@@ -214,7 +251,7 @@ See the full [Schema Reference](docs/schema-reference.md) for all entity types a
 
 GitPM keeps `.meta/` files and your issue tracker in bidirectional sync:
 
-1. **Import** — pull your existing GitHub/GitLab issues into `.meta/` files
+1. **Import** — pull your existing GitHub, GitLab, Jira, Linear or Bitbucket issues into `.meta/` files
 2. **Edit** — modify files locally (or via the web UI)
 3. **Push** — send local changes to the remote platform
 4. **Pull** — fetch remote changes into local files
@@ -254,7 +291,7 @@ The same pages live in [`docs/`](docs/):
 | [Schema Reference](docs/schema-reference.md) | Entity types, frontmatter fields, directory conventions |
 | [Sync Configuration Guide](docs/sync-guide.md) | Setup, configuration, conflict resolution |
 | [Architecture Overview](docs/architecture.md) | System design, packages, conventions (for contributors) |
-| [Migration Guide](docs/migration-guide.md) | Migrating from GitHub Issues, GitLab, or Jira |
+| [Migration Guide](docs/migration-guide.md) | Migrating from GitHub Issues, GitLab, Jira, Linear or Bitbucket Cloud |
 | [Agent Setup Guide](docs/AGENT_SETUP_GUIDE.md) | For AI agents setting up GitPM in a consumer repo |
 | [Adopting Agentic Coding](docs/adopting-agentic-coding.md) | Trust model and sync strategy for teams on Jira and Confluence |
 | [AGENTS.md](AGENTS.md) | The agent instructions this repo itself runs on |

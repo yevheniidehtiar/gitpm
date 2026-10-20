@@ -1,11 +1,11 @@
 ---
 title: gitpm
-description: Git-native project management. Roadmaps, epics and stories as Markdown files in your repo, synced with GitHub, GitLab, Jira and Bitbucket.
+description: Git-native project management. Roadmaps, epics and stories as Markdown files in your repo, synced with GitHub, GitLab, Jira, Linear and Bitbucket.
 ---
 
 # gitpm
 
-**gitpm keeps your roadmap, epics and stories as Markdown files in `.meta/` inside your repository and syncs them both ways with GitHub, GitLab, Jira or Bitbucket.**
+**gitpm keeps your roadmap, epics and stories as Markdown files in `.meta/` inside your repository and syncs them both ways with GitHub, GitLab, Jira, Linear or Bitbucket.**
 
 Your tracker stays the team's UI. The repository becomes the source of truth that you, your reviewers and your AI coding agents can read, diff and edit like any other code.
 
@@ -17,7 +17,7 @@ Your tracker stays the team's UI. The repository becomes the source of truth tha
 gitpm is a Node.js CLI. Install it with the sync adapter for your tracker:
 
 ```bash
-npm install -g @gitpm/cli @gitpm/sync-github   # or @gitpm/sync-gitlab, @gitpm/sync-jira, @gitpm/sync-bitbucket
+npm install -g @gitpm/cli @gitpm/sync-github   # or @gitpm/sync-gitlab, @gitpm/sync-jira, @gitpm/sync-linear, @gitpm/sync-bitbucket
 ```
 
 ## Quick start
@@ -91,7 +91,7 @@ The [getting started guide](getting-started.md) walks through tokens, adapters a
 
     ---
 
-    `push`, `pull` and `sync` against GitHub Issues and Projects, GitLab, Jira or Bitbucket Cloud, with content hashing and field-level conflict resolution.
+    `push`, `pull` and `sync` against GitHub Issues and Projects, GitLab, Jira, Linear or Bitbucket Cloud, with content hashing and field-level conflict resolution.
 
     [:octicons-arrow-right-24: Sync guide](sync-guide.md)
 
@@ -133,4 +133,4 @@ The [getting started guide](getting-started.md) walks through tokens, adapters a
 
 - **Live demo** of the web UI, running on this repository's own `.meta/` tree: [yevheniidehtiar.github.io/gitpm/demo/](https://yevheniidehtiar.github.io/gitpm/demo/)
 - **Source** on GitHub: [yevheniidehtiar/gitpm](https://github.com/yevheniidehtiar/gitpm)
-- **Packages** on npm: [`@gitpm/cli`](https://www.npmjs.com/package/@gitpm/cli), [`@gitpm/core`](https://www.npmjs.com/package/@gitpm/core), [`@gitpm/sync-github`](https://www.npmjs.com/package/@gitpm/sync-github), [`@gitpm/sync-gitlab`](https://www.npmjs.com/package/@gitpm/sync-gitlab), [`@gitpm/sync-jira`](https://www.npmjs.com/package/@gitpm/sync-jira)
+- **Packages** on npm: [`@gitpm/cli`](https://www.npmjs.com/package/@gitpm/cli), [`@gitpm/core`](https://www.npmjs.com/package/@gitpm/core), [`@gitpm/sync-github`](https://www.npmjs.com/package/@gitpm/sync-github), [`@gitpm/sync-gitlab`](https://www.npmjs.com/package/@gitpm/sync-gitlab), [`@gitpm/sync-jira`](https://www.npmjs.com/package/@gitpm/sync-jira), [`@gitpm/sync-linear`](https://www.npmjs.com/package/@gitpm/sync-linear), [`@gitpm/sync-bitbucket`](https://www.npmjs.com/package/@gitpm/sync-bitbucket)

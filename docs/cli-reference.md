@@ -163,10 +163,15 @@ gitpm import [options]
 |--------|-------------|---------|
 | `--source <source>` | Source platform: `github`, `gitlab`, `jira`, `linear` or `bitbucket` | `github` |
 | `--repo <owner/repo>` | GitHub repository (required for GitHub), or Bitbucket `workspace/repo_slug` | |
-| `--project <value>` | GitHub Project number, GitLab project path, or Bitbucket `workspace/repo_slug` | |
+| `--project <value>` | GitHub Project number, GitLab project path, Bitbucket `workspace/repo_slug`, or Jira project key (alias of `--project-key`) | |
 | `--token <token>` | Access token | (auto-resolved) |
-| `--base-url <url>` | GitLab base URL, or Bitbucket API URL | `https://gitlab.com`, `https://api.bitbucket.org/2.0` |
-| `--link-strategy <strategy>` | Epic-story linkage strategy (GitHub and GitLab) | `all` |
+| `--base-url <url>` | GitLab base URL, Bitbucket API URL, or Jira site URL (alias of `--site`) | `https://gitlab.com`, `https://api.bitbucket.org/2.0` |
+| `--site <host>` | Jira site, e.g. `mycompany.atlassian.net` | |
+| `--project-key <KEY>` | Jira project key | |
+| `--board <id>` | Jira board ID. Sprints of this board become milestones | |
+| `--team <id>` | Linear team ID | |
+| `--api-key <key>` | Linear API key | `LINEAR_API_KEY` |
+| `--link-strategy <strategy>` | Epic-story linkage strategy. GitHub and GitLab only | `all` |
 | `--adapter <name>` | Force a specific adapter by name, instead of `--source` | |
 
 Bitbucket links stories to epics through `epic_linkage` in `.meta/sync/bitbucket-config.yaml`, not `--link-strategy`. See [Epic linkage](sync-guide.md#epic-linkage).
@@ -206,6 +211,12 @@ gitpm import --source gitlab --project mygroup/myproject
 # Import from self-hosted GitLab
 gitpm import --source gitlab --project mygroup/myproject \
   --base-url https://gitlab.mycompany.com --token glpat-...
+
+# Import from Jira Cloud (reads JIRA_TOKEN and JIRA_EMAIL)
+gitpm import --source jira --site mycompany.atlassian.net --project-key PROJ
+
+# Import from Linear (reads LINEAR_API_KEY)
+gitpm import --source linear --team <team-id>
 
 # Import from Bitbucket Cloud (reads BITBUCKET_TOKEN and BITBUCKET_EMAIL)
 gitpm import --source bitbucket --repo myteam/myrepo

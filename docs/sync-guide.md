@@ -33,6 +33,12 @@ gitpm import --source gitlab --project namespace/project
 gitpm import --source gitlab --project namespace/project \
   --base-url https://gitlab.mycompany.com
 
+# From Jira
+gitpm import --source jira --site mycompany.atlassian.net --project-key PROJ
+
+# From Linear
+gitpm import --source linear --team <team-id>
+
 # From Bitbucket Cloud
 gitpm import --source bitbucket --repo workspace/repo_slug
 ```
@@ -80,6 +86,17 @@ status_mapping:                      # Maps GitHub Project status to GitPM statu
 label_mapping:
   epic_labels:                       # Issues with these labels become Epics
     - epic
+priority_mapping:                    # Maps issue labels to GitPM priority
+  priority:critical: critical
+  priority:high: high
+  priority:medium: medium
+  priority:low: low
+  P0: critical
+  P1: high
+  P2: medium
+  P3: low
+  critical: critical
+  urgent: critical
 auto_sync: false                     # Reserved for future use
 ```
 
@@ -90,29 +107,68 @@ auto_sync: false                     # Reserved for future use
 ```yaml
 project: namespace/project           # Required: GitLab project path
 project_id: 123                      # Required: GitLab project numeric ID
+group_id: 45                         # Optional: group that owns the Epics, needed for --link-strategy native-epics
 base_url: https://gitlab.com         # GitLab instance URL
-status_mapping:
+status_mapping:                      # Keys are issue states (opened, closed) or label names
   opened: todo
   closed: done
+  In Review: in_review               # An issue labelled "In Review" imports as in_review
 label_mapping:
   epic_labels:
     - epic
+auto_sync: false                     # Reserved for future use
 ```
+
+GitLab specifics:
+
+- **Status on import** is looked up in `status_mapping` by the first issue label that matches a key, then by the issue state (`opened` or `closed`). Neither matching maps to `todo`. The defaults are `opened: todo` and `closed: done`.
+- **Status on push:** `done` and `cancelled` close the issue. Every other status reopens it.
+- **Priority comes from the issue weight.** Nothing is written back on push.
+
+    | Weight | GitPM priority |
+    |---|---|
+    | unset, `0`, `3`, `4` | `medium` |
+    | `1`, `2` | `low` |
+    | `5`, `6` | `high` |
+    | `7` and above | `critical` |
+
+- **`--link-strategy native-epics`** uses GitLab Epics, a Premium feature of groups. It needs `group_id` to point at the group that owns the epics.
 
 ### Jira Configuration
 
 **File:** `.meta/sync/jira-config.yaml`
 
 ```yaml
-site: mycompany.atlassian.net        # Jira Cloud site
-project_key: PROJ                    # Jira project key
-workflow_mapping:                    # Maps Jira workflow statuses to GitPM status
+site: mycompany.atlassian.net        # Required: Jira Cloud site
+project_key: PROJ                    # Required: Jira project key
+board_id: 12                         # Optional: sprints of this board become milestones
+status_mapping:                      # Maps Jira status names to GitPM status
   To Do: todo
   In Progress: in_progress
   In Review: in_review
   Done: done
   Backlog: backlog
+issue_type_mapping:
+  epic_types:                        # Issues of these types become Epics
+    - Epic
+auto_sync: false                     # Reserved for future use
 ```
+
+Jira specifics:
+
+- **Jira Cloud only.** The adapter authenticates with HTTP Basic using `JIRA_EMAIL` and `JIRA_TOKEN` (or `--token`). Jira Server and Data Center are not supported.
+- **Unknown statuses map to `todo`.** Edit `status_mapping` so every status of your workflow has an entry.
+- **Sprints become milestones** when `board_id` is set. A closed sprint is `done`, every other sprint `in_progress`.
+- **Priority** is mapped in both directions:
+
+    | Jira priority | GitPM priority |
+    |---|---|
+    | `Highest`, `Blocker` | `critical` |
+    | `High` | `high` |
+    | `Low`, `Lowest` | `low` |
+    | anything else | `medium` |
+
+    On push gitpm writes `critical` as `Highest`, `high` as `High`, `low` as `Low` and `medium` as `Medium`.
 
 ### Bitbucket Configuration
 
@@ -135,7 +191,7 @@ See [Bitbucket Cloud](#bitbucket-cloud) for the defaults and every field.
 
 ## Status Mapping
 
-The `status_mapping` maps the remote platform's status values to GitPM's standard status enum (`backlog`, `todo`, `in_progress`, `in_review`, `done`, `cancelled`).
+The `status_mapping` maps the remote platform's status values to GitPM's standard status enum (`backlog`, `todo`, `in_progress`, `in_review`, `done`, `cancelled`). This section describes GitHub. For the other trackers see [GitLab](#gitlab-configuration), [Jira](#jira-configuration), [Linear](#linear-status-mapping) and [Bitbucket](#bitbucket-status-mapping).
 
 **Default GitHub mapping:**
 
@@ -152,6 +208,8 @@ You can customize this mapping to match your project's workflow. Any GitHub stat
 ---
 
 ## Priority Mapping
+
+This section describes GitHub. For the other trackers see [GitLab](#gitlab-configuration), [Jira](#jira-configuration), [Linear](#linear-priority-mapping) and [Bitbucket](#bitbucket-priority-mapping).
 
 During import, GitPM infers priority from issue labels using the following defaults:
 
@@ -202,6 +260,134 @@ gitpm import --repo owner/repo --link-strategy sub-issues
 # Use all strategies (default)
 gitpm import --repo owner/repo --link-strategy all
 ```
+
+---
+
+## Linear
+
+The `@gitpm/sync-linear` adapter syncs stories, epics and cycles with one Linear team over the GraphQL API. One config file covers one team.
+
+```bash
+npm install -g @gitpm/cli @gitpm/sync-linear
+```
+
+### Linear authentication
+
+Create a personal API key in Linear under **Settings > Security & access > Personal API keys** and export it:
+
+```bash
+export LINEAR_API_KEY="lin_api_..."
+```
+
+`--api-key` overrides `LINEAR_API_KEY`. The generic `--token` option is not used for Linear. The CLI fills it from `GITHUB_TOKEN` or `gh auth token`, and the adapter ignores it so a GitHub token never reaches Linear.
+
+### Linear import
+
+```bash
+gitpm import --source linear --team <team-id>
+```
+
+`--team` takes the team id, a UUID. Find it in Linear under the team's settings, or ask the API:
+
+```graphql
+query { teams { nodes { id name key } } }
+```
+
+Import reads every cycle and issue of the team, writes them under `.meta/`, then saves `.meta/sync/linear-config.yaml` and `.meta/sync/linear-state.json`.
+
+`--link-strategy` does not apply to Linear. Stories are linked to epics through the parent issue (see [Epics, stories and cycles](#epics-stories-and-cycles)).
+
+After the first import, `gitpm push`, `gitpm pull` and `gitpm sync` detect Linear from `linear-config.yaml` and read the team from its `team_id`. Pass `--adapter linear` if the tree also holds another tracker's config.
+
+### Linear configuration
+
+**File:** `.meta/sync/linear-config.yaml`
+
+| Field | Required | Default | Meaning |
+|---|---|---|---|
+| `team_id` | Yes | | Linear team id (UUID) |
+| `status_mapping` | No | see [Linear status mapping](#linear-status-mapping) | Linear workflow state type → gitpm status |
+| `auto_sync` | No | `false` | Reserved for future use |
+
+```yaml
+team_id: 0f1e2d3c-4b5a-6978-8a9b-0c1d2e3f4a5b
+status_mapping:                      # Keys are workflow state types, not state names
+  triage: backlog
+  backlog: backlog
+  unstarted: todo
+  started: in_progress
+  completed: done
+  canceled: cancelled
+auto_sync: false
+```
+
+### Linear status mapping
+
+Linear teams name their workflow states freely, so gitpm maps by the state **type**:
+
+| Linear state type | gitpm status |
+|---|---|
+| `triage`, `backlog` | `backlog` |
+| `unstarted` | `todo` |
+| `started` | `in_progress` |
+| `completed` | `done` |
+| `canceled` | `cancelled` |
+
+A state type missing from the mapping comes back as `todo`.
+
+On push gitpm moves the issue to the team's first workflow state of the type that maps to the entity's status:
+
+| gitpm status | Linear state type |
+|---|---|
+| `backlog` | `backlog` |
+| `todo` | `unstarted` |
+| `in_progress` | `started` |
+| `done` | `completed` |
+| `cancelled` | `canceled` |
+
+When several types map to one status, as `triage` and `backlog` do by default, the type named like the status wins. Linear has no review state type, so `in_review` has no entry in the default mapping and push leaves the issue's workflow state as it is.
+
+### Linear priority mapping
+
+| Linear priority | gitpm priority |
+|---|---|
+| `1` (Urgent) | `critical` |
+| `2` (High) | `high` |
+| `3` (Medium), `0` (No priority) | `medium` |
+| `4` (Low) | `low` |
+
+gitpm writes `critical` as `1`, `high` as `2`, `medium` as `3` and `low` as `4`. An issue whose current priority already maps to the entity's priority is left alone, so "No priority" is not rewritten to Medium on every push.
+
+### Epics, stories and cycles
+
+Linear has no epic type. On import an issue with sub-issues becomes an epic and every other issue a story. A story's parent issue names its epic. On push a new story is created as a sub-issue of its epic's issue.
+
+Cycles become milestones. The cycle's end date becomes `target_date`, a completed cycle is `done` and every other cycle `in_progress`. Cycles are managed in Linear: push and sync never create or change them.
+
+### Linear push, pull and sync
+
+`gitpm push` creates or updates an issue for every story and epic. `gitpm sync` compares each linked entity's content hash with the local and remote hashes recorded at the last sync. `gitpm pull` runs the same sync with `remote-wins` as its default strategy. In both:
+
+- an entity changed only locally is pushed, one changed only in Linear is pulled;
+- an entity changed on both sides is a conflict, resolved as a whole by `--strategy` (`ask` lists the conflict and leaves the entity untouched);
+- new local entities are created as issues, locally deleted entities move their issue to the team's first `completed` state, and an issue deleted in Linear cancels its entity.
+
+Conflicts are resolved per entity, not per field as with Bitbucket. The state file is updated after every entity, so a run that stops halfway does not report the entities it already synced as conflicts next time.
+
+### Linear sync state and frontmatter
+
+`.meta/sync/linear-state.json` records the team id and the last-synced hashes of every entity. Each synced entity also carries a `linear:` block in its frontmatter with `issue_id`, `identifier` (such as `ENG-42`), `team_id`, `cycle_id`, `last_sync_hash` and `synced_at` (see the [schema reference](schema-reference.md#linear-sync)).
+
+`gitpm sync` needs the state file and stops with `No Linear sync state found` when it is missing. `gitpm push` does not: it links every entity that carries a `linear:` block to its issue and rebuilds the state entry from it. After losing the state file, run `gitpm push` once, then `gitpm sync`.
+
+### Linear limitations
+
+- **One team per config.** `team_id` names one team and the state file belongs to it. Use a separate `.meta/` tree per team.
+- **No review state.** Linear has no review state type, so `in_review` is never written on push.
+- **No "No priority".** Linear's priority `0` imports as `medium`. It survives a push only while the entity's priority stays `medium`.
+- **Cycles are read-only.** Milestones are imported from cycles and never created or updated in Linear.
+- **The team must exist.** gitpm creates missing labels on push, but never teams, workflow states or users. An assignee unknown to the team is left unchanged.
+- **The API key is personal.** Issues created on push are attributed to the key's owner.
 
 ---
 
@@ -491,6 +677,6 @@ Keys are sorted alphabetically and whitespace is normalized, ensuring stable has
 | `GITLAB_TOKEN` | GitLab | Personal access token with `api` scope |
 | `JIRA_TOKEN` | Jira | API token from [Atlassian account settings](https://id.atlassian.com/manage-profile/security/api-tokens) |
 | `JIRA_EMAIL` | Jira | Email of the Atlassian account that owns `JIRA_TOKEN` |
-| `LINEAR_API_KEY` | Linear | Linear API key |
+| `LINEAR_API_KEY` | Linear | Personal API key; `--api-key` overrides it |
 | `BITBUCKET_TOKEN` | Bitbucket | Atlassian API token, or a workspace or repository access token |
 | `BITBUCKET_EMAIL` | Bitbucket | Email of the Atlassian account that owns an API token. Leave unset for an access token. |

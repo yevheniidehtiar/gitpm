@@ -1,6 +1,6 @@
 # GitPM — Product Demo
 
-GitPM turns your repository into a project management system. Roadmaps, epics, stories, and milestones live as Markdown files in `.meta/` — version-controlled, AI-readable, and kept in bidirectional sync with GitHub, GitLab, or Jira. No SaaS lock-in. No context switching. Everything in one `git diff`.
+GitPM turns your repository into a project management system. Roadmaps, epics, stories, and milestones live as Markdown files in `.meta/` — version-controlled, AI-readable, and kept in bidirectional sync with GitHub, GitLab, Jira, Linear or Bitbucket Cloud. No SaaS lock-in. No context switching. Everything in one `git diff`.
 
 !!! tip "Try it in the browser"
     The [live demo](https://yevheniidehtiar.github.io/gitpm/demo/) runs the web UI read-only on gitpm's own `.meta/` tree. No install or token needed.
@@ -36,7 +36,7 @@ Already have hundreds of GitHub Issues? Pull them into `.meta/` in one command. 
 
 ```bash
 export GITHUB_TOKEN="ghp_..."
-gitpm import --repo acme/backend --strategy full
+gitpm import --repo acme/backend --link-strategy all
 ```
 
 ```

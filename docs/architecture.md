@@ -15,6 +15,7 @@ This document describes GitPM's system architecture, package structure, and code
 │              │   @gitpm/sync-gitlab     │
 │              │   @gitpm/sync-jira       │
 │              │   @gitpm/sync-linear     │
+│              │   @gitpm/sync-bitbucket  │
 ├──────────────┴──────────────────────────┤
 │         .meta/ file tree (Git)          │
 └─────────────────────────────────────────┘
@@ -29,6 +30,7 @@ This document describes GitPM's system architecture, package structure, and code
 | `packages/sync-gitlab` | `@gitpm/sync-gitlab` | Bidirectional sync with GitLab Issues/Milestones | `@gitpm/core` |
 | `packages/sync-jira` | `@gitpm/sync-jira` | Bidirectional sync with Jira Cloud | `@gitpm/core` |
 | `packages/sync-linear` | `@gitpm/sync-linear` | Bidirectional sync with Linear (GraphQL) | `@gitpm/core` |
+| `packages/sync-bitbucket` | `@gitpm/sync-bitbucket` | Bidirectional sync with Bitbucket Cloud Issues/Milestones | `@gitpm/core` |
 | `packages/cli` | `gitpm` | CLI entry point with 19 commands (tree editing, sync, planning) | `commander`, `chalk`, `ora`, `@gitpm/core`, sync packages |
 | `packages/ui` | `@gitpm/ui` | Local React web UI for browsing and editing | `react`, `tailwindcss`, `@tanstack/router`, `@tanstack/query`, `hono` |
 
@@ -39,7 +41,8 @@ cli ─────┬──▶ core
          ├──▶ sync-github ──▶ core
          ├──▶ sync-gitlab ──▶ core
          ├──▶ sync-jira ────▶ core
-         └──▶ sync-linear ──▶ core
+         ├──▶ sync-linear ──▶ core
+         └──▶ sync-bitbucket ─▶ core
 
 ui ──────┬──▶ core
          └──▶ (sync packages via API server)
@@ -143,6 +146,7 @@ gitpm/
 │   ├── sync-gitlab/             # Same structure as sync-github
 │   ├── sync-jira/               # Same structure as sync-github
 │   ├── sync-linear/             # Same structure as sync-github (GraphQL client)
+│   ├── sync-bitbucket/          # Same structure as sync-github
 │   ├── cli/
 │   │   └── src/
 │   │       ├── index.ts         # Commander setup

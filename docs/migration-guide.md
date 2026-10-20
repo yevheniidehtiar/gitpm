@@ -1,6 +1,6 @@
 # Migration Guide
 
-This guide covers importing existing project data into GitPM from GitHub Issues, GitLab, or Jira.
+This guide covers importing existing project data into GitPM from GitHub Issues, GitLab, Jira, Linear or Bitbucket Cloud.
 
 ## From GitHub Issues
 
@@ -79,10 +79,13 @@ Available strategies for GitHub:
 ### Basic Import
 
 ```bash
-gitpm import --source gitlab --project mygroup/myproject --token "glpat-..."
+export GITLAB_TOKEN="glpat-..."
+gitpm import --source gitlab --project mygroup/myproject
 ```
 
-The GitLab adapter does not read a `GITLAB_TOKEN` environment variable yet; pass `--token` on every command.
+The adapter reads `GITLAB_TOKEN`; `--token` overrides it.
+
+GitLab has no priority field, so gitpm maps issue weight to priority: 1-2 `low`, 3-4 `medium`, 5-6 `high`, 7 and above `critical`, unset `medium`.
 
 ### Self-Hosted GitLab
 
@@ -105,33 +108,123 @@ gitpm import --source gitlab --project mygroup/myproject \
 gitpm import --source gitlab --project mygroup/myproject --link-strategy native-epics
 ```
 
+`native-epics` needs the project to belong to a group with Epics (GitLab Premium) and `group_id` set in `.meta/sync/gitlab-config.yaml`. Import sets it when it can.
+
 ---
 
 ## From Jira
 
 ### Prerequisites
 
-- A Jira Cloud API token for a user who can read and transition issues in the project. Pass it with `--token` on every command; a `JIRA_TOKEN` environment variable is not read yet.
-- Your site URL (for example `https://mycompany.atlassian.net`) and the project key (for example `PROJ`).
+- Jira Cloud. The adapter authenticates with an email address and an API token. Jira Server and Data Center are not supported.
+- An API token for a user who can read and transition issues in the project. The adapter reads `JIRA_TOKEN` and `JIRA_EMAIL`; `--token` overrides the token.
+- Your site host (for example `mycompany.atlassian.net`) and the project key (for example `PROJ`).
 - `@gitpm/sync-jira` installed next to `@gitpm/cli`.
 
 ### Import
 
 ```bash
-gitpm import --source jira --project PROJ \
-  --base-url https://mycompany.atlassian.net \
-  --token "your-api-token"
+export JIRA_TOKEN="your-api-token"
+export JIRA_EMAIL="you@example.com"
+gitpm import --source jira --site mycompany.atlassian.net --project-key PROJ
 ```
 
-Issues of type Epic become epics. Issues linked to an epic become its stories under `.meta/epics/<epic>/stories/`. Everything else lands in `.meta/stories/`.
+`--base-url https://mycompany.atlassian.net` and `--project PROJ` still work as aliases for `--site` and `--project-key`.
+
+Issues of type Epic become epics. Issues linked to an epic become its stories under `.meta/epics/<epic>/stories/`. Everything else lands in `.meta/stories/`. When `board_id` is set in `.meta/sync/jira-config.yaml`, sprints become milestones: a closed sprint is `done`, any other sprint is `in_progress`.
 
 ### Map your workflow
 
-Jira workflows rarely match GitPM's six statuses out of the box. Edit `workflow_mapping` in `.meta/sync/jira-config.yaml` so every Jira status maps to one of `backlog`, `todo`, `in_progress`, `in_review`, `done` or `cancelled`. See [Jira Configuration](sync-guide.md#jira-configuration) in the sync guide for the full file.
+Jira workflows rarely match GitPM's six statuses out of the box. Edit `status_mapping` in `.meta/sync/jira-config.yaml` so every Jira status name maps to one of `backlog`, `todo`, `in_progress`, `in_review`, `done` or `cancelled`. The defaults are:
+
+| Jira status | GitPM status |
+|-------------|--------------|
+| `To Do` | `todo` |
+| `In Progress` | `in_progress` |
+| `In Review` | `in_review` |
+| `Done` | `done` |
+| `Backlog` | `backlog` |
+| anything else | `todo` |
+
+`issue_type_mapping.epic_types` (default `['Epic']`) lists the issue types that become epics. Priority maps Highest and Blocker to `critical`, High to `high`, Low and Lowest to `low`, and everything else to `medium`. See [Jira Configuration](sync-guide.md#jira-configuration) in the sync guide for the full file.
 
 ### Confluence pages
 
 There is no Confluence importer. Export requirement pages to Markdown and store them as `.meta/prds/<slug>/prd.md` so agents read them next to the code. [Adopting agentic coding alongside Jira and Confluence](adopting-agentic-coding.md) walks through this and through who should win sync conflicts.
+
+---
+
+## From Linear
+
+### Prerequisites
+
+- A Linear personal API key from Settings > API. The adapter reads `LINEAR_API_KEY`; `--api-key` overrides it.
+- The team id. It is the UUID shown in Linear team settings, or returned by the GraphQL API.
+- `@gitpm/sync-linear` installed next to `@gitpm/cli`.
+
+### Import
+
+```bash
+export LINEAR_API_KEY="lin_api_..."
+gitpm import --source linear --team <team-id>
+```
+
+Import writes the team id to `team_id` in `.meta/sync/linear-config.yaml`. `gitpm push`, `pull` and `sync` read it from there.
+
+### How entities map
+
+- An issue with sub-issues becomes an epic. Its sub-issues become stories under `.meta/epics/<epic>/stories/`.
+- A leaf issue becomes a story in `.meta/stories/`.
+- A cycle becomes a milestone. A completed cycle is `done`, any other cycle is `in_progress`. The cycle end date becomes `target_date`.
+
+Each imported file carries a `linear` frontmatter block with `issue_id`, `identifier` (for example `ENG-42`), `team_id`, `cycle_id`, `last_sync_hash` and `synced_at`.
+
+### Status by state type
+
+`status_mapping` in `linear-config.yaml` is keyed by the Linear workflow state type, not the state name:
+
+| Linear state type | GitPM status |
+|-------------------|--------------|
+| `triage` | `backlog` |
+| `backlog` | `backlog` |
+| `unstarted` | `todo` |
+| `started` | `in_progress` |
+| `completed` | `done` |
+| `canceled` | `cancelled` |
+| anything else | `todo` |
+
+### Priority
+
+| Linear priority | GitPM priority |
+|-----------------|----------------|
+| 1 (Urgent) | `critical` |
+| 2 (High) | `high` |
+| 3 (Medium) | `medium` |
+| 4 (Low) | `low` |
+| 0 (No priority) | `medium` |
+
+On push, `critical` becomes 1, `high` 2, `low` 4 and everything else 3.
+
+See [Linear](sync-guide.md#linear) in the sync guide for the full configuration file.
+
+---
+
+## From Bitbucket Cloud
+
+### Prerequisites
+
+- A Bitbucket Cloud token. The adapter reads `BITBUCKET_TOKEN`; `--token` overrides it. For an Atlassian API token, also set `BITBUCKET_EMAIL`.
+- The repository in `workspace/repo_slug` format, with the issue tracker enabled.
+- `@gitpm/sync-bitbucket` installed next to `@gitpm/cli`.
+
+### Import
+
+```bash
+export BITBUCKET_TOKEN="..."
+gitpm import --source bitbucket --repo myworkspace/myrepo
+```
+
+Bitbucket issues have no epic type. An issue becomes an epic when its title starts with `[Epic]`, or when another issue uses its title as its component. Everything else becomes a story. `--link-strategy` does not apply; set `epic_linkage` in `.meta/sync/bitbucket-config.yaml` instead. See [Bitbucket Cloud](sync-guide.md#bitbucket-cloud) in the sync guide for authentication options, status and priority mapping and epic linkage.
 
 ---
 
