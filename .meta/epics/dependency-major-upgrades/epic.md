@@ -2,20 +2,20 @@
 type: epic
 id: 3xy8aacTSvZu
 title: Dependency major upgrades
-status: backlog
+status: done
 priority: medium
 owner: null
 labels:
   - dependencies
   - maintenance
 milestone_ref: null
-created_at: 2026-10-16T21:51:21.847Z
-updated_at: 2026-10-16T21:51:21.847Z
 github:
   issue_number: 259
   repo: yevheniidehtiar/gitpm
-  last_sync_hash: sha256:74e59ba7676d56b9aed3e851d080050fc557bf7d7df284f29dd432a5ce8b3473
-  synced_at: 2026-10-16T21:52:45.265Z
+  last_sync_hash: sha256:5a0ec783e8c972c97c05fd4c10730699525c1371e69ca749065346ba265dd3ee
+  synced_at: 2026-10-20T06:51:02.848Z
+created_at: 2026-10-16T21:51:21.847Z
+updated_at: 2026-10-20T06:50:46.030Z
 ---
 
 ## Goal
