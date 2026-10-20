@@ -3,7 +3,7 @@ import { toSlug } from '@gitpm/core';
 import { nanoid } from 'nanoid';
 import type { GlEpic, GlIssue, GlMilestone } from './client.js';
 import type { GitLabConfig } from './types.js';
-import { DEFAULT_EPIC_LABELS } from './types.js';
+import { DEFAULT_EPIC_LABELS, DEFAULT_STATUS_MAPPING } from './types.js';
 
 export function glMilestoneToMilestone(
   gl: GlMilestone,
@@ -45,6 +45,27 @@ export function isEpicIssue(
   return gl.labels.some((label) => epicLabels.includes(label));
 }
 
+/**
+ * Resolve a GitPM status for a GitLab issue.
+ *
+ * Lookup order: the first label that is a key in `status_mapping`,
+ * then the issue state (`opened` or `closed`), then the built-in
+ * fallback (`closed` -> `done`, anything else -> `todo`).
+ */
+export function mapGlStatus(
+  gl: Pick<GlIssue, 'state' | 'labels'>,
+  config?: Pick<GitLabConfig, 'status_mapping'>,
+): Status {
+  const mapping = config?.status_mapping ?? DEFAULT_STATUS_MAPPING;
+  for (const label of gl.labels) {
+    const mapped = mapping[label];
+    if (mapped !== undefined) return mapped;
+  }
+  const byState = mapping[gl.state];
+  if (byState !== undefined) return byState;
+  return gl.state === 'closed' ? 'done' : 'todo';
+}
+
 function weightToPriority(
   weight: number | null,
 ): 'low' | 'medium' | 'high' | 'critical' {
@@ -57,7 +78,7 @@ function weightToPriority(
 
 export function glIssueToEntity(
   gl: GlIssue,
-  config?: Pick<GitLabConfig, 'label_mapping'>,
+  config?: Pick<GitLabConfig, 'label_mapping' | 'status_mapping'>,
   projectId?: number,
   baseUrl?: string,
 ): Story | Epic {
@@ -80,7 +101,7 @@ export function glIssueToEntity(
     synced_at: now,
   };
 
-  const status: Status = gl.state === 'closed' ? 'done' : 'todo';
+  const status = mapGlStatus(gl, config);
   const priority = weightToPriority(gl.weight);
 
   if (isEpic) {

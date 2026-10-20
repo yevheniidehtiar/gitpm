@@ -7,8 +7,9 @@ import {
   remoteIssueFields,
   remoteMilestoneFields,
 } from '../diff.js';
+import { glIssueToEntity } from '../mapper.js';
 import { computeContentHash } from '../state.js';
-import type { SyncStateEntry } from '../types.js';
+import type { GitLabConfig, SyncStateEntry } from '../types.js';
 
 describe('remoteIssueFields', () => {
   it('extracts fields from GitLab issue', () => {
@@ -52,6 +53,72 @@ describe('remoteIssueFields', () => {
       updated_at: '2026-01-01T00:00:00Z',
     };
     expect(remoteIssueFields(gl).status).toBe('done');
+  });
+
+  it('resolves status through status_mapping like import does', () => {
+    const config: Pick<GitLabConfig, 'status_mapping'> = {
+      status_mapping: { 'In Review': 'in_review', closed: 'cancelled' },
+    };
+    const base: GlIssue = {
+      id: 1,
+      iid: 1,
+      title: 'Test',
+      description: null,
+      state: 'opened',
+      assignee: null,
+      labels: ['In Review'],
+      milestone: null,
+      weight: null,
+      epic_iid: null,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+    expect(remoteIssueFields(base, config).status).toBe('in_review');
+    expect(
+      remoteIssueFields({ ...base, labels: [], state: 'closed' }, config)
+        .status,
+    ).toBe('cancelled');
+  });
+
+  it('keeps an imported label-mapped status in_sync on an unchanged remote', () => {
+    const config: GitLabConfig = {
+      project: 'ns/proj',
+      project_id: 42,
+      base_url: 'https://gitlab.com',
+      status_mapping: { 'In Review': 'in_review' },
+      label_mapping: { epic_labels: ['epic'] },
+      auto_sync: false,
+    };
+    const gl: GlIssue = {
+      id: 1,
+      iid: 7,
+      title: 'Reviewed story',
+      description: 'body',
+      state: 'opened',
+      assignee: { id: 42, username: 'alice' },
+      labels: ['feature', 'In Review'],
+      milestone: null,
+      weight: null,
+      epic_iid: null,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+
+    const local = glIssueToEntity(gl, config, 42, 'https://gitlab.com');
+    expect(local.status).toBe('in_review');
+
+    const remote = remoteIssueFields(gl, config);
+    const baselineLocal = {
+      title: local.title,
+      status: local.status,
+      priority: local.priority,
+      assignee: 'alice',
+      labels: ['In Review', 'feature'],
+      body: 'body',
+    };
+    const result = diffEntity(local, remote, baselineLocal, remote);
+    expect(result.status).toBe('in_sync');
+    expect(result.remoteChanges).toEqual([]);
   });
 });
 

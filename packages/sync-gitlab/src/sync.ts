@@ -10,12 +10,23 @@ import {
   remoteIssueFields,
   remoteMilestoneFields,
 } from './diff.js';
-import { entityToGlIssue, milestoneToGlMilestone } from './mapper.js';
+import {
+  entityToGlIssue,
+  mapGlStatus,
+  milestoneToGlMilestone,
+} from './mapper.js';
 import { computeContentHash, loadState, saveState } from './state.js';
-import type { FieldConflict, SyncOptions, SyncResult } from './types.js';
+import type {
+  FieldConflict,
+  GitLabConfig,
+  SyncOptions,
+  SyncResult,
+} from './types.js';
 
-function computeRemoteIssueHash(gl: GlIssue): string {
-  const fields = remoteIssueFields(gl);
+type StatusConfig = Pick<GitLabConfig, 'status_mapping'>;
+
+function computeRemoteIssueHash(gl: GlIssue, config: StatusConfig): string {
+  const fields = remoteIssueFields(gl, config);
   const json = JSON.stringify(fields);
   return `sha256:${createHash('sha256').update(json).digest('hex')}`;
 }
@@ -245,7 +256,7 @@ export async function syncWithGitLab(
           continue;
         }
 
-        const currentRemoteHash = computeRemoteIssueHash(remoteIssue);
+        const currentRemoteHash = computeRemoteIssueHash(remoteIssue, config);
         const direction = diffByHash(
           currentLocalHash,
           currentRemoteHash,
@@ -280,7 +291,7 @@ export async function syncWithGitLab(
             !dryRun &&
             (localEntity.type === 'story' || localEntity.type === 'epic')
           ) {
-            applyRemoteIssue(localEntity, remoteIssue);
+            applyRemoteIssue(localEntity, remoteIssue, config);
             const filePath = localEntity.filePath;
             await writeFile(localEntity, filePath);
             const hash = computeContentHash(localEntity);
@@ -327,7 +338,7 @@ export async function syncWithGitLab(
                   synced_at: new Date().toISOString(),
                 };
               } else {
-                applyRemoteIssue(localEntity, remoteIssue);
+                applyRemoteIssue(localEntity, remoteIssue, config);
                 const filePath = localEntity.filePath;
                 await writeFile(localEntity, filePath);
                 const hash = computeContentHash(localEntity);
@@ -439,9 +450,13 @@ function applyRemoteMilestone(local: Milestone, remote: GlMilestone): void {
   local.body = remote.description ?? '';
 }
 
-function applyRemoteIssue(local: Story | Epic, remote: GlIssue): void {
+function applyRemoteIssue(
+  local: Story | Epic,
+  remote: GlIssue,
+  config: StatusConfig,
+): void {
   local.title = remote.title;
-  local.status = remote.state === 'closed' ? 'done' : 'todo';
+  local.status = mapGlStatus(remote, config);
   local.body = remote.description ?? '';
   local.labels = remote.labels.filter((l) => l !== 'epic');
 

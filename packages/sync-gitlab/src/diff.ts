@@ -1,9 +1,11 @@
 import type { ParsedEntity } from '@gitpm/core';
 import type { GlIssue, GlMilestone } from './client.js';
+import { mapGlStatus } from './mapper.js';
 import type {
   DiffResult,
   FieldChange,
   FieldConflict,
+  GitLabConfig,
   SyncStateEntry,
 } from './types.js';
 
@@ -39,9 +41,12 @@ function localEntityFields(entity: ParsedEntity): Record<string, unknown> {
   return { title: entity.title };
 }
 
-export function remoteIssueFields(gl: GlIssue): Record<string, unknown> {
+export function remoteIssueFields(
+  gl: GlIssue,
+  config?: Pick<GitLabConfig, 'status_mapping'>,
+): Record<string, unknown> {
   const labels = gl.labels.filter((l) => l !== 'epic').sort();
-  const status = gl.state === 'closed' ? 'done' : 'todo';
+  const status = mapGlStatus(gl, config);
   return {
     title: gl.title,
     status,
