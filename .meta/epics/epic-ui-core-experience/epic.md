@@ -2,7 +2,7 @@
 type: epic
 id: K-RoyLf07OKQ
 title: "[Epic] UI Core Experience"
-status: in_progress
+status: done
 priority: high
 owner: null
 labels:
@@ -15,7 +15,7 @@ github:
   repo: yevheniidehtiar/gitpm
   synced_at: 2026-04-06T12:53:26.000Z
 created_at: 2026-04-06T00:00:00.000Z
-updated_at: 2026-04-12T10:53:15.854Z
+updated_at: 2026-10-20T06:50:45.701Z
 ---
 
 ## Overview
