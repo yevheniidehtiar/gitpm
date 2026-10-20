@@ -10,10 +10,21 @@ permissions:
   contents: write
 
 jobs:
+  # Publishing needs an NPM_TOKEN secret in the "npm" GitHub environment.
+  # Create it on npmjs.com as a granular access token with read and write
+  # (publish) rights on the @gitpm scope. Without it every publish step fails.
+  #
+  # Each publish step first checks whether that exact version is already on
+  # npm and skips if so, so re-running a tag is safe. Packages are published
+  # with `bun publish`, which rewrites `workspace:*` dependencies to the real
+  # versions. Plain `npm publish` does not and produces uninstallable packages.
   release:
     name: Build, Test & Publish
     runs-on: ubuntu-latest
     environment: npm
+    env:
+      NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,36 +52,81 @@ jobs:
         run: npx vitest run
 
       - name: Publish @gitpm/core
-        run: npm publish --access public
         working-directory: packages/core
-        continue-on-error: true
+        run: |
+          spec="$(node -p "require('./package.json').name + '@' + require('./package.json').version")"
+          if npm view "$spec" version >/dev/null 2>&1; then
+            echo "$spec is already on npm, skipping"
+          else
+            bun publish --access public
+          fi
 
       - name: Publish @gitpm/sync-github
-        run: npm publish --access public
         working-directory: packages/sync-github
-        continue-on-error: true
+        run: |
+          spec="$(node -p "require('./package.json').name + '@' + require('./package.json').version")"
+          if npm view "$spec" version >/dev/null 2>&1; then
+            echo "$spec is already on npm, skipping"
+          else
+            bun publish --access public
+          fi
 
       - name: Publish @gitpm/sync-gitlab
-        run: npm publish --access public
         working-directory: packages/sync-gitlab
-        continue-on-error: true
+        run: |
+          spec="$(node -p "require('./package.json').name + '@' + require('./package.json').version")"
+          if npm view "$spec" version >/dev/null 2>&1; then
+            echo "$spec is already on npm, skipping"
+          else
+            bun publish --access public
+          fi
 
       - name: Publish @gitpm/sync-jira
-        run: npm publish --access public
         working-directory: packages/sync-jira
-        continue-on-error: true
+        run: |
+          spec="$(node -p "require('./package.json').name + '@' + require('./package.json').version")"
+          if npm view "$spec" version >/dev/null 2>&1; then
+            echo "$spec is already on npm, skipping"
+          else
+            bun publish --access public
+          fi
 
       - name: Publish @gitpm/sync-linear
-        run: npm publish --access public
         working-directory: packages/sync-linear
-        continue-on-error: true
+        run: |
+          spec="$(node -p "require('./package.json').name + '@' + require('./package.json').version")"
+          if npm view "$spec" version >/dev/null 2>&1; then
+            echo "$spec is already on npm, skipping"
+          else
+            bun publish --access public
+          fi
+
+      - name: Publish @gitpm/sync-bitbucket
+        working-directory: packages/sync-bitbucket
+        run: |
+          spec="$(node -p "require('./package.json').name + '@' + require('./package.json').version")"
+          if npm view "$spec" version >/dev/null 2>&1; then
+            echo "$spec is already on npm, skipping"
+          else
+            bun publish --access public
+          fi
 
       - name: Publish @gitpm/cli
-        run: npm publish --access public
         working-directory: packages/cli
-        continue-on-error: true
+        run: |
+          spec="$(node -p "require('./package.json').name + '@' + require('./package.json').version")"
+          if npm view "$spec" version >/dev/null 2>&1; then
+            echo "$spec is already on npm, skipping"
+          else
+            bun publish --access public
+          fi
 
       - name: Publish @gitpm/ui
-        run: npm publish --access public
         working-directory: packages/ui
-        continue-on-error: true
+        run: |
+          spec="$(node -p "require('./package.json').name + '@' + require('./package.json').version")"
+          if npm view "$spec" version >/dev/null 2>&1; then
+            echo "$spec is already on npm, skipping"
+          else
+            bun publish --access public
+          fi
