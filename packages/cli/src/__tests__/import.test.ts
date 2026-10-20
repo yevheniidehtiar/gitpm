@@ -260,6 +260,133 @@ describe('gitpm import', () => {
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
+  // --- Jira ---
+
+  describe('jira', () => {
+    let jiraAdapter: ReturnType<typeof createMockAdapter>;
+
+    beforeEach(() => {
+      jiraAdapter = createMockAdapter('jira', 'Jira');
+      mockFindAdapterByName.mockReturnValue(jiraAdapter);
+      mockAdapterImport.mockResolvedValue({ ok: true, value: importSummary });
+    });
+
+    it('passes --site, --project-key and --board as site, projectKey and boardId', async () => {
+      await run(
+        '--source',
+        'jira',
+        '--site',
+        'mycompany.atlassian.net',
+        '--project-key',
+        'PROJ',
+        '--board',
+        '7',
+        '--meta-dir',
+        '/tmp/meta',
+      );
+
+      expect(mockAdapterImport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          site: 'mycompany.atlassian.net',
+          projectKey: 'PROJ',
+          boardId: 7,
+        }),
+      );
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
+
+    it('derives site from --base-url when --site is absent', async () => {
+      await run(
+        '--source',
+        'jira',
+        '--base-url',
+        'https://x.atlassian.net/',
+        '--project-key',
+        'PROJ',
+        '--meta-dir',
+        '/tmp/meta',
+      );
+
+      expect(mockAdapterImport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          site: 'x.atlassian.net',
+          baseUrl: 'https://x.atlassian.net/',
+        }),
+      );
+    });
+
+    it('uses --project as projectKey when --project-key is absent', async () => {
+      await run(
+        '--source',
+        'jira',
+        '--site',
+        'x.atlassian.net',
+        '--project',
+        'PROJ',
+        '--meta-dir',
+        '/tmp/meta',
+      );
+
+      expect(mockAdapterImport).toHaveBeenCalledWith(
+        expect.objectContaining({ projectKey: 'PROJ', project: 'PROJ' }),
+      );
+    });
+
+    it('prefers explicit --site and --project-key over fallbacks', async () => {
+      await run(
+        '--source',
+        'jira',
+        '--site',
+        'a.atlassian.net',
+        '--base-url',
+        'https://b.atlassian.net',
+        '--project-key',
+        'KEY',
+        '--project',
+        'OTHER',
+        '--meta-dir',
+        '/tmp/meta',
+      );
+
+      expect(mockAdapterImport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          site: 'a.atlassian.net',
+          projectKey: 'KEY',
+        }),
+      );
+    });
+  });
+
+  it('does not derive Jira options for non-Jira sources', async () => {
+    mockAdapterImport.mockResolvedValue({ ok: true, value: importSummary });
+
+    await run(
+      '--source',
+      'gitlab',
+      '--project',
+      'group/proj',
+      '--base-url',
+      'https://gitlab.example.com',
+      '--meta-dir',
+      '/tmp/meta',
+    );
+
+    expect(mockAdapterImport).toHaveBeenCalledWith(
+      expect.objectContaining({ site: undefined, projectKey: undefined }),
+    );
+  });
+
+  it('exits 1 with npm install hint for unknown source', async () => {
+    mockFindAdapterByName.mockReturnValue(null);
+
+    await expect(
+      run('--source', 'azure-devops', '--meta-dir', '/tmp/meta'),
+    ).rejects.toThrow('process.exit');
+    const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(errOutput).toContain('npm install -g @gitpm/sync-azure-devops');
+    expect(errOutput).not.toContain('bun add');
+  });
+
   it('exits with code 1 for unknown source', async () => {
     mockFindAdapterByName.mockReturnValue(null);
 

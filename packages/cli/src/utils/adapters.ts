@@ -36,11 +36,11 @@ export async function resolveAdapter(
     printError(adaptersResult.error.message);
     printError(
       'No sync adapters installed. Install at least one adapter package, e.g.:\n' +
-        '  bun add @gitpm/sync-github\n' +
-        '  bun add @gitpm/sync-gitlab\n' +
-        '  bun add @gitpm/sync-jira\n' +
-        '  bun add @gitpm/sync-linear\n' +
-        '  bun add @gitpm/sync-bitbucket',
+        '  npm install -g @gitpm/sync-github\n' +
+        '  npm install -g @gitpm/sync-gitlab\n' +
+        '  npm install -g @gitpm/sync-jira\n' +
+        '  npm install -g @gitpm/sync-linear\n' +
+        '  npm install -g @gitpm/sync-bitbucket',
     );
     process.exit(1);
   }
@@ -49,7 +49,7 @@ export async function resolveAdapter(
   if (adapters.length === 0) {
     printError(
       'No sync adapters installed. Install at least one adapter package, e.g.:\n' +
-        '  bun add @gitpm/sync-github',
+        '  npm install -g @gitpm/sync-github',
     );
     process.exit(1);
   }
