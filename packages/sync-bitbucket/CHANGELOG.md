@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/yevheniidehtiar/gitpm/compare/sync-bitbucket-v1.1.0...sync-bitbucket-v1.1.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* publish with npm trusted publishing and document all five trackers ([#307](https://github.com/yevheniidehtiar/gitpm/issues/307)) ([fe8507a](https://github.com/yevheniidehtiar/gitpm/commit/fe8507ad25c2f363728f003e0abfc68b0d013a80))
+
 ## [1.1.0](https://github.com/yevheniidehtiar/gitpm/compare/sync-bitbucket-v1.0.0...sync-bitbucket-v1.1.0) (2026-10-18)
 
 
