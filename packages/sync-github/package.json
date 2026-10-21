@@ -1,6 +1,6 @@
 {
   "name": "@gitpm/sync-github",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "license": "MIT",
   "description": "GitHub sync adapter for gitpm — bidirectional sync between .meta/ and GitHub Issues/Milestones",
   "keywords": [
