@@ -1,6 +1,6 @@
 ---
 title: Getting started
-description: Install gitpm, connect it to GitHub, GitLab, Jira or Bitbucket, and push your first change.
+description: Install gitpm, connect it to GitHub, GitLab, Jira, Linear or Bitbucket, and push your first change.
 ---
 
 # Getting started
@@ -35,6 +35,12 @@ The CLI and the sync adapters are separate npm packages. Install the CLI plus th
 
     ```bash
     npm install -g @gitpm/cli @gitpm/sync-jira
+    ```
+
+=== "Linear"
+
+    ```bash
+    npm install -g @gitpm/cli @gitpm/sync-linear
     ```
 
 === "Bitbucket"
@@ -72,6 +78,8 @@ Other trackers read their own variables, and `--token` always overrides them:
 | Linear | `LINEAR_API_KEY` |
 | Bitbucket Cloud | `BITBUCKET_TOKEN`, plus `BITBUCKET_EMAIL` for an Atlassian API token. Leave the email unset for a workspace or repository access token. |
 
+Linear ignores `--token` and takes `--api-key` instead.
+
 The [sync guide](sync-guide.md) covers the per-platform settings, including [Bitbucket token scopes](sync-guide.md#authentication).
 
 !!! warning "Keep tokens out of the repository"
@@ -90,6 +98,8 @@ You have two options.
     gitpm import --repo owner/repo                    # GitHub
     gitpm import --repo owner/repo --project 5        # GitHub, including a Projects (v2) board
     gitpm import --source gitlab --project group/proj  # GitLab
+    gitpm import --source jira --site mycompany.atlassian.net --project-key PROJ  # Jira Cloud
+    gitpm import --source linear --team <team-id>      # Linear
     gitpm import --source bitbucket --repo workspace/repo_slug  # Bitbucket Cloud
     ```
 
@@ -105,7 +115,7 @@ You have two options.
       Files:      52
     ```
 
-    Import also writes `.meta/sync/github-config.yaml` (or the GitLab, Jira or Bitbucket equivalent) and a `*-state.json` file. The [migration guide](migration-guide.md) explains how issues are mapped to epics and stories.
+    Import also writes `.meta/sync/github-config.yaml` (or the GitLab, Jira, Linear or Bitbucket equivalent) and a `*-state.json` file. The [migration guide](migration-guide.md) explains how issues are mapped to epics and stories.
 
 === "Start from scratch"
 

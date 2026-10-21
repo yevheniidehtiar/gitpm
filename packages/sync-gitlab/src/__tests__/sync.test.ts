@@ -583,6 +583,60 @@ describe('syncWithGitLab', () => {
     expect(result.value.pulled.issues).toBe(1);
   });
 
+  it('pulls a label-mapped status instead of resetting it to todo', async () => {
+    await saveConfig(metaDir, {
+      project: 'ns/proj',
+      project_id: 42,
+      base_url: 'https://gitlab.com',
+      status_mapping: { 'In Review': 'in_review' },
+      label_mapping: { epic_labels: ['epic'] },
+      auto_sync: false,
+    });
+    await writeMeta(makeRoadmap());
+    await writeMeta(makeStory('s1', { status: 'in_review' }));
+
+    const parsed = await parseTree(metaDir);
+    if (!parsed.ok) throw parsed.error;
+    const lh = computeContentHash(parsed.value.stories[0]);
+
+    const remoteIssue = makeGlIssue({
+      iid: 50,
+      title: 'Remote Updated',
+      description: 'changed',
+      state: 'opened',
+      labels: ['In Review'],
+    });
+
+    await saveState(metaDir, {
+      project: 'ns/proj',
+      project_id: 42,
+      last_sync: '2026-01-01T00:00:00Z',
+      entities: {
+        s1: {
+          gitlab_issue_iid: 50,
+          local_hash: lh,
+          remote_hash: 'sha256:stale-remote',
+          synced_at: '2026-01-01T00:00:00Z',
+        },
+      },
+    });
+    fake.getIssue.mockResolvedValueOnce(remoteIssue);
+
+    const result = await syncWithGitLab({
+      token: 'tok',
+      project: 'ns/proj',
+      metaDir,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.pulled.issues).toBe(1);
+
+    const after = await parseTree(metaDir);
+    if (!after.ok) throw after.error;
+    expect(after.value.stories[0].title).toBe('Remote Updated');
+    expect(after.value.stories[0].status).toBe('in_review');
+  });
+
   it('writes pulled remote changes to the entity file in place', async () => {
     await seedConfig();
     await writeMeta(makeRoadmap([{ id: 'm1' }]));

@@ -27,7 +27,7 @@ gitpm import --repo OWNER/REPO
 
 # Or GitLab / Jira
 gitpm import --source gitlab --project mygroup/myproject
-gitpm import --source jira --project PROJ --base-url https://mycompany.atlassian.net
+gitpm import --source jira --site mycompany.atlassian.net --project-key PROJ
 
 # Or start empty
 gitpm init my-project

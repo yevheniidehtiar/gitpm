@@ -17,8 +17,8 @@ The last row is the one most teams skip. Write it down before the first agent ru
 
 ## `.meta/` is the agent's task source. Jira stays the team's UI
 
-1. Import once. `gitpm import --source jira --project PROJ --base-url https://mycompany.atlassian.net` turns each issue into a Markdown file under `.meta/epics/<epic>/stories/` or `.meta/stories/`.
-2. Map your workflow. `.meta/sync/jira-config.yaml` holds `workflow_mapping` from your Jira status names to GitPM's six statuses. See the Jira section of [the sync guide](sync-guide.md).
+1. Import once. `gitpm import --source jira --site mycompany.atlassian.net --project-key PROJ` turns each issue into a Markdown file under `.meta/epics/<epic>/stories/` or `.meta/stories/`.
+2. Map your workflow. `.meta/sync/jira-config.yaml` holds `status_mapping` from your Jira status names to GitPM's six statuses. See the Jira section of [the sync guide](sync-guide.md).
 3. Agents read and update stories with the CLI: `gitpm query`, `gitpm show`, `gitpm set <story> status=in_progress`. They never need Jira credentials.
 4. Sync back. `gitpm push` sends local changes to Jira, `gitpm pull` fetches changes made in Jira, and `gitpm sync --strategy <s>` does both. Product managers keep working in Jira and see agent progress there.
 

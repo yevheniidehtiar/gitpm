@@ -74,7 +74,7 @@ describe('resolveAdapter', () => {
     expect(exitSpy).toHaveBeenCalledWith(1);
     const errOutput = errorSpy.mock.calls.map((c) => c.join(' ')).join('\n');
     expect(errOutput).toContain('load failed');
-    expect(errOutput).toContain('bun add @gitpm/sync-bitbucket');
+    expect(errOutput).toContain('npm install -g @gitpm/sync-bitbucket');
   });
 
   it('exits 1 when no adapters are installed', async () => {

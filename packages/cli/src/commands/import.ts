@@ -32,10 +32,16 @@ export const importCommand = new Command('import')
   .option('--repo <owner/repo>', 'GitHub repository (owner/repo)')
   .option(
     '--project <value>',
-    'GitHub Project number or GitLab project path (namespace/project)',
+    'GitHub Project number, GitLab project path (namespace/project), or Jira project key',
   )
   .option('--token <token>', 'Personal access token')
-  .option('--base-url <url>', 'GitLab base URL (default: https://gitlab.com)')
+  .option(
+    '--base-url <url>',
+    'GitLab base URL (default: https://gitlab.com) or Jira site URL',
+  )
+  .option('--site <host>', 'Jira site, e.g. mycompany.atlassian.net')
+  .option('--project-key <key>', 'Jira project key, e.g. PROJ')
+  .option('--board <id>', 'Jira board ID (optional, for sprint import)')
   .option('--team <id>', 'Linear team ID')
   .option(
     '--api-key <key>',
@@ -70,12 +76,12 @@ export const importCommand = new Command('import')
       const available = adaptersResult.value.map((a) => a.name);
       if (available.length === 0) {
         printError(
-          `Adapter "${source}" is not installed. Install it with:\n  bun add @gitpm/sync-${source}`,
+          `Adapter "${source}" is not installed. Install it with:\n  npm install -g @gitpm/sync-${source}`,
         );
       } else {
         printError(
           `Adapter "${source}" not found. Available: ${available.join(', ')}\n` +
-            `Install it with: bun add @gitpm/sync-${source}`,
+            `Install it with: npm install -g @gitpm/sync-${source}`,
         );
       }
       process.exit(1);
@@ -110,6 +116,8 @@ export const importCommand = new Command('import')
 
     const spinner = ora(`Importing from ${adapter.displayName}...`).start();
 
+    const jira = resolveJiraOptions(adapter.name, opts);
+
     const result = await adapter.import({
       token,
       email,
@@ -120,6 +128,7 @@ export const importCommand = new Command('import')
           ? Number.parseInt(opts.project, 10)
           : undefined,
       baseUrl: opts.baseUrl,
+      ...jira,
       teamId: opts.team,
       apiKey: opts.apiKey,
       metaDir,
@@ -143,6 +152,45 @@ export const importCommand = new Command('import')
       result: result.value,
     });
   });
+
+interface JiraImportOptions {
+  site?: string;
+  projectKey?: string;
+  boardId?: number;
+}
+
+/**
+ * Resolve Jira-specific import options from CLI flags.
+ * `--site` and `--project-key` win. When the source is Jira, `--base-url`
+ * falls back to the site (protocol and trailing slash stripped) and
+ * `--project` falls back to the project key, so older documented
+ * invocations keep working.
+ */
+export function resolveJiraOptions(
+  adapterName: string,
+  opts: {
+    site?: string;
+    projectKey?: string;
+    board?: string;
+    baseUrl?: string;
+    project?: string;
+  },
+): JiraImportOptions {
+  const isJira = adapterName === 'jira';
+  const site =
+    opts.site ??
+    (isJira && opts.baseUrl ? siteFromUrl(opts.baseUrl) : undefined);
+  const projectKey = opts.projectKey ?? (isJira ? opts.project : undefined);
+  const boardId =
+    opts.board !== undefined && !Number.isNaN(Number.parseInt(opts.board, 10))
+      ? Number.parseInt(opts.board, 10)
+      : undefined;
+  return { site, projectKey, boardId };
+}
+
+function siteFromUrl(url: string): string {
+  return url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').replace(/\/+$/, '');
+}
 
 function printImportSummary(value: {
   milestones: number;

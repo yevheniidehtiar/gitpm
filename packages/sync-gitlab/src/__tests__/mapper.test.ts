@@ -7,9 +7,11 @@ import {
   glIssueToEntity,
   glMilestoneToMilestone,
   isEpicIssue,
+  mapGlStatus,
   milestoneToGlMilestone,
 } from '../mapper.js';
 import type { GitLabConfig } from '../types.js';
+import { DEFAULT_STATUS_MAPPING } from '../types.js';
 
 const PROJECT_ID = 42;
 const BASE_URL = 'https://gitlab.com';
@@ -309,5 +311,65 @@ describe('entityToGlIssue', () => {
     );
     const params = entityToGlIssue(entity as never);
     expect(params.state_event).toBe('close');
+  });
+});
+
+describe('mapGlStatus', () => {
+  it('defaults to opened -> todo and closed -> done', () => {
+    expect(DEFAULT_STATUS_MAPPING).toEqual({ opened: 'todo', closed: 'done' });
+    expect(mapGlStatus(storyIssue)).toBe('todo');
+    expect(mapGlStatus(closedIssue)).toBe('done');
+  });
+
+  it('lets a mapped label win over the issue state', () => {
+    const config: Pick<GitLabConfig, 'status_mapping'> = {
+      status_mapping: { 'In Review': 'in_review' },
+    };
+    const issue: GlIssue = { ...storyIssue, labels: ['feature', 'In Review'] };
+    expect(mapGlStatus(issue, config)).toBe('in_review');
+  });
+
+  it('maps the issue state through status_mapping', () => {
+    const config: Pick<GitLabConfig, 'status_mapping'> = {
+      status_mapping: { closed: 'cancelled' },
+    };
+    expect(mapGlStatus(closedIssue, config)).toBe('cancelled');
+  });
+
+  it('falls back to the state when the mapping has no entry', () => {
+    const config: Pick<GitLabConfig, 'status_mapping'> = {
+      status_mapping: {},
+    };
+    expect(mapGlStatus(storyIssue, config)).toBe('todo');
+    expect(mapGlStatus(closedIssue, config)).toBe('done');
+  });
+
+  it('is used by glIssueToEntity for stories and epics', () => {
+    const config: GitLabConfig = {
+      project: 'ns/proj',
+      project_id: PROJECT_ID,
+      base_url: BASE_URL,
+      status_mapping: { 'In Review': 'in_review', closed: 'cancelled' },
+      label_mapping: { epic_labels: ['epic'] },
+      auto_sync: false,
+    };
+    const story = glIssueToEntity(
+      { ...storyIssue, labels: ['feature', 'In Review'] },
+      config,
+      PROJECT_ID,
+      BASE_URL,
+    );
+    expect(story.type).toBe('story');
+    expect(story.status).toBe('in_review');
+    expect(story.labels).toEqual(['feature', 'In Review']);
+
+    const epic = glIssueToEntity(
+      { ...epicIssue, state: 'closed' },
+      config,
+      PROJECT_ID,
+      BASE_URL,
+    );
+    expect(epic.type).toBe('epic');
+    expect(epic.status).toBe('cancelled');
   });
 });

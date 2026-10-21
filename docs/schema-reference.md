@@ -23,6 +23,8 @@ All project management data in GitPM is stored as files in the `.meta/` director
 └── sync/
     ├── github-config.yaml              # Sync configuration
     ├── gitlab-config.yaml              # GitLab sync configuration
+    ├── jira-config.yaml                # Jira sync configuration
+    ├── linear-config.yaml              # Linear sync configuration
     ├── bitbucket-config.yaml           # Bitbucket sync configuration
     └── github-state.json               # Sync state (auto-managed, do not edit)
 ```
@@ -93,6 +95,7 @@ The basic unit of work. Stories can belong to an epic or stand alone.
 | `github` | object \| null | No | GitHub sync metadata |
 | `gitlab` | object \| null | No | GitLab sync metadata |
 | `jira` | object \| null | No | Jira sync metadata |
+| `linear` | object \| null | No | Linear sync metadata |
 | `bitbucket` | object \| null | No | Bitbucket sync metadata |
 | `created_at` | string | No | ISO 8601 creation timestamp |
 | `updated_at` | string | No | ISO 8601 update timestamp |
@@ -154,6 +157,7 @@ A collection of related stories representing a larger body of work.
 | `github` | object \| null | No | GitHub sync metadata |
 | `gitlab` | object \| null | No | GitLab sync metadata |
 | `jira` | object \| null | No | Jira sync metadata |
+| `linear` | object \| null | No | Linear sync metadata |
 | `bitbucket` | object \| null | No | Bitbucket sync metadata |
 | `created_at` | string | No | ISO 8601 creation timestamp |
 | `updated_at` | string | No | ISO 8601 update timestamp |
@@ -213,6 +217,7 @@ A release target or time-based goal that groups epics together.
 | `github` | object \| null | No | GitHub sync metadata |
 | `gitlab` | object \| null | No | GitLab sync metadata |
 | `jira` | object \| null | No | Jira sync metadata |
+| `linear` | object \| null | No | Linear sync metadata |
 | `bitbucket` | object \| null | No | Bitbucket sync metadata |
 | `created_at` | string | No | ISO 8601 creation timestamp |
 | `updated_at` | string | No | ISO 8601 update timestamp |
@@ -365,6 +370,20 @@ jira:
   last_sync_hash: "sha256:…"
   synced_at: "2026-03-15T…"
 ```
+
+### Linear Sync
+
+```yaml
+linear:
+  issue_id: "uuid"            # Linear issue id
+  identifier: "ENG-42"        # Human-readable key
+  team_id: "uuid"             # Linear team id
+  cycle_id: "uuid"            # Cycle (milestones and issues in a cycle)
+  last_sync_hash: "sha256:…"  # Optional until the first push or sync
+  synced_at: "2026-03-15T…"
+```
+
+Linear issues with sub-issues become epics and cycles become milestones. See [Linear](sync-guide.md#linear) in the sync guide.
 
 ### Bitbucket Sync
 

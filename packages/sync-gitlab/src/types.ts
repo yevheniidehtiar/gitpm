@@ -54,12 +54,15 @@ export interface SyncState {
   entities: Record<EntityId, SyncStateEntry>;
 }
 
+/**
+ * Default GitLab status mapping.
+ *
+ * Keys are GitLab issue states (`opened`, `closed`) or label names.
+ * On import a label that matches a key wins over the issue state.
+ */
 export const DEFAULT_STATUS_MAPPING: Record<string, Status> = {
-  Todo: 'todo',
-  'In Progress': 'in_progress',
-  'In Review': 'in_review',
-  Done: 'done',
-  Backlog: 'backlog',
+  opened: 'todo',
+  closed: 'done',
 };
 
 export const DEFAULT_EPIC_LABELS = ['epic'];

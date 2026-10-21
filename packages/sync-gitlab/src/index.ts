@@ -28,6 +28,7 @@ export {
   glIssueToEntity,
   glMilestoneToMilestone,
   isEpicIssue,
+  mapGlStatus,
   milestoneToGlMilestone,
 } from './mapper.js';
 
