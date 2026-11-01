@@ -15,7 +15,7 @@
     },
     "packages/cli": {
       "name": "@gitpm/cli",
-      "version": "0.1.13",
+      "version": "0.1.15",
       "bin": {
         "gitpm": "./dist/index.js",
       },
@@ -43,10 +43,10 @@
     },
     "packages/core": {
       "name": "@gitpm/core",
-      "version": "0.1.14",
+      "version": "0.1.15",
       "dependencies": {
         "gray-matter": "^4.0.3",
-        "nanoid": "^5.0.8",
+        "nanoid": "^6.0.2",
         "yaml": "^2.6.0",
         "zod": "^4.6.7",
       },
@@ -56,7 +56,7 @@
     },
     "packages/sync-bitbucket": {
       "name": "@gitpm/sync-bitbucket",
-      "version": "1.0.0",
+      "version": "1.1.1",
       "dependencies": {
         "@gitpm/core": "workspace:*",
         "yaml": "^2.6.0",
@@ -65,39 +65,39 @@
     },
     "packages/sync-github": {
       "name": "@gitpm/sync-github",
-      "version": "0.1.11",
+      "version": "0.1.12",
       "dependencies": {
         "@gitpm/core": "workspace:*",
         "@octokit/rest": "^22.0.1",
-        "nanoid": "^5.0.8",
+        "nanoid": "^6.0.2",
         "yaml": "^2.6.0",
         "zod": "^4.6.7",
       },
     },
     "packages/sync-gitlab": {
       "name": "@gitpm/sync-gitlab",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "dependencies": {
         "@gitpm/core": "workspace:*",
-        "nanoid": "^5.0.8",
+        "nanoid": "^6.0.2",
         "yaml": "^2.6.0",
       },
     },
     "packages/sync-jira": {
       "name": "@gitpm/sync-jira",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "dependencies": {
         "@gitpm/core": "workspace:*",
-        "nanoid": "^5.0.8",
+        "nanoid": "^6.0.2",
         "yaml": "^2.6.0",
       },
     },
     "packages/sync-linear": {
       "name": "@gitpm/sync-linear",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "dependencies": {
         "@gitpm/core": "workspace:*",
-        "nanoid": "^5.0.8",
+        "nanoid": "^6.0.2",
         "yaml": "^2.6.0",
       },
     },
@@ -798,7 +798,7 @@
 
     "mz": ["mz@2.7.0", "", { "dependencies": { "any-promise": "^1.0.0", "object-assign": "^4.0.1", "thenify-all": "^1.0.0" } }, "sha512-z81GNO7nnYMEhrGh9LeymoE4+Yr0Wn5McHIZMK5cfQCl+NDX08sCZgUc9/6MHni9IWuFLm1Z3HTCXu2z9fN62Q=="],
 
-    "nanoid": ["nanoid@5.1.16", "", { "bin": { "nanoid": "bin/nanoid.js" } }, "sha512-kVrnsrJqMR8+oLJnGEmSWw9BivK5mt7H3FZatVRjrc5wGqFYuBxX1yG7+A7Gi5AefkX6t/oCkizcQgpu0cY1dQ=="],
+    "nanoid": ["nanoid@6.0.2", "", { "bin": { "nanoid": "bin/nanoid.js" } }, "sha512-hIvVOb9Qr1p/9CNNLOe0OlWvgx/ziTsVwKN/GDSsuArN2K0wDiafP3s0SWmsm7o2BdnyS8Z9Z64NFBUbn6ziBg=="],
 
     "object-assign": ["object-assign@4.1.1", "", {}, "sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg=="],
 

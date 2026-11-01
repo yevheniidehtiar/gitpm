@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "gray-matter": "^4.0.3",
-    "nanoid": "^5.0.8",
+    "nanoid": "^6.0.2",
     "yaml": "^2.6.0",
     "zod": "^4.6.7"
   },
