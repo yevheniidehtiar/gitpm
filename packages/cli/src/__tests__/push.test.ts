@@ -29,6 +29,7 @@ vi.mock('ora', () => ({
   default: () => ({
     start: vi.fn().mockReturnThis(),
     succeed: vi.fn().mockReturnThis(),
+    warn: vi.fn().mockReturnThis(),
     fail: vi.fn().mockReturnThis(),
     stop: vi.fn().mockReturnThis(),
   }),
@@ -152,6 +153,37 @@ describe('gitpm push', () => {
     expect(mockConfirm).not.toHaveBeenCalled();
     const allOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
     expect(allOutput).toContain('Nothing to push');
+  });
+
+  it('lists failed entities, runs the post-export hook and exits 1 when some entities fail', async () => {
+    mockAdapterExport
+      .mockResolvedValueOnce({ ok: true, value: exportResult })
+      .mockResolvedValueOnce({
+        ok: true,
+        value: {
+          ...exportResult,
+          failures: [
+            {
+              entityId: 'epic-inline-cell-editing',
+              title: 'Inline cell editing',
+              message: 'Validation Failed: invalid assignee',
+            },
+          ],
+        },
+      });
+
+    await expect(run('--yes', '--meta-dir', '/tmp/meta')).rejects.toThrow(
+      'process.exit',
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(mockRunHooks).toHaveBeenCalledWith(
+      expect.anything(),
+      'post-export',
+      expect.anything(),
+    );
+    const allOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(allOutput).toContain('Inline cell editing');
+    expect(allOutput).toContain('invalid assignee');
   });
 
   it('exits with code 1 when push fails', async () => {

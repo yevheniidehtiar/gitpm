@@ -42,75 +42,104 @@ export async function exportToGitHub(
       updated: { milestones: 0, issues: 0 },
       totalChanges: 0,
       exportedPaths: [],
+      failures: [],
+    };
+
+    // A failed request skips only that entity; the rest of the export carries on.
+    const recordFailure = (
+      entity: { id: string; title: string },
+      err: unknown,
+    ) => {
+      result.failures.push({
+        entityId: entity.id,
+        title: entity.title,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    };
+
+    // Save state right after each remote create, so a run that dies later
+    // never forgets an issue or milestone it already created.
+    const persistState = async () => {
+      const saved = await saveState(metaDir, state);
+      if (!saved.ok) throw saved.error;
     };
 
     // 3. Process milestones
     for (const milestone of tree.milestones) {
       const entityState = state.entities[milestone.id];
 
-      if (
-        !milestone.github?.milestone_id &&
-        !entityState?.github_milestone_number
-      ) {
-        // New milestone — create on GitHub
-        if (!dryRun) {
-          const params = milestoneToGhMilestone(milestone);
-          const created = await client.createMilestone(owner, repoName, params);
-
-          // Write back GitHub IDs to local file
-          milestone.github = {
-            milestone_id: created.number,
-            repo,
-            last_sync_hash: computeContentHash(milestone),
-            synced_at: new Date().toISOString(),
-          };
-          await writeFile(milestone, milestone.filePath);
-
-          // Update sync state
-          const hash = computeContentHash(milestone);
-          state.entities[milestone.id] = {
-            github_milestone_number: created.number,
-            local_hash: hash,
-            remote_hash: hash,
-            synced_at: new Date().toISOString(),
-          };
-          result.exportedPaths.push(milestone.filePath);
-        }
-        result.created.milestones++;
-      } else {
-        // Existing milestone — check for local changes
-        const msNumber =
-          milestone.github?.milestone_id ??
-          entityState?.github_milestone_number;
-        if (!msNumber) continue;
-
-        const currentHash = computeContentHash(milestone);
-        if (entityState && currentHash !== entityState.local_hash) {
-          // Local changed — push update
+      try {
+        if (
+          !milestone.github?.milestone_id &&
+          !entityState?.github_milestone_number
+        ) {
+          // New milestone — create on GitHub
           if (!dryRun) {
             const params = milestoneToGhMilestone(milestone);
-            await client.updateMilestone(owner, repoName, msNumber, params);
+            const created = await client.createMilestone(
+              owner,
+              repoName,
+              params,
+            );
 
+            // Update sync state
+            const hash = computeContentHash(milestone);
+            state.entities[milestone.id] = {
+              github_milestone_number: created.number,
+              local_hash: hash,
+              remote_hash: hash,
+              synced_at: new Date().toISOString(),
+            };
+            await persistState();
+
+            // Write back GitHub IDs to local file
             milestone.github = {
-              ...milestone.github,
-              milestone_id: msNumber,
+              milestone_id: created.number,
               repo,
-              last_sync_hash: currentHash,
+              last_sync_hash: hash,
               synced_at: new Date().toISOString(),
             };
             await writeFile(milestone, milestone.filePath);
-
-            state.entities[milestone.id] = {
-              ...entityState,
-              github_milestone_number: msNumber,
-              local_hash: currentHash,
-              remote_hash: currentHash,
-              synced_at: new Date().toISOString(),
-            };
             result.exportedPaths.push(milestone.filePath);
           }
-          result.updated.milestones++;
+          result.created.milestones++;
+        } else {
+          // Existing milestone — check for local changes
+          const msNumber =
+            milestone.github?.milestone_id ??
+            entityState?.github_milestone_number;
+          if (!msNumber) continue;
+
+          const currentHash = computeContentHash(milestone);
+          if (entityState && currentHash !== entityState.local_hash) {
+            // Local changed — push update
+            if (!dryRun) {
+              const params = milestoneToGhMilestone(milestone);
+              await client.updateMilestone(owner, repoName, msNumber, params);
+
+              milestone.github = {
+                ...milestone.github,
+                milestone_id: msNumber,
+                repo,
+                last_sync_hash: currentHash,
+                synced_at: new Date().toISOString(),
+              };
+              await writeFile(milestone, milestone.filePath);
+
+              state.entities[milestone.id] = {
+                ...entityState,
+                github_milestone_number: msNumber,
+                local_hash: currentHash,
+                remote_hash: currentHash,
+                synced_at: new Date().toISOString(),
+              };
+              result.exportedPaths.push(milestone.filePath);
+            }
+            result.updated.milestones++;
+          }
         }
+      } catch (err) {
+        recordFailure(milestone, err);
       }
     }
 
@@ -133,12 +162,66 @@ export async function exportToGitHub(
       const issueNumber =
         entity.github?.issue_number ?? entityState?.github_issue_number;
 
-      if (!issueNumber) {
-        // New entity — create issue on GitHub
-        if (!dryRun) {
+      try {
+        if (!issueNumber) {
+          // New entity — create issue on GitHub
+          if (!dryRun) {
+            const params = entityToGhIssue(entity);
+
+            // Resolve milestone number for epics
+            if (entity.type === 'epic' && entity.milestone_ref?.id) {
+              const msNum = milestoneIdToNumber.get(entity.milestone_ref.id);
+              if (msNum) {
+                params.milestone = msNum;
+              }
+            }
+
+            const created = await client.createIssue(owner, repoName, {
+              title: params.title,
+              body: params.body,
+              labels: params.labels,
+              assignees: params.assignees,
+              milestone: params.milestone,
+            });
+
+            // Record the new issue before anything else can fail
+            const hash = computeContentHash(entity);
+            state.entities[entity.id] = {
+              github_issue_number: created.number,
+              local_hash: hash,
+              remote_hash: hash,
+              synced_at: new Date().toISOString(),
+            };
+            await persistState();
+
+            // Write back GitHub metadata
+            entity.github = {
+              issue_number: created.number,
+              repo,
+              last_sync_hash: hash,
+              synced_at: new Date().toISOString(),
+            };
+            await writeFile(entity, entity.filePath);
+            result.exportedPaths.push(entity.filePath);
+
+            // If issue should be closed, close it after creation
+            if (params.state === 'closed') {
+              await client.updateIssue(owner, repoName, created.number, {
+                state: 'closed',
+              });
+              state.entities[entity.id] = {
+                ...state.entities[entity.id],
+                closed_on_remote: true,
+              };
+            }
+          }
+          result.created.issues++;
+        } else {
+          // Existing entity — check for local changes or state mismatch
+          const currentHash = computeContentHash(entity);
           const params = entityToGhIssue(entity);
 
-          // Resolve milestone number for epics
+          // Resolve milestone for epics
           if (entity.type === 'epic' && entity.milestone_ref?.id) {
             const msNum = milestoneIdToNumber.get(entity.milestone_ref.id);
             if (msNum) {
@@ -146,96 +229,51 @@ export async function exportToGitHub(
             }
           }
 
-          const created = await client.createIssue(owner, repoName, {
-            title: params.title,
-            body: params.body,
-            labels: params.labels,
-            assignees: params.assignees,
-            milestone: params.milestone,
-          });
+          // Also detect state mismatches: entity may be done/cancelled locally
+          // but GitHub issue is still open (e.g., imported as done, never pushed)
+          const expectedState = params.state ?? 'open';
+          const hashChanged =
+            entityState && currentHash !== entityState.local_hash;
+          const needsStateSync =
+            expectedState === 'closed' &&
+            entityState &&
+            !entityState.closed_on_remote;
 
-          // If issue should be closed, close it after creation
-          if (params.state === 'closed') {
-            await client.updateIssue(owner, repoName, created.number, {
-              state: 'closed',
-            });
-          }
+          if (hashChanged || needsStateSync) {
+            if (!dryRun) {
+              await client.updateIssue(owner, repoName, issueNumber, {
+                title: params.title,
+                body: params.body,
+                state: params.state,
+                labels: params.labels,
+                assignees: params.assignees,
+                milestone: params.milestone,
+              });
 
-          // Write back GitHub metadata
-          entity.github = {
-            issue_number: created.number,
-            repo,
-            last_sync_hash: computeContentHash(entity),
-            synced_at: new Date().toISOString(),
-          };
-          await writeFile(entity, entity.filePath);
+              entity.github = {
+                ...entity.github,
+                issue_number: issueNumber,
+                repo,
+                last_sync_hash: currentHash,
+                synced_at: new Date().toISOString(),
+              };
+              await writeFile(entity, entity.filePath);
 
-          // Update sync state
-          const hash = computeContentHash(entity);
-          state.entities[entity.id] = {
-            github_issue_number: created.number,
-            local_hash: hash,
-            remote_hash: hash,
-            synced_at: new Date().toISOString(),
-          };
-          result.exportedPaths.push(entity.filePath);
-        }
-        result.created.issues++;
-      } else {
-        // Existing entity — check for local changes or state mismatch
-        const currentHash = computeContentHash(entity);
-        const params = entityToGhIssue(entity);
-
-        // Resolve milestone for epics
-        if (entity.type === 'epic' && entity.milestone_ref?.id) {
-          const msNum = milestoneIdToNumber.get(entity.milestone_ref.id);
-          if (msNum) {
-            params.milestone = msNum;
+              state.entities[entity.id] = {
+                ...entityState,
+                github_issue_number: issueNumber,
+                local_hash: currentHash,
+                remote_hash: currentHash,
+                closed_on_remote: expectedState === 'closed' ? true : undefined,
+                synced_at: new Date().toISOString(),
+              };
+              result.exportedPaths.push(entity.filePath);
+            }
+            result.updated.issues++;
           }
         }
-
-        // Also detect state mismatches: entity may be done/cancelled locally
-        // but GitHub issue is still open (e.g., imported as done, never pushed)
-        const expectedState = params.state ?? 'open';
-        const hashChanged =
-          entityState && currentHash !== entityState.local_hash;
-        const needsStateSync =
-          expectedState === 'closed' &&
-          entityState &&
-          !entityState.closed_on_remote;
-
-        if (hashChanged || needsStateSync) {
-          if (!dryRun) {
-            await client.updateIssue(owner, repoName, issueNumber, {
-              title: params.title,
-              body: params.body,
-              state: params.state,
-              labels: params.labels,
-              assignees: params.assignees,
-              milestone: params.milestone,
-            });
-
-            entity.github = {
-              ...entity.github,
-              issue_number: issueNumber,
-              repo,
-              last_sync_hash: currentHash,
-              synced_at: new Date().toISOString(),
-            };
-            await writeFile(entity, entity.filePath);
-
-            state.entities[entity.id] = {
-              ...entityState,
-              github_issue_number: issueNumber,
-              local_hash: currentHash,
-              remote_hash: currentHash,
-              closed_on_remote: expectedState === 'closed' ? true : undefined,
-              synced_at: new Date().toISOString(),
-            };
-            result.exportedPaths.push(entity.filePath);
-          }
-          result.updated.issues++;
-        }
+      } catch (err) {
+        recordFailure(entity, err);
       }
     }
 
@@ -250,29 +288,33 @@ export async function exportToGitHub(
     for (const [entityId, entry] of Object.entries(state.entities)) {
       if (!currentEntityIds.has(entityId)) {
         // Entity was deleted locally — close on GitHub
-        if (!dryRun) {
-          if (entry.github_issue_number) {
-            await client.updateIssue(
-              owner,
-              repoName,
-              entry.github_issue_number,
-              {
-                state: 'closed',
-              },
-            );
+        try {
+          if (!dryRun) {
+            if (entry.github_issue_number) {
+              await client.updateIssue(
+                owner,
+                repoName,
+                entry.github_issue_number,
+                {
+                  state: 'closed',
+                },
+              );
+            }
+            if (entry.github_milestone_number) {
+              await client.updateMilestone(
+                owner,
+                repoName,
+                entry.github_milestone_number,
+                { state: 'closed' },
+              );
+            }
           }
-          if (entry.github_milestone_number) {
-            await client.updateMilestone(
-              owner,
-              repoName,
-              entry.github_milestone_number,
-              { state: 'closed' },
-            );
-          }
+          // Remove from sync state
+          delete state.entities[entityId];
+          result.totalChanges++;
+        } catch (err) {
+          recordFailure({ id: entityId, title: entityId }, err);
         }
-        // Remove from sync state
-        delete state.entities[entityId];
-        result.totalChanges++;
       }
     }
 
@@ -285,7 +327,7 @@ export async function exportToGitHub(
     // 6. Save updated sync state
     if (!dryRun) {
       state.last_sync = new Date().toISOString();
-      await saveState(metaDir, state);
+      await persistState();
     }
 
     return { ok: true, value: result };

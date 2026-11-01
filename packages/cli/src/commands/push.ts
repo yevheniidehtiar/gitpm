@@ -1,3 +1,4 @@
+import type { ExportFailure } from '@gitpm/core';
 import { runHooks } from '@gitpm/core';
 import { confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
@@ -109,11 +110,18 @@ export const pushCommand = new Command('push')
       process.exit(1);
     }
 
-    pushSpinner.succeed('Push complete.');
-    const { created, updated } = result.value;
+    const { created, updated, failures = [] } = result.value;
+    if (failures.length > 0) {
+      pushSpinner.warn(
+        `Push finished with ${failures.length} failed ${failures.length === 1 ? 'entity' : 'entities'}.`,
+      );
+    } else {
+      pushSpinner.succeed('Push complete.');
+    }
     console.log(
       `  Created ${created.milestones + created.issues}, Updated ${updated.milestones + updated.issues}`,
     );
+    printFailures(failures);
 
     // Run post-export hook
     await runHooks(config, 'post-export', {
@@ -122,7 +130,23 @@ export const pushCommand = new Command('push')
       adapterName: adapter.name,
       result: result.value,
     });
+
+    if (failures.length > 0) {
+      process.exit(1);
+    }
   });
+
+function printFailures(failures: ExportFailure[]): void {
+  if (failures.length === 0) return;
+  console.log();
+  console.log(chalk.red.bold('Failed:'));
+  for (const failure of failures) {
+    console.log(
+      `  ${chalk.red('✗')} ${failure.title} ${chalk.dim(`(${failure.entityId})`)}: ${failure.message}`,
+    );
+  }
+  console.log();
+}
 
 function printPreview(result: {
   created: { milestones: number; issues: number };
