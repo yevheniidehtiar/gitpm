@@ -90,6 +90,25 @@ export class GitHubClient {
     return (issues as GhIssue[]).filter((issue) => !issue.pull_request);
   }
 
+  /** Whether `login` can be assigned to issues in the repo (GitHub answers 204 or 404). */
+  async isAssignable(
+    owner: string,
+    repo: string,
+    login: string,
+  ): Promise<boolean> {
+    try {
+      await this.octokit.issues.checkUserCanBeAssigned({
+        owner,
+        repo,
+        assignee: login,
+      });
+      return true;
+    } catch (err) {
+      if ((err as { status?: number }).status === 404) return false;
+      throw err;
+    }
+  }
+
   async getProject(
     _owner: string,
     _repo: string,

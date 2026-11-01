@@ -10,6 +10,7 @@ type OctokitInstance = {
     update: ReturnType<typeof vi.fn>;
     createMilestone: ReturnType<typeof vi.fn>;
     updateMilestone: ReturnType<typeof vi.fn>;
+    checkUserCanBeAssigned: ReturnType<typeof vi.fn>;
   };
   request: ReturnType<typeof vi.fn>;
 };
@@ -24,6 +25,7 @@ const octokitInstance: OctokitInstance = {
     update: vi.fn(),
     createMilestone: vi.fn(),
     updateMilestone: vi.fn(),
+    checkUserCanBeAssigned: vi.fn(),
   },
   request: vi.fn(),
 };
@@ -211,6 +213,34 @@ describe('GitHubClient', () => {
       expect(result).toEqual({ number: 42, title: 'Updated' });
       expect(octokitInstance.issues.update).toHaveBeenCalledWith(
         expect.objectContaining({ issue_number: 42, state: 'closed' }),
+      );
+    });
+  });
+
+  describe('isAssignable', () => {
+    it('returns true when GitHub answers 204', async () => {
+      octokitInstance.issues.checkUserCanBeAssigned.mockResolvedValueOnce({
+        status: 204,
+      });
+      await expect(client.isAssignable('o', 'r', 'alice')).resolves.toBe(true);
+      expect(
+        octokitInstance.issues.checkUserCanBeAssigned,
+      ).toHaveBeenCalledWith({ owner: 'o', repo: 'r', assignee: 'alice' });
+    });
+
+    it('returns false when GitHub answers 404', async () => {
+      octokitInstance.issues.checkUserCanBeAssigned.mockRejectedValueOnce(
+        Object.assign(new Error('Not Found'), { status: 404 }),
+      );
+      await expect(client.isAssignable('o', 'r', 'bot')).resolves.toBe(false);
+    });
+
+    it('rethrows other errors', async () => {
+      octokitInstance.issues.checkUserCanBeAssigned.mockRejectedValueOnce(
+        Object.assign(new Error('Server Error'), { status: 500 }),
+      );
+      await expect(client.isAssignable('o', 'r', 'alice')).rejects.toThrow(
+        'Server Error',
       );
     });
   });

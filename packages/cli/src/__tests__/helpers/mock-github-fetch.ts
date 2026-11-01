@@ -65,6 +65,8 @@ export interface MockGithubFetchController {
   ): void;
   /** Make every request fail (simulates an API outage). */
   failAllRequestsWith(message: string): void;
+  /** Logins the assignees check answers 404 for; everyone else is assignable. */
+  setUnassignable(logins: string[]): void;
   reset(): void;
 }
 
@@ -86,6 +88,7 @@ export function installMockGithubFetch(): MockGithubFetchController {
   const issueByNumber = new Map<number, GhIssueFixture | null>();
   const milestoneByNumber = new Map<number, GhMilestoneFixture | null>();
   let forcedFailure: string | null = null;
+  let unassignable = new Set<string>();
 
   const createIssue = vi.fn(
     (body: { title: string }, number: number): GhIssueFixture => ({
@@ -222,6 +225,14 @@ export function installMockGithubFetch(): MockGithubFetchController {
       }
     }
 
+    // /repos/{owner}/{repo}/assignees/{login}
+    m = path.match(/^\/repos\/[^/]+\/[^/]+\/assignees\/([^/]+)$/);
+    if (m && method === 'GET') {
+      return unassignable.has(decodeURIComponent(m[1]))
+        ? jsonResponse({ message: 'Not Found' }, 404)
+        : new Response(null, { status: 204 });
+    }
+
     throw new Error(`Unhandled mock fetch request: ${method} ${path}`);
   }
 
@@ -247,12 +258,16 @@ export function installMockGithubFetch(): MockGithubFetchController {
     failAllRequestsWith(message) {
       forcedFailure = message;
     },
+    setUnassignable(logins) {
+      unassignable = new Set(logins);
+    },
     reset() {
       milestones = [];
       issues = [];
       issueByNumber.clear();
       milestoneByNumber.clear();
       forcedFailure = null;
+      unassignable = new Set();
       createIssue.mockClear();
       updateIssue.mockClear();
       createMilestone.mockClear();

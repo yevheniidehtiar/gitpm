@@ -167,4 +167,20 @@ describe('gitpm push (integration, mocked at the fetch layer)', () => {
     expect(allOutput).toContain('New milestones: 1');
     expect(allOutput).toContain('New issues:     2');
   });
+
+  it('fails the dry run when an assignee cannot be assigned in the repo', async () => {
+    fetchMock.setUnassignable(['bob']);
+
+    await expect(
+      run('--dry-run', '--token', 'mock-token', '--meta-dir', metaDir),
+    ).rejects.toThrow('process.exit');
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(fetchMock.createIssue).not.toHaveBeenCalled();
+    const allOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(allOutput).toContain('Would fail:');
+    expect(allOutput).toContain(
+      'Compute cart total (st_cart_total): "bob" cannot be assigned in acme/widgets',
+    );
+  });
 });

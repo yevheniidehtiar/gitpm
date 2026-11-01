@@ -55,6 +55,12 @@ const mockUpdateMilestone = vi.fn().mockImplementation(async () => ({
   updated_at: '2026-01-01T00:00:00Z',
 }));
 
+const mockIsAssignable = vi
+  .fn()
+  .mockImplementation(
+    async (_o: string, _r: string, login: string) => login !== 'claude-code',
+  );
+
 vi.mock('../client.js', () => {
   return {
     GitHubClient: vi.fn().mockImplementation(function () {
@@ -76,6 +82,7 @@ vi.mock('../client.js', () => {
         updateIssue: mockUpdateIssue,
         createMilestone: mockCreateMilestone,
         updateMilestone: mockUpdateMilestone,
+        isAssignable: mockIsAssignable,
         getIssue: vi.fn().mockResolvedValue(null),
         getMilestone: vi.fn().mockResolvedValue(null),
       };
@@ -297,6 +304,71 @@ describe('exportToGitHub', () => {
     await saveState(metaDir, state.value);
     return stories;
   };
+
+  it('dry run reports an assignee that cannot be assigned, without writing', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+    const [ok, bad] = await unlinkStories(2);
+    ok.assignee = 'yevheniidehtiar';
+    bad.assignee = 'claude-code';
+    await coreWriteFile(ok, ok.filePath);
+    await coreWriteFile(bad, bad.filePath);
+
+    const result = await exportToGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+      dryRun: true,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.created.issues).toBe(2);
+    expect(result.value.failures).toEqual([
+      {
+        entityId: bad.id,
+        title: bad.title,
+        message: '"claude-code" cannot be assigned in test-org/test-repo',
+      },
+    ]);
+    expect(mockCreateIssue).not.toHaveBeenCalled();
+  });
+
+  it('dry run reports an update to an issue that no longer exists', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw new Error('parseTree failed');
+    const story = tree.value.stories[0];
+    story.title = `${story.title} (edited)`;
+    if (story.github) story.github.issue_number = 99999;
+    await coreWriteFile(story, story.filePath);
+    const state = await loadState(metaDir);
+    if (!state.ok) throw new Error('loadState failed');
+    state.value.entities[story.id].github_issue_number = 99999;
+    await saveState(metaDir, state.value);
+
+    const result = await exportToGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+      dryRun: true,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.failures).toEqual([
+      {
+        entityId: story.id,
+        title: story.title,
+        message: 'issue #99999 does not exist in test-org/test-repo',
+      },
+    ]);
+  });
 
   it('records a non-Error createIssue rejection as a failure', async () => {
     await importFromGitHub({
