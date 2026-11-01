@@ -15,7 +15,11 @@ import {
   remoteIssueFields,
   remoteMilestoneFields,
 } from './diff.js';
-import { entityToGhIssue, milestoneToGhMilestone } from './mapper.js';
+import {
+  entityToGhIssue,
+  milestoneToGhMilestone,
+  primaryAssignee,
+} from './mapper.js';
 import { computeContentHash, loadState, saveState } from './state.js';
 import type {
   FieldConflict,
@@ -585,8 +589,8 @@ function applyRemoteIssue(local: Story | Epic, remote: GhIssue): void {
     .filter((l) => l !== 'epic');
 
   if (local.type === 'story') {
-    local.assignee = remote.assignee?.login ?? null;
+    local.assignee = primaryAssignee(remote);
   } else {
-    local.owner = remote.assignee?.login ?? null;
+    local.owner = primaryAssignee(remote);
   }
 }

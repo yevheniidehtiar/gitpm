@@ -1,5 +1,6 @@
 import type { ParsedEntity } from '@gitpm/core';
 import type { GhIssue, GhMilestone } from './client.js';
+import { primaryAssignee } from './mapper.js';
 import type {
   DiffResult,
   FieldChange,
@@ -55,7 +56,7 @@ export function remoteIssueFields(gh: GhIssue): Record<string, unknown> {
     title: gh.title,
     status,
     labels,
-    assignee: gh.assignee?.login ?? null,
+    assignee: primaryAssignee(gh),
     body: (gh.body ?? '').trim(),
   };
 }

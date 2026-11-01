@@ -32,10 +32,25 @@ vi.mock('@octokit/rest', () => ({
   Octokit: class {
     issues = octokitInstance.issues;
     request = octokitInstance.request;
+    constructor(options: unknown) {
+      octokitOptions.push(options);
+    }
   },
 }));
 
-import { GitHubClient } from '../client.js';
+const octokitOptions: unknown[] = [];
+
+import { GITHUB_API_VERSION, GitHubClient } from '../client.js';
+
+describe('GitHubClient construction', () => {
+  it('pins the REST API version on every request', () => {
+    new GitHubClient('token');
+    expect(octokitOptions.at(-1)).toMatchObject({
+      headers: { 'x-github-api-version': GITHUB_API_VERSION },
+    });
+    expect(GITHUB_API_VERSION).toBe('2026-03-10');
+  });
+});
 
 function okResponse<T>(data: T, headers: Record<string, string> = {}) {
   return {

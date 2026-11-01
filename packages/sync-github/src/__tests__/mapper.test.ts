@@ -175,6 +175,18 @@ describe('ghIssueToEntity', () => {
     }
   });
 
+  it('reads the assignee from `assignees` when the singular field is absent (API 2026-03-10)', () => {
+    const { assignee: _removed, ...rest } = storyIssue;
+    const entity = ghIssueToEntity(
+      { ...rest, assignees: [{ login: 'dana' }, { login: 'eve' }] },
+      undefined,
+      REPO,
+    );
+    if (entity.type === 'story') {
+      expect(entity.assignee).toBe('dana');
+    }
+  });
+
   it('maps closed issues to done status', () => {
     const entity = ghIssueToEntity(closedIssue, undefined, REPO);
     expect(entity.status).toBe('done');
