@@ -104,6 +104,15 @@ export async function reconstructState(
       gh.issue_number
     ) {
       entry.github_issue_number = gh.issue_number;
+      // A closed entity whose content still matches the last synced hash was
+      // already pushed as closed; without this every stateless export would
+      // re-close it.
+      if (
+        isClosedStatus(entity.status) &&
+        gh.last_sync_hash === computeContentHash(entity)
+      ) {
+        entry.closed_on_remote = true;
+      }
     }
     if (entity.type !== 'prd' && gh.project_item_id) {
       entry.github_project_item_id = gh.project_item_id;
@@ -189,6 +198,10 @@ function buildCanonicalObject(entity: ParsedEntity): Record<string, unknown> {
   return sorted;
 }
 
+function isClosedStatus(status: string): boolean {
+  return status === 'done' || status === 'cancelled';
+}
+
 function normalizeWhitespace(text: string): string {
   return text
     .replace(/\r\n/g, '\n')
@@ -225,6 +238,10 @@ export function createInitialState(
       entity.github?.issue_number
     ) {
       entry.github_issue_number = entity.github.issue_number;
+      // Import maps closed issues to done, so the remote is already closed.
+      if (isClosedStatus(entity.status)) {
+        entry.closed_on_remote = true;
+      }
     }
     if (entity.type !== 'prd' && entity.github?.project_item_id) {
       entry.github_project_item_id = entity.github.project_item_id;

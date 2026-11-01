@@ -210,6 +210,29 @@ describe('createInitialState', () => {
     );
   });
 
+  it('marks closed issues as closed_on_remote', () => {
+    const github = {
+      issue_number: 7,
+      repo: 'org/repo',
+      last_sync_hash: '',
+      synced_at: '',
+    };
+    const done = makeStory({ id: 'done-story', status: 'done', github });
+    const cancelled = makeStory({
+      id: 'cancelled-story',
+      status: 'cancelled',
+      github: { ...github, issue_number: 8 },
+    });
+    const open = makeStory({
+      id: 'open-story',
+      github: { ...github, issue_number: 9 },
+    });
+    const state = createInitialState('org/repo', [done, cancelled, open]);
+    expect(state.entities['done-story'].closed_on_remote).toBe(true);
+    expect(state.entities['cancelled-story'].closed_on_remote).toBe(true);
+    expect(state.entities['open-story'].closed_on_remote).toBeUndefined();
+  });
+
   it('skips roadmap entities', () => {
     const story = makeStory();
     const roadmap = {
@@ -405,6 +428,41 @@ describe('reconstructState', () => {
     expect(msEntry.local_hash).toBe('sha256:ccc333');
     expect(msEntry.remote_hash).toBe('sha256:ccc333');
     expect(msEntry.github_milestone_number).toBe(5);
+  });
+
+  it('marks closed entities as closed_on_remote only when their hash is unchanged since the last sync', async () => {
+    const synced = makeStory({
+      id: 'synced-done',
+      status: 'done',
+      filePath: join(tmpDir, 'stories', 'synced-done.md'),
+    });
+    synced.github = {
+      issue_number: 1,
+      repo: 'owner/repo',
+      last_sync_hash: computeContentHash(synced),
+      synced_at: '2026-03-01T00:00:00Z',
+    };
+    const stale = makeStory({
+      id: 'stale-done',
+      status: 'done',
+      github: {
+        issue_number: 2,
+        repo: 'owner/repo',
+        last_sync_hash: computeContentHash(makeStory()),
+        synced_at: '2026-03-01T00:00:00Z',
+      },
+      filePath: join(tmpDir, 'stories', 'stale-done.md'),
+    });
+    await writeFile(synced, synced.filePath);
+    await writeFile(stale, stale.filePath);
+
+    const result = await reconstructState(tmpDir);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.entities['synced-done'].closed_on_remote).toBe(true);
+    expect(
+      result.value.entities['stale-done'].closed_on_remote,
+    ).toBeUndefined();
   });
 
   it('loadState returns reconstructed state when JSON missing but entities have github metadata', async () => {
