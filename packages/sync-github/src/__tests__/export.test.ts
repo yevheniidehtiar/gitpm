@@ -373,4 +373,33 @@ describe('exportToGitHub', () => {
       expect(Object.keys(stateResult.value.entities).length).toBeGreaterThan(0);
     }
   });
+
+  it('does not re-close already closed issues, with or without github-state.json', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+    const closeCalls = () =>
+      mockUpdateIssue.mock.calls.filter((c) => c[3]?.state === 'closed');
+
+    // First push after import
+    mockUpdateIssue.mockClear();
+    await exportToGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+    expect(closeCalls()).toHaveLength(0);
+
+    // Stateless push, as on a CI runner without the state file
+    await unlink(join(metaDir, 'sync', 'github-state.json'));
+    mockUpdateIssue.mockClear();
+    await exportToGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+    expect(closeCalls()).toHaveLength(0);
+  });
 });
