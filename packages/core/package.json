@@ -33,7 +33,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup"
+    "build": "tsup && tsc -p tsconfig.build.json"
   },
   "dependencies": {
     "gray-matter": "^4.0.3",
