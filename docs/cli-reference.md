@@ -292,6 +292,16 @@ Changes to push:
   Created 6, Updated 3
 ```
 
+**Failed entities (GitHub):** if GitHub rejects a request, for example an assignee that can't be assigned in the repo, the push skips that entity, carries on with the rest and lists the failures at the end. It then runs the `post-export` hook and exits with code 1. The sync state is saved after every issue or milestone it creates, so if a push dies partway, the next push carries on without creating duplicates. Fix the listed entities and push again.
+
+```
+⚠ Push finished with 1 failed entity.
+  Created 5, Updated 3
+
+Failed:
+  ✗ Inline cell editing (epic-inline-cell-editing): Validation Failed: invalid assignee
+```
+
 ---
 
 ## `gitpm pull`

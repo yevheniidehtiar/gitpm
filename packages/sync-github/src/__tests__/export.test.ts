@@ -282,23 +282,29 @@ describe('exportToGitHub', () => {
     expect(result.ok).toBe(false);
   });
 
-  it('returns an error when createIssue rejects with a non-Error', async () => {
+  // Turns the first `count` imported stories into new, never-pushed entities.
+  const unlinkStories = async (count: number) => {
+    const tree = await parseTree(metaDir);
+    if (!tree.ok) throw new Error('parseTree failed');
+    const state = await loadState(metaDir);
+    if (!state.ok) throw new Error('loadState failed');
+    const stories = tree.value.stories.slice(0, count);
+    for (const story of stories) {
+      story.github = null;
+      await coreWriteFile(story, story.filePath);
+      delete state.value.entities[story.id];
+    }
+    await saveState(metaDir, state.value);
+    return stories;
+  };
+
+  it('records a non-Error createIssue rejection as a failure', async () => {
     await importFromGitHub({
       token: 'test-token',
       repo: 'test-org/test-repo',
       metaDir,
     });
-
-    const tree = await parseTree(metaDir);
-    if (!tree.ok) throw new Error('parseTree failed');
-    const story = tree.value.stories[0];
-    story.github = null;
-    await coreWriteFile(story, story.filePath);
-
-    const state = await loadState(metaDir);
-    if (!state.ok) throw new Error('loadState failed');
-    delete state.value.entities[story.id];
-    await saveState(metaDir, state.value);
+    const [story] = await unlinkStories(1);
 
     // biome-ignore lint/suspicious/noExplicitAny: testing non-Error rejection
     mockCreateIssue.mockRejectedValueOnce('quota' as any);
@@ -308,9 +314,88 @@ describe('exportToGitHub', () => {
       repo: 'test-org/test-repo',
       metaDir,
     });
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error.message).toContain('Export failed');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.created.issues).toBe(0);
+    expect(result.value.failures).toEqual([
+      { entityId: story.id, title: story.title, message: 'quota' },
+    ]);
+  });
+
+  it('skips an entity whose request fails and pushes the rest', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+    const [bad, good] = await unlinkStories(2);
+
+    mockCreateIssue
+      .mockRejectedValueOnce(
+        new Error('Validation Failed: invalid assignee claude-code'),
+      )
+      .mockResolvedValueOnce({ number: 777 });
+
+    const result = await exportToGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.created.issues).toBe(1);
+    expect(result.value.failures).toHaveLength(1);
+    expect(result.value.failures[0].entityId).toBe(bad.id);
+    expect(result.value.failures[0].message).toContain('invalid assignee');
+
+    const state = await loadState(metaDir);
+    if (!state.ok) throw new Error('loadState failed');
+    expect(state.value.entities[good.id].github_issue_number).toBe(777);
+    expect(state.value.entities[bad.id]).toBeUndefined();
+  });
+
+  it('keeps a created issue in state when closing it fails, so a rerun does not create it again', async () => {
+    await importFromGitHub({
+      token: 'test-token',
+      repo: 'test-org/test-repo',
+      metaDir,
+    });
+    const [story] = await unlinkStories(1);
+    story.status = 'done';
+    await coreWriteFile(story, story.filePath);
+
+    mockCreateIssue.mockResolvedValueOnce({ number: 888 });
+    mockUpdateIssue.mockImplementation(async (_o, _r, num, params) => {
+      if (num === 888 && params?.state === 'closed') {
+        throw new Error('secondary rate limit');
+      }
+      return { number: num };
+    });
+
+    try {
+      const first = await exportToGitHub({
+        token: 'test-token',
+        repo: 'test-org/test-repo',
+        metaDir,
+      });
+      expect(first.ok).toBe(true);
+      if (!first.ok) return;
+      expect(first.value.failures).toHaveLength(1);
+
+      const state = await loadState(metaDir);
+      if (!state.ok) throw new Error('loadState failed');
+      expect(state.value.entities[story.id].github_issue_number).toBe(888);
+
+      mockCreateIssue.mockClear();
+      await exportToGitHub({
+        token: 'test-token',
+        repo: 'test-org/test-repo',
+        metaDir,
+      });
+      expect(mockCreateIssue).not.toHaveBeenCalled();
+    } finally {
+      mockUpdateIssue.mockReset();
+      mockUpdateIssue.mockImplementation(async () => ({ number: 1 }));
     }
   });
 

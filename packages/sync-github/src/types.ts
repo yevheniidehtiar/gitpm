@@ -1,4 +1,4 @@
-import type { EntityId, Priority, Status } from '@gitpm/core';
+import type { EntityId, ExportFailure, Priority, Status } from '@gitpm/core';
 
 export type LinkStrategy =
   | 'body-refs'
@@ -91,6 +91,7 @@ export interface ExportResult {
   updated: { milestones: number; issues: number };
   totalChanges: number;
   exportedPaths: string[];
+  failures: ExportFailure[];
 }
 
 export interface SyncOptions {

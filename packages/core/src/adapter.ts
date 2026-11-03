@@ -11,11 +11,20 @@ export interface ImportResult {
   writtenPaths: string[];
 }
 
+/** An entity the export could not push; the rest of the export carried on. */
+export interface ExportFailure {
+  entityId: string;
+  title: string;
+  message: string;
+}
+
 export interface ExportResult {
   created: { milestones: number; issues: number };
   updated: { milestones: number; issues: number };
   totalChanges: number;
   exportedPaths: string[];
+  /** Entities that failed to push. Absent or empty when everything succeeded. */
+  failures?: ExportFailure[];
 }
 
 export interface SyncResult {

@@ -5,6 +5,7 @@ export type {
   ConflictStrategy,
   DiffResult,
   DiffStatus,
+  ExportFailure,
   ExportResult,
   FieldChange,
   FieldConflict,
