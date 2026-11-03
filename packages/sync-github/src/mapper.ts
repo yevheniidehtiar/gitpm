@@ -12,6 +12,11 @@ import type { GhIssue, GhMilestone } from './client.js';
 import type { GitHubConfig } from './types.js';
 import { DEFAULT_EPIC_LABELS, DEFAULT_PRIORITY_MAPPING } from './types.js';
 
+/** First assignee's login. Falls back to the singular field older API versions return. */
+export function primaryAssignee(gh: GhIssue): string | null {
+  return gh.assignees?.[0]?.login ?? gh.assignee?.login ?? null;
+}
+
 export function ghMilestoneToMilestone(
   gh: GhMilestone,
   repoSlug: string,
@@ -114,7 +119,7 @@ export function ghIssueToEntity(
       title: gh.title,
       status,
       priority,
-      owner: gh.assignee?.login ?? null,
+      owner: primaryAssignee(gh),
       labels,
       milestone_ref: null,
       github,
@@ -131,7 +136,7 @@ export function ghIssueToEntity(
     title: gh.title,
     status,
     priority,
-    assignee: gh.assignee?.login ?? null,
+    assignee: primaryAssignee(gh),
     labels,
     estimate: null,
     epic_ref: null,

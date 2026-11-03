@@ -1,11 +1,19 @@
 import { Octokit } from '@octokit/rest';
 
+/**
+ * GitHub REST API version sent with every request. Without it GitHub
+ * answers with 2022-11-28, which carries a deprecation header (support
+ * ends March 2028) that Octokit logs on every call.
+ */
+export const GITHUB_API_VERSION = '2026-03-10';
+
 export class GitHubClient {
   private octokit: Octokit;
 
   constructor(token: string) {
     this.octokit = new Octokit({
       auth: token,
+      headers: { 'x-github-api-version': GITHUB_API_VERSION },
       request: { timeout: 30000 },
       retry: { enabled: true, retries: 3 },
     });
@@ -271,7 +279,9 @@ export interface GhIssue {
   title: string;
   body: string | null;
   state: 'open' | 'closed';
-  assignee: { login: string } | null;
+  /** Removed from responses in REST API 2026-03-10; read `assignees` instead. */
+  assignee?: { login: string } | null;
+  assignees?: { login: string }[];
   labels: Array<{ name: string } | string>;
   milestone: { number: number; title: string } | null;
   pull_request?: unknown;
