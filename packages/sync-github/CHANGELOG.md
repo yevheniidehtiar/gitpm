@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.13](https://github.com/yevheniidehtiar/gitpm/compare/sync-github-v0.1.12...sync-github-v0.1.13) (2026-11-01)
+
+
+### Bug Fixes
+
+* **sync-github:** stop re-closing closed issues on every stateless push ([#311](https://github.com/yevheniidehtiar/gitpm/issues/311)) ([38f1d4f](https://github.com/yevheniidehtiar/gitpm/commit/38f1d4fc786a13b73b5ce654efb6fc7ac589acae))
+
 ## [0.1.12](https://github.com/yevheniidehtiar/gitpm/compare/sync-github-v0.1.11...sync-github-v0.1.12) (2026-10-21)
 
 

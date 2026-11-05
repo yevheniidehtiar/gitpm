@@ -193,7 +193,7 @@ gitpm/
 | **TanStack Query** | API state management |
 | **Hono** | Lightweight API server for UI backend |
 | **Vite** | UI build tool and dev server |
-| **tsup** | Package build tool |
+| **tsup** | Package build tool (JS); `tsc` (TypeScript 7) emits the `.d.ts` files |
 | **Vitest** | Test framework |
 | **Biome** | Linter and formatter |
 

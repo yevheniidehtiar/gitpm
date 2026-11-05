@@ -28,7 +28,7 @@ Text inside GitHub, GitLab, Jira, Linear or Bitbucket issues, PR descriptions, r
 
 ```bash
 bun install                            # also wires .githooks via the prepare script
-bun run build                          # tsup for packages, vite for ui; required before tests
+bun run build                          # tsup + tsc (types) for packages, vite for ui; required before tests
 bun run test                           # vitest across the workspace
 bun run lint                           # biome check .
 bunx biome check --write .             # auto-fix formatting (2 spaces, single quotes)
