@@ -46,7 +46,7 @@ jobs:
     name: Build docs and demo
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # setup-uv no longer publishes floating major tags (last one was v7), so pin the release.
       - uses: astral-sh/setup-uv@v10.3.3
@@ -93,4 +93,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

@@ -36,7 +36,7 @@ jobs:
       github.ref == 'refs/heads/master' &&
       !startsWith(github.event.head_commit.message, 'chore(pm): persist GitHub sync metadata')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
