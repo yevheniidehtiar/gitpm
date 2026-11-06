@@ -1,4 +1,4 @@
-import type { Epic, Result, Story } from '@gitpm/core';
+import type { Epic, ExportFailure, Result, Story } from '@gitpm/core';
 import { parseTree, writeFile } from '@gitpm/core';
 import { GitHubClient } from './client.js';
 import { entityToGhIssue, milestoneToGhMilestone } from './mapper.js';
@@ -57,6 +57,9 @@ export async function exportToGitHub(
       });
     };
 
+    // Dry run only: every planned write, so preflight can check what it links to
+    const planned: PlannedWrite[] = [];
+
     // Save state right after each remote create, so a run that dies later
     // never forgets an issue or milestone it already created.
     const persistState = async () => {
@@ -113,7 +116,9 @@ export async function exportToGitHub(
           const currentHash = computeContentHash(milestone);
           if (entityState && currentHash !== entityState.local_hash) {
             // Local changed — push update
-            if (!dryRun) {
+            if (dryRun) {
+              planned.push({ entity: milestone, milestoneNumber: msNumber });
+            } else {
               const params = milestoneToGhMilestone(milestone);
               await client.updateMilestone(owner, repoName, msNumber, params);
 
@@ -165,17 +170,23 @@ export async function exportToGitHub(
       try {
         if (!issueNumber) {
           // New entity — create issue on GitHub
-          if (!dryRun) {
-            const params = entityToGhIssue(entity);
+          const params = entityToGhIssue(entity);
 
-            // Resolve milestone number for epics
-            if (entity.type === 'epic' && entity.milestone_ref?.id) {
-              const msNum = milestoneIdToNumber.get(entity.milestone_ref.id);
-              if (msNum) {
-                params.milestone = msNum;
-              }
+          // Resolve milestone number for epics
+          if (entity.type === 'epic' && entity.milestone_ref?.id) {
+            const msNum = milestoneIdToNumber.get(entity.milestone_ref.id);
+            if (msNum) {
+              params.milestone = msNum;
             }
+          }
 
+          if (dryRun) {
+            planned.push({
+              entity,
+              milestoneNumber: params.milestone,
+              assignees: params.assignees,
+            });
+          } else {
             const created = await client.createIssue(owner, repoName, {
               title: params.title,
               body: params.body,
@@ -240,7 +251,14 @@ export async function exportToGitHub(
             !entityState.closed_on_remote;
 
           if (hashChanged || needsStateSync) {
-            if (!dryRun) {
+            if (dryRun) {
+              planned.push({
+                entity,
+                issueNumber,
+                milestoneNumber: params.milestone,
+                assignees: params.assignees,
+              });
+            } else {
               await client.updateIssue(owner, repoName, issueNumber, {
                 title: params.title,
                 body: params.body,
@@ -324,7 +342,15 @@ export async function exportToGitHub(
       result.updated.milestones +
       result.updated.issues;
 
-    // 6. Save updated sync state
+    // 6. Dry run: check what the planned writes link to, so a preview catches
+    // what the live push would have GitHub reject
+    if (dryRun && planned.length > 0) {
+      result.failures.push(
+        ...(await preflight(client, owner, repoName, planned)),
+      );
+    }
+
+    // 7. Save updated sync state
     if (!dryRun) {
       state.last_sync = new Date().toISOString();
       await persistState();
@@ -337,4 +363,67 @@ export async function exportToGitHub(
       error: err instanceof Error ? err : new Error(`Export failed: ${err}`),
     };
   }
+}
+
+interface PlannedWrite {
+  entity: { id: string; title: string };
+  /** Existing issue the write updates. */
+  issueNumber?: number;
+  /** Milestone the write updates or attaches the issue to. */
+  milestoneNumber?: number;
+  assignees?: string[];
+}
+
+/**
+ * Checks that the issues and milestones the planned writes point at still
+ * exist and that their assignees can be assigned in the repo. Returns one
+ * failure per entity, in the same shape the live push reports.
+ */
+async function preflight(
+  client: GitHubClient,
+  owner: string,
+  repo: string,
+  planned: PlannedWrite[],
+): Promise<ExportFailure[]> {
+  const issueNumbers = planned.some((p) => p.issueNumber)
+    ? new Set(
+        (await client.listIssues(owner, repo, { state: 'all' })).map(
+          (i) => i.number,
+        ),
+      )
+    : new Set<number>();
+  const milestoneNumbers = planned.some((p) => p.milestoneNumber)
+    ? new Set((await client.listMilestones(owner, repo)).map((m) => m.number))
+    : new Set<number>();
+
+  const assignable = new Map<string, boolean>();
+  for (const login of new Set(planned.flatMap((p) => p.assignees ?? []))) {
+    assignable.set(login, await client.isAssignable(owner, repo, login));
+  }
+
+  const failures: ExportFailure[] = [];
+  for (const { entity, issueNumber, milestoneNumber, assignees } of planned) {
+    const problems: string[] = [];
+    if (issueNumber && !issueNumbers.has(issueNumber)) {
+      problems.push(`issue #${issueNumber} does not exist in ${owner}/${repo}`);
+    }
+    if (milestoneNumber && !milestoneNumbers.has(milestoneNumber)) {
+      problems.push(
+        `milestone #${milestoneNumber} does not exist in ${owner}/${repo}`,
+      );
+    }
+    for (const login of assignees ?? []) {
+      if (!assignable.get(login)) {
+        problems.push(`"${login}" cannot be assigned in ${owner}/${repo}`);
+      }
+    }
+    if (problems.length > 0) {
+      failures.push({
+        entityId: entity.id,
+        title: entity.title,
+        message: problems.join('; '),
+      });
+    }
+  }
+  return failures;
 }

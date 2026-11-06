@@ -45,6 +45,10 @@ export const pushCommand = new Command('push')
 
       spinner.succeed('Dry run complete.');
       printPreview(result.value);
+      if (result.value.failures?.length) {
+        printFailures(result.value.failures, 'Would fail:');
+        process.exit(1);
+      }
       return;
     }
 
@@ -66,6 +70,7 @@ export const pushCommand = new Command('push')
 
     previewSpinner.succeed('Changes calculated.');
     printPreview(preview.value);
+    printFailures(preview.value.failures ?? [], 'Would fail:');
 
     if (preview.value.totalChanges === 0) {
       printSuccess('Nothing to push — already in sync.');
@@ -136,10 +141,10 @@ export const pushCommand = new Command('push')
     }
   });
 
-function printFailures(failures: ExportFailure[]): void {
+function printFailures(failures: ExportFailure[], heading = 'Failed:'): void {
   if (failures.length === 0) return;
   console.log();
-  console.log(chalk.red.bold('Failed:'));
+  console.log(chalk.red.bold(heading));
   for (const failure of failures) {
     console.log(
       `  ${chalk.red('✗')} ${failure.title} ${chalk.dim(`(${failure.entityId})`)}: ${failure.message}`,

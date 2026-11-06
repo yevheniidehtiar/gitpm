@@ -95,6 +95,30 @@ describe('gitpm push', () => {
     vi.restoreAllMocks();
   });
 
+  it('exits 1 in dry-run mode when the preview predicts failures', async () => {
+    mockAdapterExport.mockResolvedValue({
+      ok: true,
+      value: {
+        ...exportResult,
+        failures: [
+          {
+            entityId: 'epic-x',
+            title: 'Epic X',
+            message: '"claude-code" cannot be assigned in o/r',
+          },
+        ],
+      },
+    });
+
+    await expect(run('--dry-run', '--meta-dir', '/tmp/meta')).rejects.toThrow(
+      'process.exit',
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    const allOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(allOutput).toContain('Would fail:');
+    expect(allOutput).toContain('cannot be assigned');
+  });
+
   it('prints preview in dry-run mode', async () => {
     mockAdapterExport.mockResolvedValue({ ok: true, value: exportResult });
 

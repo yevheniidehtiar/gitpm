@@ -302,6 +302,8 @@ Failed:
   ✗ Inline cell editing (epic-inline-cell-editing): Validation Failed: invalid assignee
 ```
 
+**Dry-run checks (GitHub):** for every write it would make, `--dry-run` also checks that the issue or milestone it updates or links to still exists and that every assignee (a story's `assignee`, an epic's `owner`) can be assigned in the repo. It lists the problems under `Would fail:` and exits with code 1, so a preview step in CI fails before a live push does. These checks cost one assignee lookup per distinct user plus one listing of the repo's issues and milestones. The confirmation preview of a normal `gitpm push` runs the same checks.
+
 ---
 
 ## `gitpm pull`
