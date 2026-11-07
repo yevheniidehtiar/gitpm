@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.16](https://github.com/yevheniidehtiar/gitpm/compare/cli-v0.1.15...cli-v0.1.16) (2026-11-07)
+
+
+### Bug Fixes
+
+* check assignees and linked issues and milestones in push --dry-run ([#327](https://github.com/yevheniidehtiar/gitpm/issues/327)) ([9602f13](https://github.com/yevheniidehtiar/gitpm/commit/9602f131d4c6a290ed1cc105d39d6678f0a9ea40))
+* keep pushing to GitHub when one entity fails, and save state as it goes ([#325](https://github.com/yevheniidehtiar/gitpm/issues/325)) ([67da3f4](https://github.com/yevheniidehtiar/gitpm/commit/67da3f4542271b8f0075cf8b4df91459cd85d5fd))
+
 ## [0.1.15](https://github.com/yevheniidehtiar/gitpm/compare/cli-v0.1.14...cli-v0.1.15) (2026-10-21)
 
 

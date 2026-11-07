@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.16](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.15...core-v0.1.16) (2026-11-07)
+
+
+### Bug Fixes
+
+* keep pushing to GitHub when one entity fails, and save state as it goes ([#325](https://github.com/yevheniidehtiar/gitpm/issues/325)) ([67da3f4](https://github.com/yevheniidehtiar/gitpm/commit/67da3f4542271b8f0075cf8b4df91459cd85d5fd))
+
 ## [0.1.15](https://github.com/yevheniidehtiar/gitpm/compare/core-v0.1.14...core-v0.1.15) (2026-10-18)
 
 
